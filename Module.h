@@ -17,8 +17,8 @@
 * limitations under the License.
 */
 
-#ifndef __MODULE_PLUGIN_FRONTPANEL_H
-#define __MODULE_PLUGIN_FRONTPANEL_H
+#ifndef __MODULE_PLUGIN_AVOUTPUT_H
+#define __MODULE_PLUGIN_AVOUTPUT_H
 
 
 #ifndef MODULE_NAME
@@ -31,5 +31,5 @@
 
 
 
-#endif // __MODULE_PLUGIN_FRONTPANEL_H
+#endif // __MODULE_PLUGIN_AVOUTPUT_H
 
