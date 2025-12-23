@@ -23,6 +23,10 @@ set(CMAKE_BUILD_TYPE "Debug")
 
 set(PLUGIN_NAME AVOutput)
 
+if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
+    set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
+endif()
+
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
 set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput plugin")
