@@ -23,6 +23,10 @@ set(CMAKE_BUILD_TYPE "Debug")
 
 set(PLUGIN_NAME AVOutput)
 
+if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
+    set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
+endif()
+
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
 set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput plugin")
@@ -82,8 +86,7 @@ list(APPEND CMAKE_MODULE_PATH
 find_package(DS)
 
 target_include_directories(${MODULE_NAME} PRIVATE ${DS_INCLUDE_DIRS})
-target_include_directories(${MODULE_NAME} PRIVATE ../helpers)
-
+target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/helpers)
 target_link_libraries(${MODULE_NAME} 
     PRIVATE
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
