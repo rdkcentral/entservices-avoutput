@@ -498,7 +498,6 @@ namespace Plugin {
 
         syncAvoutputTVParamsToHAL("none","none","none");
 	
-        setDefaultAspectRatio();
 
         // source format specific sync to ssm data
         syncAvoutputTVPQModeParamsToHAL("Current", "none", "none");
