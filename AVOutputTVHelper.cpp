@@ -537,11 +537,11 @@ namespace Plugin {
 
         //3.Compare Each pqmode/format/source InputInfo against CapablityInfo
         if ( isIncluded(pqmodeCapSet,pqmodeInputSet) && isIncluded(formatCapSet,formatInputSet) && isIncluded(sourceCapset,sourceInputSet) ) {
-            LOGINFO("%s : Capablity Check passed \n", __FUNCTION__);
+            LOGINFO("%s : Capability Check passed \n", __FUNCTION__);
             return true;
         }
         else {
-            LOGERR("%s : Capablity Check Failed \n", __FUNCTION__);
+            LOGERR("%s : Capability Check Failed \n", __FUNCTION__);
             return false;
         }
     }
