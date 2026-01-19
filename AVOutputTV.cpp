@@ -1381,15 +1381,20 @@ namespace Plugin {
     uint32_t AVOutputTV::getZoomMode(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
-        tvDisplayMode_t mode;
+        if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            tvDisplayMode_t mode;
 
-        tvError_t ret = getUserSelectedAspectRatio (&mode);
+            tvError_t ret = getUserSelectedAspectRatio(&mode);
 
-        if(ret != tvERROR_NONE) {
-            returnResponse(false);
-        }
-        else {
-            switch(mode) {
+            if (ret != tvERROR_NONE)
+            {
+                returnResponse(false);
+            }
+            else
+            {
+                switch (mode)
+                {
                 case tvDisplayMode_16x9:
                     LOGINFO("Aspect Ratio: TV 16X9 STRETCH\n");
                     response["zoomMode"] = "TV 16X9 STRETCH";
@@ -1424,8 +1429,23 @@ namespace Plugin {
                     LOGINFO("Aspect Ratio: TV AUTO\n");
                     response["zoomMode"] = "TV AUTO";
                     break;
+                }
+                returnResponse(true);
             }
-            returnResponse(true);
+        }
+        else
+        {
+            std::string outMode;
+            if (getEnumPQParamString(parameters, "ZoomMode",
+                                     PQ_PARAM_ASPECT_RATIO, zoomModeReverseMap, outMode))
+            {
+                response["zoomMode"] = outMode;
+                returnResponse(true);
+            }
+            else
+            {
+                returnResponse(false);
+            }
         }
     }
 
