@@ -526,25 +526,6 @@ namespace Plugin {
        LOGINFO("Exit\n");
     }
 
-    // Shared zoom mode mappings
-    static const std::unordered_map<int, std::string> zoomModeReverseMap = {
-        {tvDisplayMode_16x9,     "TV 16X9 STRETCH"},
-        {tvDisplayMode_4x3,      "TV 4X3 PILLARBOX"},
-        {tvDisplayMode_NORMAL,   "TV NORMAL"},
-        {tvDisplayMode_DIRECT,   "TV DIRECT"},
-        {tvDisplayMode_AUTO,     "TV AUTO"},
-        {tvDisplayMode_ZOOM,     "TV ZOOM"},
-        {tvDisplayMode_FULL,     "TV FULL"}
-    };
-    static const std::unordered_map<std::string, int> zoomModeMap = {
-        {"TV 16X9 STRETCH", tvDisplayMode_16x9},
-        {"TV 4X3 PILLARBOX", tvDisplayMode_4x3},
-        {"TV NORMAL",        tvDisplayMode_NORMAL},
-        {"TV DIRECT",        tvDisplayMode_DIRECT},
-        {"TV AUTO",          tvDisplayMode_AUTO},
-        {"TV ZOOM",          tvDisplayMode_ZOOM},
-        {"TV FULL",          tvDisplayMode_FULL}
-    };
     static const std::unordered_map<int, std::string> dimmingModeReverseMap = {
         { tvDimmingMode_Fixed, "Fixed" },
         { tvDimmingMode_Local, "Local" },
