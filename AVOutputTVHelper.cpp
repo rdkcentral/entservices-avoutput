@@ -1394,6 +1394,24 @@ namespace Plugin {
             setDefaultAspectRatio();
         } else {
             updateAVoutputTVParamV2("sync", "ZoomMode", paramJson, PQ_PARAM_ASPECT_RATIO, level);
+
+            //Update m_videoZoomMode for HDMI state/mode change events
+            std::string outMode;
+            JsonObject param;
+            if (getEnumPQParamString(param, "ZoomMode", PQ_PARAM_ASPECT_RATIO, zoomModeReverseMap, outMode))
+            {
+                auto it = zoomModeMap.find(outMode);
+                if (it == zoomModeMap.end())
+                {
+                    LOGWARN("Invalid ZoomMode value: %s. Init m_videoZoomMode to tvDisplayMode_AUTO \n", outMode.c_str());
+                    m_videoZoomMode = tvDisplayMode_AUTO;
+                }
+                else
+                {
+                    m_videoZoomMode = it->second;
+                    LOGINFO("m_videoZoomMode initialized to %d\n", m_videoZoomMode);
+                }
+            }
         }
 
         //LowLatencyState
