@@ -410,6 +410,11 @@ namespace Plugin {
 
         registerMethod("getMultiPointWBCaps", &AVOutputTV::getMultiPointWBCaps, this);
 
+        registerMethod("getBacklightDimmingLevel", &AVOutputTV::getBacklightDimmingLevel, this);
+        registerMethod("setBacklightDimmingLevel", &AVOutputTV::setBacklightDimmingLevel, this);
+        registerMethod("resetBacklightDimmingLevel", &AVOutputTV::resetBacklightDimmingLevel, this);
+        registerMethod("getBacklightDimmingLevelCaps", &AVOutputTV::getBacklightDimmingLevelCaps, this); 
+
         // Start worker thread for non-blocking updates
         workerThread = std::thread(&AVOutputTV::paramUpdateWorker, this);
 
@@ -493,7 +498,6 @@ namespace Plugin {
 
         syncAvoutputTVParamsToHAL("none","none","none");
 	
-        setDefaultAspectRatio();
 
         // source format specific sync to ssm data
         syncAvoutputTVPQModeParamsToHAL("Current", "none", "none");
@@ -522,25 +526,6 @@ namespace Plugin {
        LOGINFO("Exit\n");
     }
 
-    // Shared zoom mode mappings
-    static const std::unordered_map<int, std::string> zoomModeReverseMap = {
-        {tvDisplayMode_16x9,     "TV 16X9 STRETCH"},
-        {tvDisplayMode_4x3,      "TV 4X3 PILLARBOX"},
-        {tvDisplayMode_NORMAL,   "TV NORMAL"},
-        {tvDisplayMode_DIRECT,   "TV DIRECT"},
-        {tvDisplayMode_AUTO,     "TV AUTO"},
-        {tvDisplayMode_ZOOM,     "TV ZOOM"},
-        {tvDisplayMode_FULL,     "TV FULL"}
-    };
-    static const std::unordered_map<std::string, int> zoomModeMap = {
-        {"TV 16X9 STRETCH", tvDisplayMode_16x9},
-        {"TV 4X3 PILLARBOX", tvDisplayMode_4x3},
-        {"TV NORMAL",        tvDisplayMode_NORMAL},
-        {"TV DIRECT",        tvDisplayMode_DIRECT},
-        {"TV AUTO",          tvDisplayMode_AUTO},
-        {"TV ZOOM",          tvDisplayMode_ZOOM},
-        {"TV FULL",          tvDisplayMode_FULL}
-    };
     static const std::unordered_map<int, std::string> dimmingModeReverseMap = {
         { tvDimmingMode_Fixed, "Fixed" },
         { tvDimmingMode_Local, "Local" },
@@ -1013,6 +998,13 @@ namespace Plugin {
         parameters, response);
     }
 
+    uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
+        return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
+            return GetBacklightDimmingLevelCaps(max_val, context_caps);
+        },
+        parameters, response);
+    }
+
     // Forward lookup: string → enum
     const std::unordered_map<std::string, int> colorTempMap = {
         {"Standard",            tvColorTemp_STANDARD},
@@ -1370,15 +1362,20 @@ namespace Plugin {
     uint32_t AVOutputTV::getZoomMode(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
-        tvDisplayMode_t mode;
+        if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            tvDisplayMode_t mode;
 
-        tvError_t ret = getUserSelectedAspectRatio (&mode);
+            tvError_t ret = getUserSelectedAspectRatio(&mode);
 
-        if(ret != tvERROR_NONE) {
-            returnResponse(false);
-        }
-        else {
-            switch(mode) {
+            if (ret != tvERROR_NONE)
+            {
+                returnResponse(false);
+            }
+            else
+            {
+                switch (mode)
+                {
                 case tvDisplayMode_16x9:
                     LOGINFO("Aspect Ratio: TV 16X9 STRETCH\n");
                     response["zoomMode"] = "TV 16X9 STRETCH";
@@ -1413,8 +1410,23 @@ namespace Plugin {
                     LOGINFO("Aspect Ratio: TV AUTO\n");
                     response["zoomMode"] = "TV AUTO";
                     break;
+                }
+                returnResponse(true);
             }
-            returnResponse(true);
+        }
+        else
+        {
+            std::string outMode;
+            if (getEnumPQParamString(parameters, "ZoomMode",
+                                     PQ_PARAM_ASPECT_RATIO, zoomModeReverseMap, outMode))
+            {
+                response["zoomMode"] = outMode;
+                returnResponse(true);
+            }
+            else
+            {
+                returnResponse(false);
+            }
         }
     }
 
@@ -1556,6 +1568,13 @@ namespace Plugin {
         returnResponse(success);
     }
 
+    uint32_t AVOutputTV::resetBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    {
+        bool success= resetPQParamToDefault(parameters,"DimmingLevel",
+                                        PQ_PARAM_BACKLIGHT_DIMMINGLEVEL, SetBacklightDimmingLevel);
+        returnResponse(success);
+    }
+
     uint32_t AVOutputTV::getPrecisionDetail(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
@@ -1636,6 +1655,20 @@ namespace Plugin {
             aiSuperResolution);
         if (success) {
             response["aiSuperResolution"] = aiSuperResolution;
+        }
+        returnResponse(success);
+    }
+
+    uint32_t AVOutputTV::getBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry");
+        int dimmingLevel = 0;
+        bool success = getPQParamFromContext(parameters,
+            "DimmingLevel",
+            PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
+            dimmingLevel);
+        if (success) {
+            response["dimmingLevel"] = dimmingLevel;
         }
         returnResponse(success);
     }
@@ -1812,6 +1845,19 @@ namespace Plugin {
         );
     }
 
+    uint32_t AVOutputTV::setBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    {
+        return setContextPQParam(
+            parameters, response,
+            "dimmingLevel", "DimmingLevel",
+            m_maxDimmingLevel,
+            PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
+            [](tvVideoSrcType_t src, tvPQModeIndex_t mode, tvVideoFormatType_t fmt, int val) {
+                return SetBacklightDimmingLevel(src, mode, fmt, val);
+            }
+        );
+    }
+
     uint32_t AVOutputTV::getBacklight(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
@@ -1948,12 +1994,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, intVal, pqIndex) == 0)
+            if ( getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s [format=%d, source=%d, mode=%d] → value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&intVal);
+                LOGINFO("%s: GetDefaultPQParams success for %s [format=%d, source=%d, mode=%d] PQIndex=%d → value=%d\n",
                     __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                    indexInfo.sourceIndex, indexInfo.pqmodeIndex, intVal);
+                    indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, intVal);
 
                 if (valueMap.find(intVal) == valueMap.end()) {
                     LOGERR("%s: Invalid enum value %d for %s\n", __FUNCTION__, intVal, paramName.c_str());
@@ -2004,12 +2050,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, level, pqIndex) == 0)
+            if ( getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s: format=%d, source=%d, mode=%d, value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&level);
+                LOGINFO("%s: GetDefaultPQParams success for %s: format=%d, source=%d, mode=%d,PQIndex=%d, value=%d\n",
                         __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, level);
+                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, level);
                 if (halSetter) {
                     ret = halSetter(
                         static_cast<tvVideoSrcType_t>(indexInfo.sourceIndex),
@@ -2061,12 +2107,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, level, pqIndex) == 0)
+            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s: format=%d, source=%d, mode=%d, value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&level);
+                LOGINFO("%s: GetDefaultPQParams success for %s: format=%d, source=%d, mode=%d,PQIndex=%d, value=%d\n",
                         __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, level);
+                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, level);
                 ret = halSetter(level);
                 LOGINFO("%s halSetter return value: %d\n", paramName.c_str(), ret);
             }
