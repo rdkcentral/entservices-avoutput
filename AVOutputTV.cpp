@@ -1994,12 +1994,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, intVal, pqIndex) == 0)
+            if ( getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s [format=%d, source=%d, mode=%d] → value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&intVal);
+                LOGINFO("%s: GetDefaultPQParams success for %s [format=%d, source=%d, mode=%d] PQIndex=%d → value=%d\n",
                     __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                    indexInfo.sourceIndex, indexInfo.pqmodeIndex, intVal);
+                    indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, intVal);
 
                 if (valueMap.find(intVal) == valueMap.end()) {
                     LOGERR("%s: Invalid enum value %d for %s\n", __FUNCTION__, intVal, paramName.c_str());
@@ -2050,12 +2050,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, level, pqIndex) == 0)
+            if ( getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s: format=%d, source=%d, mode=%d, value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&level);
+                LOGINFO("%s: GetDefaultPQParams success for %s: format=%d, source=%d, mode=%d,PQIndex=%d, value=%d\n",
                         __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, level);
+                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, level);
                 if (halSetter) {
                     ret = halSetter(
                         static_cast<tvVideoSrcType_t>(indexInfo.sourceIndex),
@@ -2107,12 +2107,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, level, pqIndex) == 0)
+            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s: format=%d, source=%d, mode=%d, value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&level);
+                LOGINFO("%s: GetDefaultPQParams success for %s: format=%d, source=%d, mode=%d,PQIndex=%d, value=%d\n",
                         __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, level);
+                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, level);
                 ret = halSetter(level);
                 LOGINFO("%s halSetter return value: %d\n", paramName.c_str(), ret);
             }

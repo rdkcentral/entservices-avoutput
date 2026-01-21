@@ -2347,6 +2347,9 @@ namespace Plugin {
     {
         tvError_t ret = tvERROR_GENERAL;
         LOGINFO("%s: mode selected is: %d", __FUNCTION__, m_videoZoomMode);
+
+        // backup the selected zoom mode
+        m_videoZoomMode = mode;
 #if !defined (HDMIIN_4K_ZOOM)
         if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
             if (AVOutputTV::instance->m_currentHdmiInResoluton<dsVIDEO_PIXELRES_3840x2160 ||
