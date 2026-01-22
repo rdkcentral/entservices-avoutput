@@ -2805,6 +2805,7 @@ namespace Plugin {
         {PQ_MODE_STANDARD, "Standard"},
         {PQ_MODE_VIVID, "Vivid"},
         {PQ_MODE_ENERGY_SAVING, "EnergySaving"},
+        {PQ_MODE_DISABLE, "PQ Disable"},
         {PQ_MODE_CUSTOM, "Custom"}
     };
 
