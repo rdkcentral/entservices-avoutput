@@ -3824,7 +3824,7 @@ namespace Plugin {
 
         if (getEnumPQParamString(updatedParams, "SDRGamma",
                 PQ_PARAM_SDR_GAMMA, sdrGammaReverseMap, outMode)) {
-            response["SDRGamma"] = outMode;
+            response["sdrGamma"] = outMode;
             returnResponse(true);
         } else {
             LOGERR("Failed to retrieve SDRGamma value");
