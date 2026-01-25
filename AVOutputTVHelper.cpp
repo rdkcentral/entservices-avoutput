@@ -1493,6 +1493,14 @@ namespace Plugin {
             //syncWBParams();  Enable once Get2PointWBCaps is implemented
         if(m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
+        // HDRMode
+        if( !updateAVoutputTVParam("sync","HDRMode",info,PQ_PARAM_DOLBY_MODE,level)) {
+            LOGINFO("HDRmode Successfully Synced to Drive Cache\n");
+        }
+        else {
+            LOGERR("HDRmode Sync to cache Failed !!!\n");
+        }
+
         // Dolby Vision Mode
         info.format = "DV"; // Sync only for Dolby
         updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
@@ -1873,7 +1881,7 @@ namespace Plugin {
                    value = tvDolbyMode_Dark;
                }
                else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("DV") != std::string::npos ) {
-                   value = tvDolbyMode_Game;
+                   value = tvDolbyMode_Bright;
                }
 	           else if(strncmp(param.value, "Dark", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
                    value = tvHDR10Mode_Dark;
