@@ -5521,6 +5521,11 @@ namespace Plugin {
             returnResponse(false);
         }
 
+        if (!isCapablityCheckPassed("HDRMode", inputInfo)){
+            LOGERR("%s: CapablityCheck failed for hdrMode\n", __FUNCTION__);
+            returnResponse(false);
+        }
+
         if (getParamIndex("HDRMode",inputInfo,indexInfo) == -1) {
             LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
             returnResponse(false);
@@ -5547,8 +5552,8 @@ namespace Plugin {
         std::string value;
 	    int retval = 0;
 
-        value = parameters.HasLabel("HDRMode") ? parameters["HDRMode"].String() : "";
-        returnIfParamNotFound(parameters,"HDRMode");
+        value = parameters.HasLabel("hdrMode") ? parameters["hdrMode"].String() : "";
+        returnIfParamNotFound(parameters,"hdrMode");
 
         if (parsingSetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
             LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
