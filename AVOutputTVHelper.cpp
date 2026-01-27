@@ -751,8 +751,8 @@ namespace Plugin {
 
         if ( (param == "ColorTemperature") ||
              (param == "DimmingMode") || (param == "AutoBacklightMode") ||
-             (param == "DolbyVisionMode") || (param == "HDR10Mode") ||
-            (param == "HLGMode") || (param == "AspectRatio") || (param == "PictureMode")  ) {
+             (param == "DolbyVisionMode") ||
+            (param == "HDRMode") || (param == "AspectRatio") || (param == "PictureMode")  ) {
             auto iter = find(info.rangeVector.begin(), info.rangeVector.end(), inputValue);
 
             if (iter == info.rangeVector.end()) {
@@ -1806,6 +1806,9 @@ namespace Plugin {
         }
         else if (forParam.compare("WhiteBalance") == 0) {
             generateStorageIdentifierWB(key, forParam, indexInfo);
+        }
+        else if (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+            generateStorageIdentifier(key, forParam, indexInfo);
         }
         else {
             generateStorageIdentifierV2(key, forParam, indexInfo);
