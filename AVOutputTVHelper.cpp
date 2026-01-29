@@ -985,7 +985,11 @@ namespace Plugin {
 
         // Generate storage key based on parameter type
         if (forParam.compare("WhiteBalance") == 0) {
-            generateStorageIdentifierWB(key, forParam, indexInfo);
+            if (m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+                generateStorageIdentifierWB(key, forParam, indexInfo);
+            } else {
+                generateStorageIdentifierWBV2(key, forParam, indexInfo);
+            }
         }
         else {
             generateStorageIdentifierV2(key, forParam, indexInfo);
@@ -1292,6 +1296,60 @@ namespace Plugin {
         }
     }
 
+    void AVOutputTV::populateWBStringListsFromCaps() {
+        m_wbColorList.clear();
+        m_wbControlList.clear();
+        m_wbColorTempList.clear();
+
+        if (m_wbColorArr && m_numWBColor > 0) {
+            for (size_t i = 0; i < m_numWBColor; ++i) {
+                m_wbColorList.push_back(getWBColorStringFromEnum(m_wbColorArr[i]));
+            }
+        }
+
+        if (m_wbControlArr && m_numWBControl > 0) {
+            for (size_t i = 0; i < m_numWBControl; ++i) {
+                m_wbControlList.push_back(getWBControlStringFromEnum(m_wbControlArr[i]));
+            }
+        }
+
+        if (m_wbColorTempArr && m_numWBColorTemp > 0) {
+            for (size_t i = 0; i < m_numWBColorTemp; ++i) {
+                std::string tempStr;
+                getColorTempStringFromEnum(static_cast<int>(m_wbColorTempArr[i]), tempStr);
+                m_wbColorTempList.push_back(tempStr);
+            }
+        }
+
+        LOGINFO("WhiteBalance Capabilities parsed: Colors=%zu, Controls=%zu, ColorTemps=%zu",
+            m_wbColorList.size(), m_wbControlList.size(), m_wbColorTempList.size());
+    }
+
+    void AVOutputTV::syncWBParamsV2()
+    {
+        JsonObject parameters;
+
+        // Default to "none" for all contexts to signal a global sync across all modes
+        parameters["pictureMode"] = "none";
+        parameters["videoSource"] = "none";
+        parameters["videoFormat"] = "none";
+
+        // Use "Global" to indicate sync for all colorTemps, controls, and colors
+        parameters["colorTemperature"] = "Global";
+        parameters["control"] = "Global";
+        parameters["color"] = "Global";
+
+        // Dummy PQ index; not used inside updateAVoutputTVParamV2() for bulk sync
+        tvPQParameterIndex_t dummyPQIndex = PQ_PARAM_WB_GAIN_RED;
+
+        int result = updateAVoutputTVParamV2("sync", "WhiteBalance", parameters, dummyPQIndex, 0);
+        if (result == 0) {
+            LOGINFO("%s: WhiteBalance sync completed successfully", __FUNCTION__);
+        } else {
+            LOGERR("%s: WhiteBalance sync encountered errors", __FUNCTION__);
+        }
+    }
+
     tvError_t AVOutputTV::syncAvoutputTVParamsToHAL(std::string pqmode, std::string source, std::string format)
     {
         int level = {0};
@@ -1490,7 +1548,26 @@ namespace Plugin {
             syncCMSParams();
         }
 
-            //syncWBParams();  Enable once Get2PointWBCaps is implemented
+        m_wbStatus = Get2PointWBCaps(
+                                    &m_minWBGain, &m_minWBOffset,
+                                    &m_maxWBGain, &m_maxWBOffset,
+                                    &m_wbColorTempArr,
+                                    &m_wbColorArr,
+                                    &m_wbControlArr,
+                                    &m_numWBColorTemp,
+                                    &m_numWBColor,
+                                    &m_numWBControl,
+                                    &m_wbContextCaps);
+        if (m_wbStatus == tvERROR_NONE) {
+            populateWBStringListsFromCaps();
+            syncWBParamsV2();
+        }
+
+        if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            syncWBParams();
+        }
+
         if(m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
         // Dolby Vision Mode
@@ -1653,6 +1730,24 @@ namespace Plugin {
         return tvERROR_NONE;
     }
 
+    uint32_t AVOutputTV::generateStorageIdentifierWBV2(std::string &key, std::string forParam, paramIndex_t info)
+    {
+        key += std::string(AVOUTPUT_GENERIC_STRING_RFC_PARAM);
+        key += STRING_SOURCE + convertSourceIndexToStringV2(info.sourceIndex) + ".";
+        key += STRING_PICMODE + convertPictureIndexToStringV2(info.pqmodeIndex) + ".";
+        key += STRING_FORMAT + convertVideoFormatToStringV2(info.formatIndex) + ".";
+
+        std::string colorTempStr;
+        getColorTempStringFromEnum(info.colorTempIndex, colorTempStr);
+        key += std::string("ColorTemp.") + colorTempStr + ".";
+
+        key += STRING_COLOR + getWBColorStringFromEnum((tvWBColor_t)info.colorIndex) + ".";
+        key += STRING_CONTROL + getWBControlStringFromEnum((tvWBControl_t)info.controlIndex) + ".";
+        key += forParam;
+
+        return tvERROR_NONE;
+    }
+
     uint32_t AVOutputTV::generateStorageIdentifierDirty(std::string &key, std::string forParam,uint32_t contentFormat, int pqmode)
     {
         key+=std::string(AVOUTPUT_GENERIC_STRING_RFC_PARAM);
@@ -1797,7 +1892,11 @@ namespace Plugin {
             generateStorageIdentifierCMS(key, forParam, indexInfo);
         }
         else if (forParam.compare("WhiteBalance") == 0) {
-            generateStorageIdentifierWB(key, forParam, indexInfo);
+            if (m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+                generateStorageIdentifierWB(key, forParam, indexInfo);
+            } else {
+                generateStorageIdentifierWBV2(key, forParam, indexInfo);
+            }
         }
         else {
             generateStorageIdentifierV2(key, forParam, indexInfo);
@@ -1969,7 +2068,20 @@ namespace Plugin {
             if( sync ) {
                 return 1;
             }
-            GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqParamIndex,&value);
+            if (forParam.compare("WhiteBalance") == 0) {
+                if (m_wbStatus == tvERROR_NONE) {
+                    GetDefault2PointWB((tvVideoSrcType_t)indexInfo.sourceIndex,
+                                    indexInfo.pqmodeIndex,
+                                    (tvVideoFormatType_t)indexInfo.formatIndex,
+                                    static_cast<tvColorTemp_t>(indexInfo.colorTempIndex),
+                                    static_cast<tvWBColor_t>(indexInfo.colorIndex),
+                                    static_cast<tvWBControl_t>(indexInfo.controlIndex),
+                                    &value);
+                }
+            }
+            else{
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqParamIndex,&value);
+            }
             LOGINFO("Default value from DB : %s : %d \n",key.c_str(),value);
             return 0;
         }
@@ -3144,6 +3256,7 @@ namespace Plugin {
         else if (paramName == "MEMC") caps = m_MEMCCaps;
         else if (paramName == "BacklightMode") caps = m_backlightModeCaps;
         else if (paramName == "CMS") caps = m_cmsCaps;
+        else if (paramName == "WhiteBalance") caps = m_wbContextCaps;
         else if (paramName == "SDRGamma") caps = m_sdrGammaModeCaps;
         else if (paramName == "DimmingLevel") caps = m_dimmingLevelCaps;
         else {
@@ -3544,6 +3657,100 @@ namespace Plugin {
             LOGINFO("Exit: %s, Return Value: %d", __FUNCTION__, ret);
             return (ret < 0) ? -1 : 0;
         }
+        else if (tr181ParamName == "WhiteBalance") {
+            JsonArray colorTempArray = getJsonArrayIfArray(parameters, "colorTemperature");
+            JsonArray controlArray = getJsonArrayIfArray(parameters, "control");
+            JsonArray colorArray = getJsonArrayIfArray(parameters, "color");
+
+            std::vector<std::string> colors, controls, colorTemps;
+
+            for (size_t i = 0; i < colorArray.Length(); ++i)
+                colors.emplace_back(colorArray[i].String());
+            for (size_t i = 0; i < controlArray.Length(); ++i)
+                controls.emplace_back(controlArray[i].String());
+            for (size_t i = 0; i < colorTempArray.Length(); ++i)
+                colorTemps.emplace_back(colorTempArray[i].String());
+
+            if (colors.empty()) colors.push_back("Global");
+            if (controls.empty()) controls.push_back("Global");
+            if (colorTemps.empty()) colorTemps.push_back("Global");
+
+            if (colors.size() == 1 && colors[0] == "Global") colors = m_wbColorList;
+            if (controls.size() == 1 && controls[0] == "Global") controls = m_wbControlList;
+            if (colorTemps.size() == 1 && colorTemps[0] == "Global") colorTemps = m_wbColorTempList;
+
+            for (const auto& ctx : validContexts) {
+                for (const auto& colorTempStr : colorTemps) {
+                    tvColorTemp_t colorTemp;
+                    if (getColorTempEnumFromString(colorTempStr, colorTemp) != 0) {
+                        LOGERR("%s: Invalid colorTemp %s", __FUNCTION__, colorTempStr.c_str());
+                        continue;
+                    }
+
+                    for (const auto& controlStr : controls) {
+                        tvWBControl_t control;
+                        if (getWBControlEnumFromString(controlStr, control) != 0) {
+                            LOGERR("%s: Invalid control %s", __FUNCTION__, controlStr.c_str());
+                            continue;
+                        }
+
+                        for (const auto& colorStr : colors) {
+                            tvWBColor_t color;
+                            if (getWBColorEnumFromString(colorStr, color) != 0) {
+                                LOGERR("%s: Invalid color %s", __FUNCTION__, colorStr.c_str());
+                                continue;
+                            }
+                            paramIndex_t paramIndex {
+                                .sourceIndex     = static_cast<uint8_t>(ctx.videoSrcType),
+                                .pqmodeIndex     = static_cast<uint8_t>(ctx.pq_mode),
+                                .formatIndex     = static_cast<uint8_t>(ctx.videoFormatType),
+                                .colorIndex      = static_cast<uint8_t>(color),
+                                .componentIndex  = 0,
+                                .colorTempIndex  = static_cast<uint8_t>(colorTemp),
+                                .controlIndex    = static_cast<uint8_t>(control)
+                            };
+
+                            int value = 0;
+
+                            if (isReset) {
+                                value = 0;
+                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, value, false);
+                            }
+                            tvPQParameterIndex_t dummyPQIndex = PQ_PARAM_WB_GAIN_RED;
+                            if (isSync || isReset) {
+                                if (getLocalparam(tr181ParamName, paramIndex, value, dummyPQIndex, isSync) != 0){
+                                    LOGWARN("%s: Skipping sync for %s/%s", __FUNCTION__, controlStr.c_str(), colorStr.c_str());
+                                    continue;
+                                }
+                            }
+
+                            // Validate value range
+                            if (controlStr == "Gain" && (value < m_minWBGain || value > m_maxWBGain)) {
+                                LOGWARN("%s: Gain value %d out of range for %s/%s", __FUNCTION__, value, colorStr.c_str(), controlStr.c_str());
+                                continue;
+                            }
+                            if (controlStr == "Offset" && (value < m_minWBOffset || value > m_maxWBOffset)) {
+                                LOGWARN("%s: Offset value %d out of range for %s/%s", __FUNCTION__, value, colorStr.c_str(), controlStr.c_str());
+                                continue;
+                            }
+
+                            // Save and apply
+                            ret |= Save2PointWB(static_cast<tvVideoSrcType_t>(paramIndex.sourceIndex),
+                                                paramIndex.pqmodeIndex,
+                                                static_cast<tvVideoFormatType_t>(paramIndex.formatIndex),
+                                                colorTemp, color, control, value);
+
+                            if (isSet) {
+                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, value, true);
+                            }
+                        }
+                    }
+                }
+            }
+
+            LOGINFO("Exit: %s WhiteBalance handling done, ret=%d", __FUNCTION__, ret);
+            return (ret < 0) ? -1 : 0;
+        }
         for (const auto& ctx : validContexts)
         {
             paramIndex_t paramIndex {
@@ -3668,13 +3875,7 @@ namespace Plugin {
                 case PQ_PARAM_LDIM:
                 case PQ_PARAM_LOCALDIMMING_LEVEL:
 
-                case PQ_PARAM_WB_GAIN_RED:
-                case PQ_PARAM_WB_GAIN_GREEN:
-                case PQ_PARAM_WB_GAIN_BLUE:
-                case PQ_PARAM_WB_OFFSET_RED:
-                case PQ_PARAM_WB_OFFSET_GREEN:
-                case PQ_PARAM_WB_OFFSET_BLUE:
-                    // TODO: Add implementation
+
                     break;
 
                 default:
