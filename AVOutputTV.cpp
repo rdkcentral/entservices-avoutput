@@ -5575,13 +5575,21 @@ namespace Plugin {
         }
 
         if( isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format) ) {
-            LOGINFO("Proceed with HDRMode\n\n");
-            retval = getHDRModeIndex(value,inputInfo.format,index);
-            if( retval != 0 )
+
+            tvVideoFormatType_t formatIndex = VIDEO_FORMAT_NONE;
+            GetCurrentVideoFormat(&formatIndex);
+            if (formatIndex == VIDEO_FORMAT_NONE)
+            {
+                formatIndex = VIDEO_FORMAT_SDR;
+            }
+            string currentFormat = convertVideoFormatToString(formatIndex);
+            retval = getHDRModeIndex(value, currentFormat, index);
+            if (retval != 0)
             {
                 LOGERR("Failed to getHDRMode index\n");
                 returnResponse(false);
             }
+            LOGINFO("Proceed with SetTVDolbyVisionMode(HDRMode) : %d\n", index);
             ret = SetTVDolbyVisionMode(index);
         }
 
@@ -5590,7 +5598,31 @@ namespace Plugin {
             returnResponse(false);
         }
         else {
-            retval= updateAVoutputTVParam("set","HDRMode",inputInfo,PQ_PARAM_DOLBY_MODE,(int)index);
+            // If inputformat is HDR10 set only HDR10 mode
+            // If inputformat is HLG set only HLG mode
+            // If inputformat is Global/Empty/Both set both HDR10 and HLG mode
+            std::vector<std::string> formatsToUpdate;
+            if (inputInfo.format == "HDR10")
+            {
+                formatsToUpdate.push_back("HDR10");
+            }
+            else if (inputInfo.format == "HLG")
+            {
+                formatsToUpdate.push_back("HLG");
+            }
+            else
+            {
+                formatsToUpdate.push_back("HDR10");
+                formatsToUpdate.push_back("HLG");
+            }
+
+            for (const auto &format : formatsToUpdate)
+            {
+                getHDRModeIndex(value, format, index);
+                inputInfo.format = format;
+                retval |= updateAVoutputTVParam("set", "HDRMode", inputInfo, PQ_PARAM_DOLBY_MODE, (int)index);
+            }
+
             if(retval != 0 ) {
                 LOGERR("Failed to Save hdrMode mode\n");
                 returnResponse(false);
@@ -5631,6 +5663,9 @@ namespace Plugin {
         }
         else {
             if (isSetRequired( inputInfo.pqmode,inputInfo.source,inputInfo.format)) {
+                inputInfo.source = "Current";
+                inputInfo.pqmode = "Current";
+                inputInfo.format = "Current";
                 getParamIndex( "HDRMode", inputInfo,indexInfo);
                 int err = getLocalparam("HDRMode", indexInfo, dolbyMode, PQ_PARAM_DOLBY_MODE);
                 if( err == 0 ) {
