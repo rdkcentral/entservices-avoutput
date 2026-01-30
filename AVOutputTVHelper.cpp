@@ -1551,8 +1551,8 @@ namespace Plugin {
         m_wbStatus = Get2PointWBCaps(
                                     &m_minWBGain, &m_minWBOffset,
                                     &m_maxWBGain, &m_maxWBOffset,
-                                    &m_wbColorTempArr,
                                     &m_wbColorArr,
+                                    &m_wbColorTempArr,
                                     &m_wbControlArr,
                                     &m_numWBColorTemp,
                                     &m_numWBColor,

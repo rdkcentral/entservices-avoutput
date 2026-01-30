@@ -6056,7 +6056,7 @@ namespace Plugin {
         tvContextCaps_t* context_caps = nullptr;
 
         tvError_t ret = Get2PointWBCaps(&min_gain, &min_offset, &max_gain, &max_offset,
-                                        &colorTempArray, &colorArray, &controlArray,
+                                        &colorArray, &colorTempArray, &controlArray,
                                         &num_colorTemp, &num_color, &num_control,
                                         &context_caps);
 
