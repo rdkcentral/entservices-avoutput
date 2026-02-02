@@ -1570,17 +1570,19 @@ namespace Plugin {
 
         if(m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
-        // HDRMode
-        if( !updateAVoutputTVParam("sync","HDRMode",info,PQ_PARAM_DOLBY_MODE,level)) {
-            LOGINFO("HDRmode Successfully Synced to Drive Cache\n");
-        }
-        else {
-            LOGERR("HDRmode Sync to cache Failed !!!\n");
-        }
+            // HDRMode
+            if (!updateAVoutputTVParam("sync", "HDRMode", info, PQ_PARAM_DOLBY_MODE, level))
+            {
+                LOGINFO("HDRMode Successfully Synced to Drive Cache\n");
+            }
+            else
+            {
+                LOGERR("HDRMode Sync to cache Failed !!!\n");
+            }
 
-        // Dolby Vision Mode
-        info.format = "DV"; // Sync only for Dolby
-        updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
+            // Dolby Vision Mode
+            info.format = "DV"; // Sync only for Dolby
+            updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
         }
 
         LOGINFO("Exit %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
@@ -3958,7 +3960,7 @@ namespace Plugin {
 
             if ( (param == "ColorTemperature") || (param == "DimmingMode") ||
                  ( param == "BacklightControl") || (param == "DolbyVisionMode") ||
-                 (param == "HDR10Mode") || (param == "HLGMode") || (param == "AspectRatio") ||
+                 (param == "AspectRatio") ||
                  (param == "PictureMode") || (param == "VideoSource") || (param == "VideoFormat") ||
                  (param == "VideoFrameRate") || (param == "HDRMode") ) {
                 configString =  param + ".range";
