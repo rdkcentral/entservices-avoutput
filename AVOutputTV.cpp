@@ -347,6 +347,8 @@ namespace Plugin {
         registerMethod("set2PointWB", &AVOutputTV::set2PointWB, this);
         registerMethod("reset2PointWB", &AVOutputTV::reset2PointWB, this);
         registerMethod("get2PointWBCaps", &AVOutputTV::get2PointWBCaps, this);
+        registerMethod("setWBMode", &AVOutputTV::setWBMode, this);
+        registerMethod("getWBMode", &AVOutputTV::getWBMode, this);
 
         registerMethod("getHDRMode", &AVOutputTV::getHDRMode, this);
         registerMethod("setHDRMode", &AVOutputTV::setHDRMode, this);
@@ -6305,6 +6307,61 @@ namespace Plugin {
         }
     }
 
+    uint32_t AVOutputTV::setWBMode(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        std::string value;
+        bool mode = false;
+        tvError_t ret = tvERROR_NONE;
+
+        value = parameters.HasLabel("wbMode") ? parameters["wbMode"].String() : "";
+        returnIfParamNotFound(parameters, "wbMode");
+
+        if (value == "true")
+        {
+            mode = true;
+        }
+        else if (value == "false")
+        {
+            mode = false;
+        }
+        else
+        {
+            LOGERR("%s: Invalid value for wbMode : %s\n", __FUNCTION__,value.c_str());
+            returnResponse(false);
+        }
+
+        ret = EnableWBCalibrationMode(mode);
+        if (ret != tvERROR_NONE)
+        {
+            LOGERR("setWBMode failed\n");
+            returnResponse(false);
+        }
+        else
+        {
+            LOGINFO("setWBMode successful \n");
+            returnResponse(true);
+        }
+    }
+
+    uint32_t AVOutputTV::getWBMode(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        bool mode = false;
+
+        tvError_t ret = GetCurrentWBCalibrationMode(&mode);
+        if (ret != tvERROR_NONE)
+        {
+            LOGERR("getWBMode failed\n");
+            returnResponse(false);
+        }
+        else
+        {
+            response["wbMode"] = mode ? "true" : "false";
+            LOGINFO("getWBMode successful : %s\n", mode ? "true" : "false");
+            returnResponse(true);
+        }
+    }
 
     uint32_t AVOutputTV::getVideoContentType(const JsonObject & parameters, JsonObject & response)
     {
