@@ -1,22 +1,5 @@
-# If not stated otherwise in this file or this component's LICENSE file the
-# following copyright and licenses apply:
-#
-# Copyright 2020 RDK Management
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 cmake_minimum_required(VERSION 3.8)
-set(PLUGIN_NAME L1TestsIO)
+set(PLUGIN_NAME L1TestsSU)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
 set(CMAKE_CXX_STANDARD 14)
@@ -32,43 +15,13 @@ set (TEST_LIB
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
 )
 
-set (TEST_INC
-    ../../helpers
-    #${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/headers
-    #${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/headers/rdk/iarmbus
-)
+set (TEST_INC ../../helpers)
+
 #########################################################################################
-# add_plugin_test_ex: Macro to add plugin tests, it will append to TEST_SRC, TEST_INC,
-#                     and TEST_LIB. Args are positional.
-#                     arg1: test file list as **string**
-#                     arg2: include dir list as **string**
-#                     arg3: plugin libs to link list as **string**
-#
-# sample invocation : 
-#    add_plugin_test_ex(PLUGIN_NAME
-#                       "test/file1.cpp;test/file2.cpp"
-#                       "../../inc_dir1;../../inc_dir2"
-#                       "${NAMESPACE}PluginName;${NAMESPACE}PluginNameImplementation")
-# ----------------------------------------- OR ------------------------------------------
-# list(APPEND PLUGIN_NAME_SRC test/file1.cpp)
-# list(APPEND PLUGIN_NAME_SRC test/file2.cpp)
-#
-# list(APPEND PLUGIN_NAME_INC ../../inc_dir1)
-# list(APPEND PLUGIN_NAME_INC ../../inc_dir2)
-#
-# list(APPEND PLUGIN_NAME_LIB ${NAMESPACE}PluginName)
-# list(APPEND PLUGIN_NAME_LIB ${NAMESPACE}PluginNameImplementation)
-#
-#    add_plugin_test_ex(PLUGIN_NAME
-#                       "${PLUGIN_NAME_SRC}"
-#                       "${PLUGIN_NAME_INC}"
-#                       "${PLUGIN_NAME_LIB}")
-#
-# NOTE: Alternatively test can choose to update `TEST_SRC`, `TEST_INC` & `TEST_LIB`
-#       directly (like in the case of Miracast)
+# Macro definitions remain unchanged
 #########################################################################################
+
 macro(add_plugin_test_ex plugin_opt plugin_test_sources_str plugin_includes_str plugin_libs_str)
-    # Check if the plugin option is enabled
     if(${plugin_opt})
         message(STATUS "${plugin_opt}=ON")
 
@@ -77,17 +30,14 @@ macro(add_plugin_test_ex plugin_opt plugin_test_sources_str plugin_includes_str 
         string(REPLACE ";" ";" liblist "${plugin_libs_str}")
 
         foreach(item IN LISTS srclist)
-            # Add each test source file
             list(APPEND TEST_SRC ${item})
         endforeach()
 
         foreach(item IN LISTS inclist)
-            # Add each include directory
             list(APPEND TEST_INC ${item})
         endforeach()
 
         foreach(item IN LISTS liblist)
-            # Add each libraries to link
             list(APPEND TEST_LIB ${item})
         endforeach()
     else()
@@ -95,33 +45,46 @@ macro(add_plugin_test_ex plugin_opt plugin_test_sources_str plugin_includes_str 
     endif()
 endmacro()
 
-# helper to add plugin test
 macro(add_plugin_test plugin_name test_files)
-    # Convert plugin name to uppercase for the option variable
     string(TOUPPER "${plugin_name}" plugin_option)
     set(plugin_opt "PLUGIN_${plugin_option}")
 
     add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
-add_library(${MODULE_NAME} SHARED ${TEST_SRC})
+#########################################################################################
+# PLUGIN_AVOUTPUT  (Converted from FIRMWAREUPDATE)
+#########################################################################################
 
-set_source_files_properties(
-        tests/test_HdmiCec2.cpp
-        tests/test_HdmiCecSource.cpp
-        tests/test_HdmiCecSink.cpp
-        #tests/test_AVInput.cpp
-        PROPERTIES COMPILE_FLAGS "-fexceptions")
+set (AVOUTPUT_LIBS 
+    ${NAMESPACE}AVOutput 
+    ${NAMESPACE}AVOutputImplementation
+)
+
+set (AVOUTPUT_INC 
+    ${CMAKE_SOURCE_DIR}/../entservices-avoutput/plugin
+    ${CMAKE_SOURCE_DIR}/../entservices-avoutput/helpers
+)
+
+# Updated test file name to match AVOutput
+add_plugin_test_ex(PLUGIN_AVOUTPUT 
+    tests/test_AVOutput.cpp 
+    "${AVOUTPUT_INC}" 
+    "${AVOUTPUT_LIBS}"
+)
+
+#########################################################################################
+
+add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
 include_directories(${TEST_INC})
 
-target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
-
-target_link_libraries(${MODULE_NAME}
-    PRIVATE
-        ${TEST_LIB}
-        iarmbus
+target_link_directories(${MODULE_NAME} PUBLIC 
+    ${CMAKE_INSTALL_PREFIX}/lib 
+    ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins
 )
+
+target_link_libraries(${MODULE_NAME} ${TEST_LIB})
 
 target_include_directories(${MODULE_NAME}
         PUBLIC
@@ -135,5 +98,3 @@ target_include_directories(${MODULE_NAME}
 
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
 write_config(${PLUGIN_NAME})
-
-

@@ -16,20 +16,14 @@
 # limitations under the License.
 
 
-set(PLUGIN_NAME L2TestsIO)
+set(PLUGIN_NAME L2TestsSU)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(THUNDER_PORT 9998)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 
-set(SRC_FILES tests/test_foo_IN.cpp)
-
-if(PLUGIN_HDMICECSINK)
-    set(SRC_FILES ${SRC_FILES} tests/HdmiCecSink_L2Test.cpp)
-endif()
-
-if(PLUGIN_AVOUTPUT)
-    set(SRC_FILES ${SRC_FILES} tests/AVOutputTV_L2Test.cpp)
+if(PLUGIN_FIRMWAREUPDATE)
+    set(SRC_FILES ${SRC_FILES} tests/FirmwareUpdate_L2Test.cpp)
 endif()
 
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})

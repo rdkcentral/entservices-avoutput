@@ -176,6 +176,7 @@ jobs:
           patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/error_code_R4_4.patch
           patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/1004-Add-support-for-project-dir.patch
           patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Jsonrpc_dynamic_error_handling.patch
           cd -
 
       - name: Build Thunder
@@ -207,6 +208,11 @@ jobs:
           #token : ${{ secrets.RDKCM_RDKE }}
           run: rm -rf $GITHUB_WORKSPACE/entservices-apis/jsonrpc/DTV.json
 
+      - name: Apply patches entservices-apis
+        run: |
+          cd $GITHUB_WORKSPACE/entservices-apis
+          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-1007.patch
+          cd -
 
       - name: Build entservices-apis
         run: >
@@ -235,25 +241,15 @@ jobs:
           headers/rdk/halif/
           headers/rdk/halif/deepsleep-manager
           headers/ccec/drivers
-          headers/ccec/host
           headers/network
           headers/proc
+          headers/opkg
           &&
           cd headers
           &&
           touch
           audiocapturemgr/audiocapturemgr_iarm.h
           ccec/drivers/CecIARMBusMgr.h
-          ccec/FrameListener.hpp
-          ccec/Connection.hpp
-          ccec/Assert.hpp
-          ccec/Messages.hpp
-          ccec/MessageDecoder.hpp
-          ccec/MessageProcessor.hpp
-          ccec/CECFrame.hpp
-          ccec/MessageEncoder.hpp
-          ccec/CCEC.hpp
-          ccec/host/RDK.hpp
           rdk/ds/audioOutputPort.hpp
           rdk/ds/compositeIn.hpp
           rdk/ds/dsDisplay.h
@@ -289,12 +285,15 @@ jobs:
           libudev.h
           rfcapi.h
           rbus.h
-          dsRpc.h
           motionDetector.h
           telemetry_busmessage_sender.h
           maintenanceMGR.h
           pkg.h
           edid-parser.hpp
+          opkg.h
+          opkg_message.h
+          opkg_cmd.h
+          opkg_download.h
           secure_wrapper.h
           wpa_ctrl.h
           proc/readproc.h
@@ -435,12 +434,12 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/wpa_ctrl_mock.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/readprocMockInterface.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/gdialservice.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/HdmiCec.h
           --coverage
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink
           -DENABLE_TELEMETRY_LOGGING
           -DUSE_IARMBUS
+          -DGTEST_ENABLE
           -DENABLE_SYSTEM_GET_STORE_DEMO_LINK
           -DENABLE_DEEP_SLEEP
           -DENABLE_SET_WAKEUP_SRC_CONFIG
@@ -449,6 +448,7 @@ jobs:
           -DHAS_API_SYSTEM
           -DHAS_API_POWERSTATE
           -DHAS_RBUS
+          -DDISABLE_SECURITY_TOKEN
           -DENABLE_DEVICE_MANUFACTURER_INFO"
           -DCOMCAST_CONFIG=OFF
           -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON
@@ -456,15 +456,13 @@ jobs:
           -DCMAKE_DISABLE_FIND_PACKAGE_Udev=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON
-          -DCMAKE_DISABLE_FIND_PACKAGE_CEC=ON
+          -DLIBOPKG_LIBRARIES=""
+          -DLIBOPKG_INCLUDE_DIRS=""
           -DCMAKE_BUILD_TYPE=Debug
           -DDS_FOUND=ON
           -DHAS_FRONT_PANEL=ON
+          -DPLUGIN_AVOUTPUT=ON
           -DRDK_SERVICES_L1_TEST=ON
-          -DPLUGIN_AVINPUT=ON
-          -DPLUGIN_HDCPPROFILE=ON
-          -DPLUGIN_HDMICECSOURCE=ON
-          -DPLUGIN_HDMICECSINK=ON
           -DUSE_THUNDER_R4=ON
           -DHIDE_NON_EXTERNAL_SYMBOLS=OFF
           &&
@@ -514,7 +512,6 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/wpa_ctrl_mock.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/readprocMockInterface.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/gdialservice.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/HdmiCec.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/thunder/Communicator.h
           --coverage
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
@@ -536,13 +533,9 @@ jobs:
           -DCMAKE_DISABLE_FIND_PACKAGE_Udev=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON
-          -DCMAKE_DISABLE_FIND_PACKAGE_CEC=ON
           -DCMAKE_BUILD_TYPE=Debug
           -DDS_FOUND=ON
-          -DPLUGIN_AVINPUT=ON
-          -DPLUGIN_HDCPPROFILE=ON
-          -DPLUGIN_HDMICECSOURCE=ON
-          -DPLUGIN_HDMICECSINK=OFF
+          -DPLUGIN_AVOUTPUT=ON
           -DRDK_SERVICES_L1_TEST=ON
           -DUSE_THUNDER_R4=ON
           -DHIDE_NON_EXTERNAL_SYMBOLS=OFF
@@ -607,6 +600,7 @@ jobs:
           /tmp/block/sdb/device/model
           &&
           sudo chmod -R 777
+          /tmp/test/testApp/etc/apps/testApp_package.json
           /opt/rdk_maintenance.conf
           /opt/persistent/timeZoneDST
           /opt/standbyReason.txt
@@ -686,7 +680,7 @@ jobs:
           -o coverage
           -t "entservices-avoutput coverage"
           filtered_coverage.info
-
+         
       - name: Upload artifacts
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
@@ -698,4 +692,3 @@ jobs:
             rdkL1TestResultsWithoutValgrind.json
             rdkL1TestResultsWithValgrind.json
           if-no-files-found: warn
-          

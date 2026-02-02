@@ -6,11 +6,11 @@ When writing review comments based on custom instructions located in .github/ins
 
 ## Examples
 
-Refer: https://github.com/rdkcentral/entservices-avoutput/blob/develop/.github/instructions/Plugin.instructions.md#interface-implementation 
+Refer: https://github.com/rdkcentral/entservices-avoutput/blob/develop/.github/instructions/Plugin.instructions.md#interface-implementation
 
 Refer: https://github.com/rdkcentral/entservices-avoutput/blob/develop/.github/instructions/Pluginlifecycle.instructions.md#deactivated
 
-Refer: https://github.com/rdkcentral/entservices-avoutput/blob/develop/.github/instructions/Pluginimplementation.instructions.md#inter-plugin-communication 
+Refer: https://github.com/rdkcentral/entservices-avoutput/blob/develop/.github/instructions/Pluginimplementation.instructions.md#inter-plugin-communication
 
 Refer: https://github.com/rdkcentral/entservices-avoutput/blob/develop/.github/instructions/Pluginmodule.instructions.md#module-name-convention
 

@@ -1,4 +1,7 @@
 name: Build Component in Native Environment
+permissions:
+  contents: read
+  pull-requests: write
 
 on:
   push:
@@ -18,10 +21,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: native build
-        working-directory: entservices-avoutput
         run: |
           chmod +x build_dependencies.sh cov_build.sh
-          ./build_dependencies.sh
-          ./cov_build.sh
+          sh -e build_dependencies.sh
+          sh -e cov_build.sh
         env:
           GITHUB_TOKEN: ${{ secrets.RDKCM_RDKE }}
