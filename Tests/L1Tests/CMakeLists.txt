@@ -34,8 +34,8 @@ set (TEST_LIB
 
 set (TEST_INC
     ../../helpers
-    ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/headers
-    ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/headers/rdk/iarmbus
+    #${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/headers
+    #${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/headers/rdk/iarmbus
 )
 #########################################################################################
 # add_plugin_test_ex: Macro to add plugin tests, it will append to TEST_SRC, TEST_INC,
@@ -117,7 +117,11 @@ include_directories(${TEST_INC})
 
 target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
-target_link_libraries(${MODULE_NAME} ${TEST_LIB})
+target_link_libraries(${MODULE_NAME}
+    PRIVATE
+        ${TEST_LIB}
+        iarmbus
+)
 
 target_include_directories(${MODULE_NAME}
         PUBLIC
