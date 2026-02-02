@@ -5588,7 +5588,7 @@ namespace Plugin {
             retval = getHDRModeIndex(value, currentFormat, index);
             if (retval != 0)
             {
-                LOGERR("Failed to getHDRMode index\n");
+                LOGERR("Failed to getHDRMode index for format %s\n", currentFormat.c_str());
                 returnResponse(false);
             }
             LOGINFO("Proceed with SetTVDolbyVisionMode(HDRMode) : %d\n", index);
@@ -5596,7 +5596,7 @@ namespace Plugin {
         }
 
         if(ret != tvERROR_NONE) {
-            LOGERR("Failed to set HDRMode\n\n");
+            LOGERR("Failed to set HDRMode\n");
             returnResponse(false);
         }
         else {
@@ -5620,13 +5620,18 @@ namespace Plugin {
 
             for (const auto &format : formatsToUpdate)
             {
-                getHDRModeIndex(value, format, index);
+                retval = getHDRModeIndex(value, format, index);
+                if (retval != 0)
+                {
+                    LOGERR("Failed to getHDRMode index for format %s\n", format.c_str());
+                    returnResponse(false);
+                }
                 inputInfo.format = format;
                 retval |= updateAVoutputTVParam("set", "HDRMode", inputInfo, PQ_PARAM_DOLBY_MODE, (int)index);
             }
 
             if(retval != 0 ) {
-                LOGERR("Failed to Save hdrMode mode\n");
+                LOGERR("Failed to Save HDRMode\n");
                 returnResponse(false);
             }
             LOGINFO("Exit : hdrMode successful to value: %s\n", value.c_str());
