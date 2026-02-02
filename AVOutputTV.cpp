@@ -5799,17 +5799,14 @@ namespace Plugin {
             }
             indexInfo.controlIndex = static_cast<uint8_t>(controlEnum);
 
-            // Resolve PQ enum for WhiteBalance param
-            tvPQParameterIndex_t tvPQEnum;
-            if (convertWBParamToPQEnum(control, color, tvPQEnum) != 0) {
-                LOGERR("%s : Invalid color/control combination: %s/%s\n", __FUNCTION__, control.c_str(), color.c_str());
-                returnResponse(false);
-            }
-
             // Fetch current level from localparam
             int level = 0;
-            if (getLocalparam("WhiteBalance", indexInfo, level, tvPQEnum) != 0) {
-                LOGERR("%s : Failed to read localparam for WhiteBalance %s/%s\n", __FUNCTION__, control.c_str(), color.c_str());
+            if (getLocalparam("WhiteBalance", indexInfo, level, PQ_PARAM_WB_GAIN_RED /* dummy */) != 0) {
+                LOGERR("%s : WB getLocalparam failed (%s/%s/%s)\n",
+                                    __FUNCTION__,
+                                    colorTemp.c_str(),
+                                    color.c_str(),
+                                    control.c_str());
                 returnResponse(false);
             }
 
