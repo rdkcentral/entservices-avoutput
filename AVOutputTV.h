@@ -236,7 +236,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(getDigitalNoiseReduction)
 		DECLARE_JSON_RPC_METHOD(getMEMC)
 		DECLARE_JSON_RPC_METHOD(getSDRGamma)
-		DECLARE_JSON_RPC_METHOD(getBacklightDimmingLevel)
+		// DECLARE_JSON_RPC_METHOD(getBacklightDimmingLevel)
 
 
 		/*Get Capability API's*/
@@ -260,6 +260,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(get2PointWBCaps)
 		DECLARE_JSON_RPC_METHOD(getHDRModeCaps)
 		DECLARE_JSON_RPC_METHOD(getAutoBacklightModeCaps)
+		DECLARE_JSON_RPC_METHOD(getFadeDisplayCaps)
 		DECLARE_JSON_RPC_METHOD(getBacklightCapsV2)
 		DECLARE_JSON_RPC_METHOD(getBrightnessCapsV2)
 		DECLARE_JSON_RPC_METHOD(getContrastCapsV2)
@@ -283,7 +284,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(getAISuperResolutionCaps)
 		DECLARE_JSON_RPC_METHOD(getMEMCCaps)
 		DECLARE_JSON_RPC_METHOD(getMultiPointWBCaps)
-		DECLARE_JSON_RPC_METHOD(getBacklightDimmingLevelCaps)
+		// DECLARE_JSON_RPC_METHOD(getBacklightDimmingLevelCaps)
 
 		/*Set API's*/
 		DECLARE_JSON_RPC_METHOD(setBacklight)
@@ -305,6 +306,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(setWBMode)
  		DECLARE_JSON_RPC_METHOD(signalFilmMakerMode)
 		DECLARE_JSON_RPC_METHOD(setAutoBacklightMode)
+		DECLARE_JSON_RPC_METHOD(fadeDisplay)
 		DECLARE_JSON_RPC_METHOD(setAISuperResolution)
 		DECLARE_JSON_RPC_METHOD(setPrecisionDetail)
 		DECLARE_JSON_RPC_METHOD(setLocalContrastEnhancement)
@@ -312,7 +314,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(setDigitalNoiseReduction)
 		DECLARE_JSON_RPC_METHOD(setMEMC)
 		DECLARE_JSON_RPC_METHOD(setSDRGamma)
-		DECLARE_JSON_RPC_METHOD(setBacklightDimmingLevel )
+		// DECLARE_JSON_RPC_METHOD(setBacklightDimmingLevel )
 
 		/*Reset API's*/
 		DECLARE_JSON_RPC_METHOD(resetBacklight)
@@ -338,7 +340,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(resetDigitalNoiseReduction)
 		DECLARE_JSON_RPC_METHOD(resetMEMC)
 		DECLARE_JSON_RPC_METHOD(resetSDRGamma)
-		DECLARE_JSON_RPC_METHOD(resetBacklightDimmingLevel )
+		// DECLARE_JSON_RPC_METHOD(resetBacklightDimmingLevel )
 
 
     private:
@@ -365,6 +367,7 @@ class AVOutputTV : public AVOutputBase {
 		void spliltCapablities( capVectors_t& vectorInfo, capDetails_t stringInfo);
 		void spliltStringsAndConvertToSet( std::string pqmodeInfo,std::string formatInfo,std::string sourceInfo,std::set<string> &pqmode, std::set<string> &format, std::set<string> &source);
 		int validateIntegerInputParameter(std::string param, int inputValue);
+		int validateFadeDisplayInputParameter(std::string param, std::string name, int inputValue);
 		int fetchCapablities(string pqparam, capDetails_t& info);
 		int validateInputParameter(std::string param, std::string inputValue);
 		int validateWBParameter(std::string param,std::string control,int inputValue);

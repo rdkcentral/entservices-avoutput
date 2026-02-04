@@ -360,6 +360,9 @@ namespace Plugin {
         registerMethod("resetAutoBacklightMode", &AVOutputTV::resetAutoBacklightMode, this);
         registerMethod("getAutoBacklightModeCaps", &AVOutputTV::getAutoBacklightModeCaps, this);
 
+        registerMethod("getFadeDisplayCaps", &AVOutputTV::getFadeDisplayCaps, this);
+        registerMethod("fadeDisplay", &AVOutputTV::fadeDisplay, this);
+
         registerMethod("getBacklightCapsV2", &AVOutputTV::getBacklightCapsV2, this);
         registerMethod("getBrightnessCapsV2", &AVOutputTV::getBrightnessCapsV2, this);
         registerMethod("getContrastCapsV2", &AVOutputTV::getContrastCapsV2, this);
@@ -412,10 +415,10 @@ namespace Plugin {
 
         registerMethod("getMultiPointWBCaps", &AVOutputTV::getMultiPointWBCaps, this);
 
-        registerMethod("getBacklightDimmingLevel", &AVOutputTV::getBacklightDimmingLevel, this);
-        registerMethod("setBacklightDimmingLevel", &AVOutputTV::setBacklightDimmingLevel, this);
-        registerMethod("resetBacklightDimmingLevel", &AVOutputTV::resetBacklightDimmingLevel, this);
-        registerMethod("getBacklightDimmingLevelCaps", &AVOutputTV::getBacklightDimmingLevelCaps, this); 
+        // registerMethod("getBacklightDimmingLevel", &AVOutputTV::getBacklightDimmingLevel, this);
+        // registerMethod("setBacklightDimmingLevel", &AVOutputTV::setBacklightDimmingLevel, this);
+        // registerMethod("resetBacklightDimmingLevel", &AVOutputTV::resetBacklightDimmingLevel, this);
+        // registerMethod("getBacklightDimmingLevelCaps", &AVOutputTV::getBacklightDimmingLevelCaps, this); 
 
         // Start worker thread for non-blocking updates
         workerThread = std::thread(&AVOutputTV::paramUpdateWorker, this);
@@ -1000,12 +1003,12 @@ namespace Plugin {
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
-        return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
-            return GetBacklightDimmingLevelCaps(max_val, context_caps);
-        },
-        parameters, response);
-    }
+    // uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
+    //     return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
+    //         return GetBacklightDimmingLevelCaps(max_val, context_caps);
+    //     },
+    //     parameters, response);
+    // }
 
     // Forward lookup: string → enum
     const std::unordered_map<std::string, int> colorTempMap = {
@@ -1570,12 +1573,12 @@ namespace Plugin {
         returnResponse(success);
     }
 
-    uint32_t AVOutputTV::resetBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
-    {
-        bool success= resetPQParamToDefault(parameters,"DimmingLevel",
-                                        PQ_PARAM_BACKLIGHT_DIMMINGLEVEL, SetBacklightDimmingLevel);
-        returnResponse(success);
-    }
+    // uint32_t AVOutputTV::resetBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    // {
+    //     bool success= resetPQParamToDefault(parameters,"DimmingLevel",
+    //                                     PQ_PARAM_BACKLIGHT_DIMMINGLEVEL, SetBacklightDimmingLevel);
+    //     returnResponse(success);
+    // }
 
     uint32_t AVOutputTV::getPrecisionDetail(const JsonObject& parameters, JsonObject& response)
     {
@@ -1661,19 +1664,19 @@ namespace Plugin {
         returnResponse(success);
     }
 
-    uint32_t AVOutputTV::getBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
-    {
-        LOGINFO("Entry");
-        int dimmingLevel = 0;
-        bool success = getPQParamFromContext(parameters,
-            "DimmingLevel",
-            PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
-            dimmingLevel);
-        if (success) {
-            response["dimmingLevel"] = dimmingLevel;
-        }
-        returnResponse(success);
-    }
+    // uint32_t AVOutputTV::getBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    // {
+    //     LOGINFO("Entry");
+    //     int dimmingLevel = 0;
+    //     bool success = getPQParamFromContext(parameters,
+    //         "DimmingLevel",
+    //         PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
+    //         dimmingLevel);
+    //     if (success) {
+    //         response["dimmingLevel"] = dimmingLevel;
+    //     }
+    //     returnResponse(success);
+    // }
 
     uint32_t AVOutputTV::setContextPQParam(const JsonObject& parameters, JsonObject& response,
                                         const std::string& inputParamName,
@@ -1847,18 +1850,18 @@ namespace Plugin {
         );
     }
 
-    uint32_t AVOutputTV::setBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
-    {
-        return setContextPQParam(
-            parameters, response,
-            "dimmingLevel", "DimmingLevel",
-            m_maxDimmingLevel,
-            PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
-            [](tvVideoSrcType_t src, tvPQModeIndex_t mode, tvVideoFormatType_t fmt, int val) {
-                return SetBacklightDimmingLevel(src, mode, fmt, val);
-            }
-        );
-    }
+    // uint32_t AVOutputTV::setBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    // {
+    //     return setContextPQParam(
+    //         parameters, response,
+    //         "dimmingLevel", "DimmingLevel",
+    //         m_maxDimmingLevel,
+    //         PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
+    //         [](tvVideoSrcType_t src, tvPQModeIndex_t mode, tvVideoFormatType_t fmt, int val) {
+    //             return SetBacklightDimmingLevel(src, mode, fmt, val);
+    //         }
+    //     );
+    // }
 
     uint32_t AVOutputTV::getBacklight(const JsonObject& parameters, JsonObject& response)
     {
@@ -6289,6 +6292,89 @@ namespace Plugin {
             returnResponse(success);
         }
     }    
+
+    uint32_t AVOutputTV::getFadeDisplayCaps(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry");
+        capVectors_t info;
+        JsonObject rangeObj;
+
+        tvError_t ret = getParamsCaps("BacklightFade",info);
+        if(ret != tvERROR_NONE) {
+            returnResponse(false);
+        }
+
+        response["platformSupport"] = (info.isPlatformSupportVector[0].compare("true") == 0 ) ? true : false;
+        response["from"] = stoi(info.rangeVector[0]);
+        response["to"] = stoi(info.rangeVector[1]);
+        rangeObj["from"] = stoi(info.rangeVector[2]);
+        rangeObj["to"] = stoi(info.rangeVector[3]);
+        response["durationInfo"] = rangeObj;
+        LOGINFO("Exit\n");
+        returnResponse(true);
+    }
+
+    uint32_t AVOutputTV::fadeDisplay(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        std::string from,to,duration;
+        int fromValue = 0,toValue = 0, durationValue = 0;
+
+        if (isPlatformSupport("BacklightFade") != 0) {
+            LOGERR("Platform Support (%s) false", __FUNCTION__);
+            returnResponse(false);
+        }
+        from = parameters.HasLabel("from") ? parameters["from"].String() : "";
+        to = parameters.HasLabel("to") ? parameters["to"].String() : "";
+        duration = parameters.HasLabel("duration") ? parameters["duration"].String() : "";
+        
+        try {
+            fromValue =  std::stoi(from);
+        } catch (...) {
+            LOGERR("Invalid input param. from: %s\nSetting to default value\n", from.c_str());
+            fromValue = 100;
+        }
+        try {
+            toValue =  std::stoi(to);
+        } catch (...) {
+            LOGERR("Invalid input param. to: %s\nSetting to default value\n", to.c_str());
+            toValue = 0;
+        }
+        try {
+            durationValue =  std::stoi(duration);
+        } catch (...) {
+            LOGERR("Invalid input param. duration: %s\nSetting to default value\n", duration.c_str());
+            durationValue = 0;
+        }
+        if (validateFadeDisplayInputParameter("BacklightFade", "Range", fromValue) != 0) {
+            LOGERR("%s: Range validation failed for BacklightFade From\n", __FUNCTION__);
+            LOGWARN("%s: Using default value, from = 100\n", __FUNCTION__);
+            fromValue = 100;
+        }
+
+        if(validateFadeDisplayInputParameter("BacklightFade", "Range", toValue) != 0) {
+            LOGERR("%s: Range validation failed for BacklightFade To\n", __FUNCTION__);
+            LOGWARN("%s: Using default value, to = 0\n", __FUNCTION__);
+            toValue = 0;
+        } 
+
+        if(validateFadeDisplayInputParameter("BacklightFade", "Duration", durationValue) != 0) {
+            LOGERR("%s: Range validation failed for BacklightFade Duration\n", __FUNCTION__);
+            LOGWARN("%s: Using default value, duration = 0\n", __FUNCTION__);
+            durationValue = 0;
+        } 
+
+        LOGINFO("from = %d to = %d duration = %d\n" ,fromValue,toValue,durationValue);
+        tvError_t ret = SetBacklightFade(fromValue,toValue,durationValue);
+        if(ret != tvERROR_NONE) {
+           LOGERR("Failed to set BacklightFade \n");
+           returnResponse(false);
+        }
+        else {
+           LOGINFO("Exit : backlightFade Success \n");
+           returnResponse(true);
+        }
+    }
 
     uint32_t AVOutputTV::getVideoSource(const JsonObject& parameters,JsonObject& response)
     {
