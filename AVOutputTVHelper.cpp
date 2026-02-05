@@ -3709,28 +3709,31 @@ namespace Plugin {
                                 .colorTempIndex  = static_cast<uint8_t>(colorTemp),
                                 .controlIndex    = static_cast<uint8_t>(control)
                             };
-
                             int value = 0;
-
                             if (isReset) {
-                                value = 0;
-                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, value, false);
+                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, 0, false);
+                                level = 0;
                             }
-                            tvPQParameterIndex_t dummyPQIndex = PQ_PARAM_WB_GAIN_RED;
+
                             if (isSync || isReset) {
-                                if (getLocalparam(tr181ParamName, paramIndex, value, dummyPQIndex, isSync) != 0){
-                                    LOGWARN("%s: Skipping sync for %s/%s", __FUNCTION__, controlStr.c_str(), colorStr.c_str());
+                                if (getLocalparam(tr181ParamName, paramIndex, value, PQ_PARAM_WB_GAIN_RED/*dummy*/, isSync) == 0) {
+                                    level = value;
+                                } else {
+                                    LOGINFO("WB sync skip: no persisted value (%s/%s/%s)",
+                                                                    colorTempStr.c_str(),
+                                                                    colorStr.c_str(),
+                                                                    controlStr.c_str());
                                     continue;
                                 }
                             }
 
                             // Validate value range
-                            if (controlStr == "Gain" && (value < m_minWBGain || value > m_maxWBGain)) {
-                                LOGWARN("%s: Gain value %d out of range for %s/%s", __FUNCTION__, value, colorStr.c_str(), controlStr.c_str());
+                            if (controlStr == "Gain" && (level < m_minWBGain || level > m_maxWBGain)) {
+                                LOGWARN("%s: Gain value %d out of range for %s/%s", __FUNCTION__, level, colorStr.c_str(), controlStr.c_str());
                                 continue;
                             }
-                            if (controlStr == "Offset" && (value < m_minWBOffset || value > m_maxWBOffset)) {
-                                LOGWARN("%s: Offset value %d out of range for %s/%s", __FUNCTION__, value, colorStr.c_str(), controlStr.c_str());
+                            if (controlStr == "Offset" && (level < m_minWBOffset || level > m_maxWBOffset)) {
+                                LOGWARN("%s: Offset value %d out of range for %s/%s", __FUNCTION__, level, colorStr.c_str(), controlStr.c_str());
                                 continue;
                             }
 
@@ -3738,10 +3741,19 @@ namespace Plugin {
                             ret |= Save2PointWB(static_cast<tvVideoSrcType_t>(paramIndex.sourceIndex),
                                                 paramIndex.pqmodeIndex,
                                                 static_cast<tvVideoFormatType_t>(paramIndex.formatIndex),
-                                                colorTemp, color, control, value);
+                                                colorTemp, color, control, level);
 
                             if (isSet) {
-                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, value, true);
+                                LOGINFO("WB SET persist: src=%d pq=%d fmt=%d colorTemp=%s color=%s control=%s level=%d",
+                                        paramIndex.sourceIndex,
+                                        paramIndex.pqmodeIndex,
+                                        paramIndex.formatIndex,
+                                        colorTempStr.c_str(),
+                                        colorStr.c_str(),
+                                        controlStr.c_str(),
+                                        level);
+
+                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, level, true);
                             }
                         }
                     }
