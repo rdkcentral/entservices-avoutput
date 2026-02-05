@@ -3658,26 +3658,31 @@ namespace Plugin {
             return (ret < 0) ? -1 : 0;
         }
         else if (tr181ParamName == "WhiteBalance") {
-            JsonArray colorTempArray = getJsonArrayIfArray(parameters, "colorTemperature");
-            JsonArray controlArray = getJsonArrayIfArray(parameters, "control");
-            JsonArray colorArray = getJsonArrayIfArray(parameters, "color");
+            std::string colorStr =
+                parameters.HasLabel("color") ? parameters["color"].String() : "";
+
+            std::string controlStr =
+                parameters.HasLabel("control") ? parameters["control"].String() : "";
+
+            std::string colorTempStr =
+                parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
 
             std::vector<std::string> colors, controls, colorTemps;
 
-            for (size_t i = 0; i < colorArray.Length(); ++i)
-                colors.emplace_back(colorArray[i].String());
-            for (size_t i = 0; i < controlArray.Length(); ++i)
-                controls.emplace_back(controlArray[i].String());
-            for (size_t i = 0; i < colorTempArray.Length(); ++i)
-                colorTemps.emplace_back(colorTempArray[i].String());
+            if (colorStr.empty() || colorStr == "Global")
+                colors = m_wbColorList;
+            else
+                colors.push_back(colorStr);
 
-            if (colors.empty()) colors.push_back("Global");
-            if (controls.empty()) controls.push_back("Global");
-            if (colorTemps.empty()) colorTemps.push_back("Global");
+            if (controlStr.empty() || controlStr == "Global")
+                controls = m_wbControlList;
+            else
+                controls.push_back(controlStr);
 
-            if (colors.size() == 1 && colors[0] == "Global") colors = m_wbColorList;
-            if (controls.size() == 1 && controls[0] == "Global") controls = m_wbControlList;
-            if (colorTemps.size() == 1 && colorTemps[0] == "Global") colorTemps = m_wbColorTempList;
+            if (colorTempStr.empty() || colorTempStr == "Global")
+                colorTemps = m_wbColorTempList;
+            else
+                colorTemps.push_back(colorTempStr);
 
             for (const auto& ctx : validContexts) {
                 for (const auto& colorTempStr : colorTemps) {
@@ -3709,15 +3714,13 @@ namespace Plugin {
                                 .colorTempIndex  = static_cast<uint8_t>(colorTemp),
                                 .controlIndex    = static_cast<uint8_t>(control)
                             };
-                            int value = 0;
                             if (isReset) {
                                 ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, 0, false);
-                                level = 0;
                             }
-
+                            int persisted = 0;
                             if (isSync || isReset) {
-                                if (getLocalparam(tr181ParamName, paramIndex, value, PQ_PARAM_WB_GAIN_RED/*dummy*/, isSync) == 0) {
-                                    level = value;
+                                if (getLocalparam(tr181ParamName, paramIndex, persisted, PQ_PARAM_WB_GAIN_RED/*dummy*/, isSync) == 0) {
+                                    level = persisted;
                                 } else {
                                     LOGINFO("WB sync skip: no persisted value (%s/%s/%s)",
                                                                     colorTempStr.c_str(),
