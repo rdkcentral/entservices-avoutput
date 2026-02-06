@@ -375,6 +375,7 @@ namespace Plugin {
         registerMethod("getAutoBacklightModeCapsV2", &AVOutputTV::getAutoBacklightModeCapsV2, this);
         registerMethod("getCMSCapsV2", &AVOutputTV::getCMSCapsV2, this);
         registerMethod("get2PointWBCapsV2", &AVOutputTV::get2PointWBCapsV2, this);
+        registerMethod("getVideoFrameRateCapsV2", &AVOutputTV::getVideoFrameRateCapsV2, this);
         registerMethod("getSDRGammaCaps", &AVOutputTV::getSDRGammaCaps, this);
         registerMethod("getSDRGamma", &AVOutputTV::getSDRGamma, this);
         registerMethod("setSDRGamma", &AVOutputTV::setSDRGamma, this);
@@ -538,6 +539,21 @@ namespace Plugin {
         { "Local", tvDimmingMode_Local },
         { "Global", tvDimmingMode_Global }
     };
+    static bool convertFrameRateEnumToValue(tvVideoFrameRate_t rate, double& value)
+    {
+        switch (rate) {
+            case tvVideoFrameRate_24:       value = 24.0;   return true;
+            case tvVideoFrameRate_25:       value = 25.0;   return true;
+            case tvVideoFrameRate_30:       value = 30.0;   return true;
+            case tvVideoFrameRate_50:       value = 50.0;   return true;
+            case tvVideoFrameRate_60:       value = 60.0;   return true;
+            case tvVideoFrameRate_23dot98:  value = 23.98;  return true;
+            case tvVideoFrameRate_29dot97:  value = 29.97;  return true;
+            case tvVideoFrameRate_59dot94:  value = 59.94;  return true;
+            default:
+                return false;
+        }
+    }
 
     bool AVOutputTV::getPQParamFromContext(const JsonObject& parameters,
         const std::string& paramName,
@@ -4185,6 +4201,36 @@ namespace Plugin {
         }
 
         response["videoFrameRates"] = rangeArray;
+        returnResponse(true);
+    }
+
+    uint32_t AVOutputTV::getVideoFrameRateCapsV2(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+
+        JsonArray options;
+        tvVideoFrameRate_t* framerateCaps = nullptr;
+        size_t numFrameRates = 0;
+
+        tvError_t ret = GetVideoFrameRateCaps(&framerateCaps, &numFrameRates);
+        if (ret != tvERROR_NONE || framerateCaps == nullptr || numFrameRates == 0) {
+            LOGERR("%s: GetVideoFrameRateCaps failed, ret=%d", __FUNCTION__, ret);
+            response["success"] = false;
+            returnResponse(false);
+        }
+
+        for (size_t i = 0; i < numFrameRates; i++) {
+            double fps = 0.0;
+            if (convertFrameRateEnumToValue(framerateCaps[i], fps)) {
+                options.Add(fps);
+            } else {
+                LOGWARN("%s: Unsupported frame rate enum %d",
+                        __FUNCTION__, framerateCaps[i]);
+            }
+        }
+
+        response["options"] = options;
+        response["success"] = true;
         returnResponse(true);
     }
 

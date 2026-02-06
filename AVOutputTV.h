@@ -284,6 +284,8 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(getMEMCCaps)
 		DECLARE_JSON_RPC_METHOD(getMultiPointWBCaps)
 		DECLARE_JSON_RPC_METHOD(getBacklightDimmingLevelCaps)
+		DECLARE_JSON_RPC_METHOD(getVideoFrameRateCapsV2)
+
 
 		/*Set API's*/
 		DECLARE_JSON_RPC_METHOD(setBacklight)
