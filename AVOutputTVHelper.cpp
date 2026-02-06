@@ -751,8 +751,8 @@ namespace Plugin {
 
         if ( (param == "ColorTemperature") ||
              (param == "DimmingMode") || (param == "AutoBacklightMode") ||
-             (param == "DolbyVisionMode") || (param == "HDR10Mode") ||
-            (param == "HLGMode") || (param == "AspectRatio") || (param == "PictureMode")  ) {
+             (param == "DolbyVisionMode") ||
+            (param == "HDRMode") || (param == "AspectRatio") || (param == "PictureMode")  ) {
             auto iter = find(info.rangeVector.begin(), info.rangeVector.end(), inputValue);
 
             if (iter == info.rangeVector.end()) {
@@ -1493,9 +1493,19 @@ namespace Plugin {
             //syncWBParams();  Enable once Get2PointWBCaps is implemented
         if(m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
-        // Dolby Vision Mode
-        info.format = "DV"; // Sync only for Dolby
-        updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
+            // HDRMode
+            if (!updateAVoutputTVParam("sync", "HDRMode", info, PQ_PARAM_DOLBY_MODE, level))
+            {
+                LOGINFO("HDRMode Successfully Synced to Drive Cache\n");
+            }
+            else
+            {
+                LOGERR("HDRMode Sync to cache Failed !!!\n");
+            }
+
+            // Dolby Vision Mode
+            info.format = "DV"; // Sync only for Dolby
+            updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
         }
 
         LOGINFO("Exit %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
@@ -1799,6 +1809,9 @@ namespace Plugin {
         else if (forParam.compare("WhiteBalance") == 0) {
             generateStorageIdentifierWB(key, forParam, indexInfo);
         }
+        else if (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+            generateStorageIdentifier(key, forParam, indexInfo);
+        }
         else {
             generateStorageIdentifierV2(key, forParam, indexInfo);
         }
@@ -1873,7 +1886,7 @@ namespace Plugin {
                    value = tvDolbyMode_Dark;
                }
                else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("DV") != std::string::npos ) {
-                   value = tvDolbyMode_Game;
+                   value = tvDolbyMode_Bright;
                }
 	           else if(strncmp(param.value, "Dark", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
                    value = tvHDR10Mode_Dark;
@@ -3731,7 +3744,7 @@ namespace Plugin {
 
             if ( (param == "ColorTemperature") || (param == "DimmingMode") ||
                  ( param == "BacklightControl") || (param == "DolbyVisionMode") ||
-                 (param == "HDR10Mode") || (param == "HLGMode") || (param == "AspectRatio") ||
+                 (param == "AspectRatio") ||
                  (param == "PictureMode") || (param == "VideoSource") || (param == "VideoFormat") ||
                  (param == "VideoFrameRate") || (param == "HDRMode") ) {
                 configString =  param + ".range";

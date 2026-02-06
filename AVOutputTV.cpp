@@ -347,6 +347,8 @@ namespace Plugin {
         registerMethod("set2PointWB", &AVOutputTV::set2PointWB, this);
         registerMethod("reset2PointWB", &AVOutputTV::reset2PointWB, this);
         registerMethod("get2PointWBCaps", &AVOutputTV::get2PointWBCaps, this);
+        registerMethod("setWBMode", &AVOutputTV::setWBMode, this);
+        registerMethod("getWBMode", &AVOutputTV::getWBMode, this);
 
         registerMethod("getHDRMode", &AVOutputTV::getHDRMode, this);
         registerMethod("setHDRMode", &AVOutputTV::setHDRMode, this);
@@ -3899,7 +3901,6 @@ namespace Plugin {
         paramIndex_t indexInfo;
         int dolbyMode = 0;
         int err = 0;
-        tvVideoFormatType_t video_type = VIDEO_FORMAT_NONE;
 
         if (parsingGetInputArgument(parameters, "DolbyVisionMode",inputInfo) != 0) {
             LOGINFO("%s: Failed to parse argument\n", __FUNCTION__);
@@ -3910,12 +3911,8 @@ namespace Plugin {
 	        returnResponse(false);
 	    }
 
-        GetCurrentVideoFormat(&video_type);
-        if(video_type != VIDEO_FORMAT_DV)
-        {
-            LOGERR("%s: Invalid video format: %d \n", __FUNCTION__,video_type);
-            returnResponse(false);
-        }
+        //For Dolbyvision mode assume format as DV always
+        inputInfo.format = "DV";
 
         if (getParamIndex("DolbyVisionMode",inputInfo,indexInfo) == -1) {
             LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
@@ -5521,6 +5518,11 @@ namespace Plugin {
             returnResponse(false);
         }
 
+        if (!isCapablityCheckPassed("HDRMode", inputInfo)){
+            LOGERR("%s: CapablityCheck failed for hdrMode\n", __FUNCTION__);
+            returnResponse(false);
+        }
+
         if (getParamIndex("HDRMode",inputInfo,indexInfo) == -1) {
             LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
             returnResponse(false);
@@ -5547,8 +5549,8 @@ namespace Plugin {
         std::string value;
 	    int retval = 0;
 
-        value = parameters.HasLabel("HDRMode") ? parameters["HDRMode"].String() : "";
-        returnIfParamNotFound(parameters,"HDRMode");
+        value = parameters.HasLabel("hdrMode") ? parameters["hdrMode"].String() : "";
+        returnIfParamNotFound(parameters,"hdrMode");
 
         if (parsingSetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
             LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
@@ -5570,24 +5572,61 @@ namespace Plugin {
         }
 
         if( isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format) ) {
-            LOGINFO("Proceed with HDRMode\n\n");
-            retval = getHDRModeIndex(value,inputInfo.format,index);
-            if( retval != 0 )
+
+            tvVideoFormatType_t formatIndex = VIDEO_FORMAT_NONE;
+            GetCurrentVideoFormat(&formatIndex);
+            if (formatIndex == VIDEO_FORMAT_NONE)
             {
-                LOGERR("Failed to getHDRMode index\n");
+                formatIndex = VIDEO_FORMAT_SDR;
+            }
+            string currentFormat = convertVideoFormatToString(formatIndex);
+            retval = getHDRModeIndex(value, currentFormat, index);
+            if (retval != 0)
+            {
+                LOGERR("Failed to getHDRMode index for format %s\n", currentFormat.c_str());
                 returnResponse(false);
             }
+            LOGINFO("Proceed with SetTVDolbyVisionMode(HDRMode) : %d\n", index);
             ret = SetTVDolbyVisionMode(index);
         }
 
         if(ret != tvERROR_NONE) {
-            LOGERR("Failed to set HDRMode\n\n");
+            LOGERR("Failed to set HDRMode\n");
             returnResponse(false);
         }
         else {
-            retval= updateAVoutputTVParam("set","HDRMode",inputInfo,PQ_PARAM_DOLBY_MODE,(int)index);
+            // If inputformat is HDR10 set only HDR10 mode
+            // If inputformat is HLG set only HLG mode
+            // If inputformat is Global/Empty/Both set both HDR10 and HLG mode
+            std::vector<std::string> formatsToUpdate;
+            if (inputInfo.format == "HDR10")
+            {
+                formatsToUpdate.push_back("HDR10");
+            }
+            else if (inputInfo.format == "HLG")
+            {
+                formatsToUpdate.push_back("HLG");
+            }
+            else
+            {
+                formatsToUpdate.push_back("HDR10");
+                formatsToUpdate.push_back("HLG");
+            }
+
+            for (const auto &format : formatsToUpdate)
+            {
+                retval = getHDRModeIndex(value, format, index);
+                if (retval != 0)
+                {
+                    LOGERR("Failed to getHDRMode index for format %s\n", format.c_str());
+                    returnResponse(false);
+                }
+                inputInfo.format = format;
+                retval |= updateAVoutputTVParam("set", "HDRMode", inputInfo, PQ_PARAM_DOLBY_MODE, (int)index);
+            }
+
             if(retval != 0 ) {
-                LOGERR("Failed to Save hdrMode mode\n");
+                LOGERR("Failed to Save HDRMode\n");
                 returnResponse(false);
             }
             LOGINFO("Exit : hdrMode successful to value: %s\n", value.c_str());
@@ -5626,6 +5665,9 @@ namespace Plugin {
         }
         else {
             if (isSetRequired( inputInfo.pqmode,inputInfo.source,inputInfo.format)) {
+                inputInfo.source = "Current";
+                inputInfo.pqmode = "Current";
+                inputInfo.format = "Current";
                 getParamIndex( "HDRMode", inputInfo,indexInfo);
                 int err = getLocalparam("HDRMode", indexInfo, dolbyMode, PQ_PARAM_DOLBY_MODE);
                 if( err == 0 ) {
@@ -6265,6 +6307,61 @@ namespace Plugin {
         }
     }
 
+    uint32_t AVOutputTV::setWBMode(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        std::string value;
+        bool mode = false;
+        tvError_t ret = tvERROR_NONE;
+
+        value = parameters.HasLabel("wbMode") ? parameters["wbMode"].String() : "";
+        returnIfParamNotFound(parameters, "wbMode");
+
+        if (value == "true")
+        {
+            mode = true;
+        }
+        else if (value == "false")
+        {
+            mode = false;
+        }
+        else
+        {
+            LOGERR("%s: Invalid value for wbMode : %s\n", __FUNCTION__,value.c_str());
+            returnResponse(false);
+        }
+
+        ret = EnableWBCalibrationMode(mode);
+        if (ret != tvERROR_NONE)
+        {
+            LOGERR("setWBMode failed\n");
+            returnResponse(false);
+        }
+        else
+        {
+            LOGINFO("setWBMode successful \n");
+            returnResponse(true);
+        }
+    }
+
+    uint32_t AVOutputTV::getWBMode(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        bool mode = false;
+
+        tvError_t ret = GetCurrentWBCalibrationMode(&mode);
+        if (ret != tvERROR_NONE)
+        {
+            LOGERR("getWBMode failed\n");
+            returnResponse(false);
+        }
+        else
+        {
+            response["wbMode"] = mode ? "true" : "false";
+            LOGINFO("getWBMode successful : %s\n", mode ? "true" : "false");
+            returnResponse(true);
+        }
+    }
 
     uint32_t AVOutputTV::getVideoContentType(const JsonObject & parameters, JsonObject & response)
     {
