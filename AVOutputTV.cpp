@@ -4787,7 +4787,7 @@ namespace Plugin {
         LOGINFO("Entry\n");
         if(m_lowLatencyStateStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
-            std::string value;
+            bool value;
             capDetails_t inputInfo;
             int lowLatencyIndex = 0,prevLowLatencyIndex = 0;
             tvError_t ret = tvERROR_NONE;
@@ -4798,14 +4798,19 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            value = parameters.HasLabel("LowLatencyState") ? parameters["LowLatencyState"].String() : "";
-            returnIfParamNotFound(parameters,"LowLatencyState");
-            lowLatencyIndex = std::stoi(value);
+            returnIfParamNotFound(parameters, "lowLatencyState");
 
-            if (validateIntegerInputParameter("LowLatencyState",lowLatencyIndex) != 0) {
-                LOGERR("Failed in Brightness range validation:%s", __FUNCTION__);
+            // Validate it's actually a boolean, not a string or other type
+            if (parameters["lowLatencyState"].Content() != JsonValue::type::BOOLEAN)
+            {
+                LOGERR("lowLatencyState must be a boolean (true/false)");
                 returnResponse(false);
             }
+
+            value = parameters["lowLatencyState"].Boolean();
+            lowLatencyIndex = value ? 1 : 0;
+
+            LOGINFO("lowLatencyState: %s, mapped index: %d", value ? "ON" : "OFF", lowLatencyIndex);
 
             if (parsingSetInputArgument(parameters, "LowLatencyState",inputInfo) != 0) {
                 LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
@@ -4843,7 +4848,7 @@ namespace Plugin {
         }
         else
         {
-            std::string value;
+            bool value;
             int lowLatencyIndex = 0,prevLowLatencyIndex = 0;
             tvError_t ret = tvERROR_NONE;
 
@@ -4852,14 +4857,19 @@ namespace Plugin {
                 LOGERR("Get previous low latency state failed\n");
                 returnResponse(false);
             }
+            returnIfParamNotFound(parameters, "lowLatencyState");
 
-            value = parameters.HasLabel("LowLatencyState") ? parameters["LowLatencyState"].String() : "";
-            returnIfParamNotFound(parameters,"LowLatencyState");
-            lowLatencyIndex = std::stoi(value);
-            if (lowLatencyIndex < 0 || lowLatencyIndex > m_maxlowLatencyState) {
-                LOGERR("Input value %d is out of range (0 - %d) for LowLatencyState", lowLatencyIndex, m_maxlowLatencyState);
+            // Validate it's actually a boolean, not a string or other type
+            if (parameters["lowLatencyState"].Content() != JsonValue::type::BOOLEAN)
+            {
+                LOGERR("lowLatencyState must be a boolean (true/false)");
                 returnResponse(false);
             }
+
+            value = parameters["lowLatencyState"].Boolean();
+            lowLatencyIndex = value ? 1 : 0;
+
+            LOGINFO("lowLatencyState: %s, mapped index: %d", value ? "ON" : "OFF", lowLatencyIndex);
 
             int retval= updateAVoutputTVParamV2("set","LowLatencyState",parameters,PQ_PARAM_LOWLATENCY_STATE,lowLatencyIndex);
             if(retval != 0 ) {
@@ -4908,7 +4918,7 @@ namespace Plugin {
 
             int err = getLocalparam("LowLatencyState", indexInfo ,lowlatencystate, PQ_PARAM_LOWLATENCY_STATE);
             if( err == 0 ) {
-                response["lowLatencyState"] = std::to_string(lowlatencystate);
+                response["lowLatencyState"] = (lowlatencystate == 1) ? true : false;
                 LOGINFO("Exit : LowLatencyState Value: %d \n", lowlatencystate);
                 returnResponse(true);
             }
@@ -4920,7 +4930,7 @@ namespace Plugin {
         {
             int lowlatencystate = 0;
             if (getPQParamFromContext(parameters, "LowLatencyState", PQ_PARAM_LOWLATENCY_STATE, lowlatencystate)) {
-                response["lowLatencyState"] = std::to_string(lowlatencystate);
+                response["lowLatencyState"] = (lowlatencystate == 1) ? true : false;
                 LOGINFO("Exit : LowLatencyState Value: %d", lowlatencystate);
                 returnResponse(true);
             } else {
