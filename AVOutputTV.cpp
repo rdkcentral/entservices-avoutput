@@ -4798,12 +4798,12 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            value = parameters.HasLabel("LowLatencyState") ? parameters["LowLatencyState"].String() : "";
-            returnIfParamNotFound(parameters,"LowLatencyState");
+            value = parameters.HasLabel("lowLatencyState") ? parameters["lowLatencyState"].String() : "";
+            returnIfParamNotFound(parameters,"lowLatencyState");
             lowLatencyIndex = std::stoi(value);
 
             if (validateIntegerInputParameter("LowLatencyState",lowLatencyIndex) != 0) {
-                LOGERR("Failed in Brightness range validation:%s", __FUNCTION__);
+                LOGERR("Failed in LowLatencyState range validation:%s", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -4908,7 +4908,7 @@ namespace Plugin {
 
             int err = getLocalparam("LowLatencyState", indexInfo ,lowlatencystate, PQ_PARAM_LOWLATENCY_STATE);
             if( err == 0 ) {
-                response["lowLatencyState"] = std::to_string(lowlatencystate);
+                response["lowLatencyState"] = lowlatencystate;
                 LOGINFO("Exit : LowLatencyState Value: %d \n", lowlatencystate);
                 returnResponse(true);
             }
