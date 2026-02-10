@@ -4853,8 +4853,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            value = parameters.HasLabel("LowLatencyState") ? parameters["LowLatencyState"].String() : "";
-            returnIfParamNotFound(parameters,"LowLatencyState");
+            value = parameters.HasLabel("lowLatencyState") ? parameters["lowLatencyState"].String() : "";
+            returnIfParamNotFound(parameters,"lowLatencyState");
             lowLatencyIndex = std::stoi(value);
             if (lowLatencyIndex < 0 || lowLatencyIndex > m_maxlowLatencyState) {
                 LOGERR("Input value %d is out of range (0 - %d) for LowLatencyState", lowLatencyIndex, m_maxlowLatencyState);
@@ -4920,7 +4920,7 @@ namespace Plugin {
         {
             int lowlatencystate = 0;
             if (getPQParamFromContext(parameters, "LowLatencyState", PQ_PARAM_LOWLATENCY_STATE, lowlatencystate)) {
-                response["lowLatencyState"] = std::to_string(lowlatencystate);
+                response["lowLatencyState"] = lowlatencystate;
                 LOGINFO("Exit : LowLatencyState Value: %d", lowlatencystate);
                 returnResponse(true);
             } else {
