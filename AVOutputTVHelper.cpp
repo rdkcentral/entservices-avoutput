@@ -492,7 +492,7 @@ namespace Plugin {
         }
     }
     
-    bool AVOutputTV::isCapablityCheckPassed( const std::string& param, const capDetails_t& inputInfo )
+    bool AVOutputTV::isCapabilityCheckPassed( const std::string& param, const capDetails_t& inputInfo )
     {
 
         capDetails_t paramInfo;
