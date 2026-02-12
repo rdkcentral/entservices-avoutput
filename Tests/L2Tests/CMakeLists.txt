@@ -23,7 +23,7 @@ set(THUNDER_PORT 9998)
 find_package(${NAMESPACE}Plugins REQUIRED)
 
 if(PLUGIN_FIRMWAREUPDATE)
-    set(SRC_FILES ${SRC_FILES} tests/FirmwareUpdate_L2Test.cpp)
+    set(SRC_FILES ${SRC_FILES} tests/AVOutputTV_L2Test.cpp)
 endif()
 
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})
