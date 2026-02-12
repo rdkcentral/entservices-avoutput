@@ -16,6 +16,12 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+/**
+ * Portions of this file are derived from rdkcentral/rdkservices (Apache-2.0).
+ * Original source:
+ * https://github.com/rdkcentral/rdkservices
+ * Licensed under the Apache License, Version 2.0.
+ */
 
 #ifndef AVOutputTV_H
 #define AVOutputTV_H
@@ -359,7 +365,7 @@ class AVOutputTV : public AVOutputBase {
 		int isPlatformSupport(const std::string& pqparam);
 		
 	
-		bool isCapablityCheckPassed(const std::string& param, const capDetails_t& inputInfo );
+		bool isCapabilityCheckPassed(const std::string& param, const capDetails_t& inputInfo );
 		int parsingSetInputArgument(const JsonObject& parameters, std::string pqparam,capDetails_t& paramInfo);
 		int parsingGetInputArgument(const JsonObject& parameters, std::string pqparam, capDetails_t& info);
 		void spliltCapablities( capVectors_t& vectorInfo, const capDetails_t& stringInfo);

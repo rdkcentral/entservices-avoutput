@@ -54,14 +54,28 @@ add_library(${MODULE_NAME} SHARED
         AVOutputTVHelper.cpp	
         AVOutput.cpp
         Module.cpp)
-        target_link_libraries(${MODULE_NAME} "-lglib-2.0 -lpthread -lIARMBus -ltvsettings-hal -ltr181api -lds")
+target_link_libraries(${MODULE_NAME}
+    PRIVATE
+        glib-2.0
+        pthread
+        IARMBus
+        tvsettings-hal
+        tr181api
+        ds
+)
 else()
 add_library(${MODULE_NAME} SHARED
 	AVOutputBase.cpp
 	AVOutputSTB.cpp
         AVOutput.cpp
         Module.cpp)
-target_link_libraries(${MODULE_NAME} "-lglib-2.0 -lpthread -lIARMBus -lds")
+target_link_libraries(${MODULE_NAME}
+    PRIVATE
+        glib-2.0
+        pthread
+        IARMBus
+        ds
+)
 endif()
 
 set_target_properties(${MODULE_NAME} PROPERTIES
