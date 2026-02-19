@@ -539,17 +539,25 @@ namespace Plugin {
         { "Local", tvDimmingMode_Local },
         { "Global", tvDimmingMode_Global }
     };
+
     static bool convertFrameRateEnumToValue(tvVideoFrameRate_t rate, double& value)
     {
         switch (rate) {
-            case tvVideoFrameRate_24:       value = 24.0;   return true;
-            case tvVideoFrameRate_25:       value = 25.0;   return true;
-            case tvVideoFrameRate_30:       value = 30.0;   return true;
-            case tvVideoFrameRate_50:       value = 50.0;   return true;
-            case tvVideoFrameRate_60:       value = 60.0;   return true;
-            case tvVideoFrameRate_23dot98:  value = 23.98;  return true;
-            case tvVideoFrameRate_29dot97:  value = 29.97;  return true;
-            case tvVideoFrameRate_59dot94:  value = 59.94;  return true;
+            case tvVideoFrameRate_24:        value = 24.0;   return true;
+            case tvVideoFrameRate_25:        value = 25.0;   return true;
+            case tvVideoFrameRate_30:        value = 30.0;   return true;
+            case tvVideoFrameRate_48:        value = 48.0;   return true;
+            case tvVideoFrameRate_50:        value = 50.0;   return true;
+            case tvVideoFrameRate_60:        value = 60.0;   return true;
+            case tvVideoFrameRate_100:       value = 100.0;  return true;
+            case tvVideoFrameRate_120:       value = 120.0;  return true;
+            case tvVideoFrameRate_144:       value = 144.0;  return true;
+            case tvVideoFrameRate_23dot98:   value = 23.98;  return true;
+            case tvVideoFrameRate_29dot97:   value = 29.97;  return true;
+            case tvVideoFrameRate_59dot94:   value = 59.94;  return true;
+
+            case tvVideoFrameRate_NONE:
+            case tvVideoFrameRate_MAX:
             default:
                 return false;
         }
