@@ -4994,10 +4994,11 @@ namespace Plugin {
         LOGINFO("Entry");
         capVectors_t info;
 
-        JsonArray rangeArray;
         JsonArray pqmodeArray;
         JsonArray formatArray;
         JsonArray sourceArray;
+        JsonObject rangeObj;
+
 
         unsigned int index = 0;
 
@@ -5007,11 +5008,10 @@ namespace Plugin {
             returnResponse(false);
         }
         else {
-            for (index = 0; index < info.rangeVector.size(); index++) {
-                rangeArray.Add(stoi(info.rangeVector[index]));
-	    }
+            rangeObj["from"] = stoi(info.rangeVector[0]);
+            rangeObj["to"] = stoi(info.rangeVector[1]);
+            response["rangeInfo"]=rangeObj;
 
-            response["LowLatencyInfo"]=rangeArray;
             if ((info.pqmodeVector.front()).compare("none") != 0) {
                 for (index = 0; index < info.pqmodeVector.size(); index++) {
                     pqmodeArray.Add(info.pqmodeVector[index]);
