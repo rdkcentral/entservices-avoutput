@@ -347,6 +347,8 @@ namespace Plugin {
         registerMethod("set2PointWB", &AVOutputTV::set2PointWB, this);
         registerMethod("reset2PointWB", &AVOutputTV::reset2PointWB, this);
         registerMethod("get2PointWBCaps", &AVOutputTV::get2PointWBCaps, this);
+        registerMethod("setWBMode", &AVOutputTV::setWBMode, this);
+        registerMethod("getWBMode", &AVOutputTV::getWBMode, this);
 
         registerMethod("getHDRMode", &AVOutputTV::getHDRMode, this);
         registerMethod("setHDRMode", &AVOutputTV::setHDRMode, this);
@@ -409,6 +411,11 @@ namespace Plugin {
         registerMethod("resetAISuperResolution", &AVOutputTV::resetAISuperResolution, this);
 
         registerMethod("getMultiPointWBCaps", &AVOutputTV::getMultiPointWBCaps, this);
+
+        registerMethod("getBacklightDimmingLevel", &AVOutputTV::getBacklightDimmingLevel, this);
+        registerMethod("setBacklightDimmingLevel", &AVOutputTV::setBacklightDimmingLevel, this);
+        registerMethod("resetBacklightDimmingLevel", &AVOutputTV::resetBacklightDimmingLevel, this);
+        registerMethod("getBacklightDimmingLevelCaps", &AVOutputTV::getBacklightDimmingLevelCaps, this); 
 
         // Start worker thread for non-blocking updates
         workerThread = std::thread(&AVOutputTV::paramUpdateWorker, this);
@@ -493,7 +500,6 @@ namespace Plugin {
 
         syncAvoutputTVParamsToHAL("none","none","none");
 	
-        setDefaultAspectRatio();
 
         // source format specific sync to ssm data
         syncAvoutputTVPQModeParamsToHAL("Current", "none", "none");
@@ -522,25 +528,6 @@ namespace Plugin {
        LOGINFO("Exit\n");
     }
 
-    // Shared zoom mode mappings
-    static const std::unordered_map<int, std::string> zoomModeReverseMap = {
-        {tvDisplayMode_16x9,     "TV 16X9 STRETCH"},
-        {tvDisplayMode_4x3,      "TV 4X3 PILLARBOX"},
-        {tvDisplayMode_NORMAL,   "TV NORMAL"},
-        {tvDisplayMode_DIRECT,   "TV DIRECT"},
-        {tvDisplayMode_AUTO,     "TV AUTO"},
-        {tvDisplayMode_ZOOM,     "TV ZOOM"},
-        {tvDisplayMode_FULL,     "TV FULL"}
-    };
-    static const std::unordered_map<std::string, int> zoomModeMap = {
-        {"TV 16X9 STRETCH", tvDisplayMode_16x9},
-        {"TV 4X3 PILLARBOX", tvDisplayMode_4x3},
-        {"TV NORMAL",        tvDisplayMode_NORMAL},
-        {"TV DIRECT",        tvDisplayMode_DIRECT},
-        {"TV AUTO",          tvDisplayMode_AUTO},
-        {"TV ZOOM",          tvDisplayMode_ZOOM},
-        {"TV FULL",          tvDisplayMode_FULL}
-    };
     static const std::unordered_map<int, std::string> dimmingModeReverseMap = {
         { tvDimmingMode_Fixed, "Fixed" },
         { tvDimmingMode_Local, "Local" },
@@ -1013,6 +1000,13 @@ namespace Plugin {
         parameters, response);
     }
 
+    uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
+        return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
+            return GetBacklightDimmingLevelCaps(max_val, context_caps);
+        },
+        parameters, response);
+    }
+
     // Forward lookup: string → enum
     const std::unordered_map<std::string, int> colorTempMap = {
         {"Standard",            tvColorTemp_STANDARD},
@@ -1370,15 +1364,20 @@ namespace Plugin {
     uint32_t AVOutputTV::getZoomMode(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
-        tvDisplayMode_t mode;
+        if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            tvDisplayMode_t mode;
 
-        tvError_t ret = getUserSelectedAspectRatio (&mode);
+            tvError_t ret = getUserSelectedAspectRatio(&mode);
 
-        if(ret != tvERROR_NONE) {
-            returnResponse(false);
-        }
-        else {
-            switch(mode) {
+            if (ret != tvERROR_NONE)
+            {
+                returnResponse(false);
+            }
+            else
+            {
+                switch (mode)
+                {
                 case tvDisplayMode_16x9:
                     LOGINFO("Aspect Ratio: TV 16X9 STRETCH\n");
                     response["zoomMode"] = "TV 16X9 STRETCH";
@@ -1413,8 +1412,23 @@ namespace Plugin {
                     LOGINFO("Aspect Ratio: TV AUTO\n");
                     response["zoomMode"] = "TV AUTO";
                     break;
+                }
+                returnResponse(true);
             }
-            returnResponse(true);
+        }
+        else
+        {
+            std::string outMode;
+            if (getEnumPQParamString(parameters, "ZoomMode",
+                                     PQ_PARAM_ASPECT_RATIO, zoomModeReverseMap, outMode))
+            {
+                response["zoomMode"] = outMode;
+                returnResponse(true);
+            }
+            else
+            {
+                returnResponse(false);
+            }
         }
     }
 
@@ -1556,6 +1570,13 @@ namespace Plugin {
         returnResponse(success);
     }
 
+    uint32_t AVOutputTV::resetBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    {
+        bool success= resetPQParamToDefault(parameters,"DimmingLevel",
+                                        PQ_PARAM_BACKLIGHT_DIMMINGLEVEL, SetBacklightDimmingLevel);
+        returnResponse(success);
+    }
+
     uint32_t AVOutputTV::getPrecisionDetail(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
@@ -1636,6 +1657,20 @@ namespace Plugin {
             aiSuperResolution);
         if (success) {
             response["aiSuperResolution"] = aiSuperResolution;
+        }
+        returnResponse(success);
+    }
+
+    uint32_t AVOutputTV::getBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry");
+        int dimmingLevel = 0;
+        bool success = getPQParamFromContext(parameters,
+            "DimmingLevel",
+            PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
+            dimmingLevel);
+        if (success) {
+            response["dimmingLevel"] = dimmingLevel;
         }
         returnResponse(success);
     }
@@ -1812,6 +1847,19 @@ namespace Plugin {
         );
     }
 
+    uint32_t AVOutputTV::setBacklightDimmingLevel(const JsonObject& parameters, JsonObject& response)
+    {
+        return setContextPQParam(
+            parameters, response,
+            "dimmingLevel", "DimmingLevel",
+            m_maxDimmingLevel,
+            PQ_PARAM_BACKLIGHT_DIMMINGLEVEL,
+            [](tvVideoSrcType_t src, tvPQModeIndex_t mode, tvVideoFormatType_t fmt, int val) {
+                return SetBacklightDimmingLevel(src, mode, fmt, val);
+            }
+        );
+    }
+
     uint32_t AVOutputTV::getBacklight(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
@@ -1948,12 +1996,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, intVal, pqIndex) == 0)
+            if ( getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s [format=%d, source=%d, mode=%d] → value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&intVal);
+                LOGINFO("%s: GetDefaultPQParams success for %s [format=%d, source=%d, mode=%d] PQIndex=%d → value=%d\n",
                     __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                    indexInfo.sourceIndex, indexInfo.pqmodeIndex, intVal);
+                    indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, intVal);
 
                 if (valueMap.find(intVal) == valueMap.end()) {
                     LOGERR("%s: Invalid enum value %d for %s\n", __FUNCTION__, intVal, paramName.c_str());
@@ -2004,12 +2052,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, level, pqIndex) == 0)
+            if ( getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s: format=%d, source=%d, mode=%d, value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&level);
+                LOGINFO("%s: GetDefaultPQParams success for %s: format=%d, source=%d, mode=%d,PQIndex=%d, value=%d\n",
                         __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, level);
+                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, level);
                 if (halSetter) {
                     ret = halSetter(
                         static_cast<tvVideoSrcType_t>(indexInfo.sourceIndex),
@@ -2061,12 +2109,12 @@ namespace Plugin {
             inputInfo.source = "Current";
             inputInfo.format = "Current";
 
-            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 &&
-                getLocalparam(paramName, indexInfo, level, pqIndex) == 0)
+            if (getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                LOGINFO("%s: getLocalparam success for %s: format=%d, source=%d, mode=%d, value=%d\n",
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&level);
+                LOGINFO("%s: GetDefaultPQParams success for %s: format=%d, source=%d, mode=%d,PQIndex=%d, value=%d\n",
                         __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, level);
+                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, level);
                 ret = halSetter(level);
                 LOGINFO("%s halSetter return value: %d\n", paramName.c_str(), ret);
             }
@@ -3778,7 +3826,7 @@ namespace Plugin {
 
         if (getEnumPQParamString(updatedParams, "SDRGamma",
                 PQ_PARAM_SDR_GAMMA, sdrGammaReverseMap, outMode)) {
-            response["SDRGamma"] = outMode;
+            response["sdrGamma"] = outMode;
             returnResponse(true);
         } else {
             LOGERR("Failed to retrieve SDRGamma value");
@@ -3853,7 +3901,6 @@ namespace Plugin {
         paramIndex_t indexInfo;
         int dolbyMode = 0;
         int err = 0;
-        tvVideoFormatType_t video_type = VIDEO_FORMAT_NONE;
 
         if (parsingGetInputArgument(parameters, "DolbyVisionMode",inputInfo) != 0) {
             LOGINFO("%s: Failed to parse argument\n", __FUNCTION__);
@@ -3864,12 +3911,8 @@ namespace Plugin {
 	        returnResponse(false);
 	    }
 
-        GetCurrentVideoFormat(&video_type);
-        if(video_type != VIDEO_FORMAT_DV)
-        {
-            LOGERR("%s: Invalid video format: %d \n", __FUNCTION__,video_type);
-            returnResponse(false);
-        }
+        //For Dolbyvision mode assume format as DV always
+        inputInfo.format = "DV";
 
         if (getParamIndex("DolbyVisionMode",inputInfo,indexInfo) == -1) {
             LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
@@ -4755,12 +4798,12 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            value = parameters.HasLabel("LowLatencyState") ? parameters["LowLatencyState"].String() : "";
-            returnIfParamNotFound(parameters,"LowLatencyState");
+            value = parameters.HasLabel("lowLatencyState") ? parameters["lowLatencyState"].String() : "";
+            returnIfParamNotFound(parameters,"lowLatencyState");
             lowLatencyIndex = std::stoi(value);
 
             if (validateIntegerInputParameter("LowLatencyState",lowLatencyIndex) != 0) {
-                LOGERR("Failed in Brightness range validation:%s", __FUNCTION__);
+                LOGERR("Failed in LowLatencyState range validation:%s", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -4810,8 +4853,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            value = parameters.HasLabel("LowLatencyState") ? parameters["LowLatencyState"].String() : "";
-            returnIfParamNotFound(parameters,"LowLatencyState");
+            value = parameters.HasLabel("lowLatencyState") ? parameters["lowLatencyState"].String() : "";
+            returnIfParamNotFound(parameters,"lowLatencyState");
             lowLatencyIndex = std::stoi(value);
             if (lowLatencyIndex < 0 || lowLatencyIndex > m_maxlowLatencyState) {
                 LOGERR("Input value %d is out of range (0 - %d) for LowLatencyState", lowLatencyIndex, m_maxlowLatencyState);
@@ -4865,7 +4908,7 @@ namespace Plugin {
 
             int err = getLocalparam("LowLatencyState", indexInfo ,lowlatencystate, PQ_PARAM_LOWLATENCY_STATE);
             if( err == 0 ) {
-                response["lowLatencyState"] = std::to_string(lowlatencystate);
+                response["lowLatencyState"] = lowlatencystate;
                 LOGINFO("Exit : LowLatencyState Value: %d \n", lowlatencystate);
                 returnResponse(true);
             }
@@ -4877,7 +4920,7 @@ namespace Plugin {
         {
             int lowlatencystate = 0;
             if (getPQParamFromContext(parameters, "LowLatencyState", PQ_PARAM_LOWLATENCY_STATE, lowlatencystate)) {
-                response["lowLatencyState"] = std::to_string(lowlatencystate);
+                response["lowLatencyState"] = lowlatencystate;
                 LOGINFO("Exit : LowLatencyState Value: %d", lowlatencystate);
                 returnResponse(true);
             } else {
@@ -4951,10 +4994,11 @@ namespace Plugin {
         LOGINFO("Entry");
         capVectors_t info;
 
-        JsonArray rangeArray;
         JsonArray pqmodeArray;
         JsonArray formatArray;
         JsonArray sourceArray;
+        JsonObject rangeObj;
+
 
         unsigned int index = 0;
 
@@ -4964,11 +5008,10 @@ namespace Plugin {
             returnResponse(false);
         }
         else {
-            for (index = 0; index < info.rangeVector.size(); index++) {
-                rangeArray.Add(stoi(info.rangeVector[index]));
-	    }
+            rangeObj["from"] = stoi(info.rangeVector[0]);
+            rangeObj["to"] = stoi(info.rangeVector[1]);
+            response["rangeInfo"]=rangeObj;
 
-            response["LowLatencyInfo"]=rangeArray;
             if ((info.pqmodeVector.front()).compare("none") != 0) {
                 for (index = 0; index < info.pqmodeVector.size(); index++) {
                     pqmodeArray.Add(info.pqmodeVector[index]);
@@ -5475,6 +5518,11 @@ namespace Plugin {
             returnResponse(false);
         }
 
+        if (!isCapablityCheckPassed("HDRMode", inputInfo)){
+            LOGERR("%s: CapablityCheck failed for hdrMode\n", __FUNCTION__);
+            returnResponse(false);
+        }
+
         if (getParamIndex("HDRMode",inputInfo,indexInfo) == -1) {
             LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
             returnResponse(false);
@@ -5501,8 +5549,8 @@ namespace Plugin {
         std::string value;
 	    int retval = 0;
 
-        value = parameters.HasLabel("HDRMode") ? parameters["HDRMode"].String() : "";
-        returnIfParamNotFound(parameters,"HDRMode");
+        value = parameters.HasLabel("hdrMode") ? parameters["hdrMode"].String() : "";
+        returnIfParamNotFound(parameters,"hdrMode");
 
         if (parsingSetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
             LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
@@ -5524,24 +5572,61 @@ namespace Plugin {
         }
 
         if( isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format) ) {
-            LOGINFO("Proceed with HDRMode\n\n");
-            retval = getHDRModeIndex(value,inputInfo.format,index);
-            if( retval != 0 )
+
+            tvVideoFormatType_t formatIndex = VIDEO_FORMAT_NONE;
+            GetCurrentVideoFormat(&formatIndex);
+            if (formatIndex == VIDEO_FORMAT_NONE)
             {
-                LOGERR("Failed to getHDRMode index\n");
+                formatIndex = VIDEO_FORMAT_SDR;
+            }
+            string currentFormat = convertVideoFormatToString(formatIndex);
+            retval = getHDRModeIndex(value, currentFormat, index);
+            if (retval != 0)
+            {
+                LOGERR("Failed to getHDRMode index for format %s\n", currentFormat.c_str());
                 returnResponse(false);
             }
+            LOGINFO("Proceed with SetTVDolbyVisionMode(HDRMode) : %d\n", index);
             ret = SetTVDolbyVisionMode(index);
         }
 
         if(ret != tvERROR_NONE) {
-            LOGERR("Failed to set HDRMode\n\n");
+            LOGERR("Failed to set HDRMode\n");
             returnResponse(false);
         }
         else {
-            retval= updateAVoutputTVParam("set","HDRMode",inputInfo,PQ_PARAM_DOLBY_MODE,(int)index);
+            // If inputformat is HDR10 set only HDR10 mode
+            // If inputformat is HLG set only HLG mode
+            // If inputformat is Global/Empty/Both set both HDR10 and HLG mode
+            std::vector<std::string> formatsToUpdate;
+            if (inputInfo.format == "HDR10")
+            {
+                formatsToUpdate.push_back("HDR10");
+            }
+            else if (inputInfo.format == "HLG")
+            {
+                formatsToUpdate.push_back("HLG");
+            }
+            else
+            {
+                formatsToUpdate.push_back("HDR10");
+                formatsToUpdate.push_back("HLG");
+            }
+
+            for (const auto &format : formatsToUpdate)
+            {
+                retval = getHDRModeIndex(value, format, index);
+                if (retval != 0)
+                {
+                    LOGERR("Failed to getHDRMode index for format %s\n", format.c_str());
+                    returnResponse(false);
+                }
+                inputInfo.format = format;
+                retval |= updateAVoutputTVParam("set", "HDRMode", inputInfo, PQ_PARAM_DOLBY_MODE, (int)index);
+            }
+
             if(retval != 0 ) {
-                LOGERR("Failed to Save hdrMode mode\n");
+                LOGERR("Failed to Save HDRMode\n");
                 returnResponse(false);
             }
             LOGINFO("Exit : hdrMode successful to value: %s\n", value.c_str());
@@ -5580,6 +5665,9 @@ namespace Plugin {
         }
         else {
             if (isSetRequired( inputInfo.pqmode,inputInfo.source,inputInfo.format)) {
+                inputInfo.source = "Current";
+                inputInfo.pqmode = "Current";
+                inputInfo.format = "Current";
                 getParamIndex( "HDRMode", inputInfo,indexInfo);
                 int err = getLocalparam("HDRMode", indexInfo, dolbyMode, PQ_PARAM_DOLBY_MODE);
                 if( err == 0 ) {
@@ -6219,6 +6307,61 @@ namespace Plugin {
         }
     }
 
+    uint32_t AVOutputTV::setWBMode(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        std::string value;
+        bool mode = false;
+        tvError_t ret = tvERROR_NONE;
+
+        value = parameters.HasLabel("wbMode") ? parameters["wbMode"].String() : "";
+        returnIfParamNotFound(parameters, "wbMode");
+
+        if (value == "true")
+        {
+            mode = true;
+        }
+        else if (value == "false")
+        {
+            mode = false;
+        }
+        else
+        {
+            LOGERR("%s: Invalid value for wbMode : %s\n", __FUNCTION__,value.c_str());
+            returnResponse(false);
+        }
+
+        ret = EnableWBCalibrationMode(mode);
+        if (ret != tvERROR_NONE)
+        {
+            LOGERR("setWBMode failed\n");
+            returnResponse(false);
+        }
+        else
+        {
+            LOGINFO("setWBMode successful \n");
+            returnResponse(true);
+        }
+    }
+
+    uint32_t AVOutputTV::getWBMode(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        bool mode = false;
+
+        tvError_t ret = GetCurrentWBCalibrationMode(&mode);
+        if (ret != tvERROR_NONE)
+        {
+            LOGERR("getWBMode failed\n");
+            returnResponse(false);
+        }
+        else
+        {
+            response["wbMode"] = mode ? "true" : "false";
+            LOGINFO("getWBMode successful : %s\n", mode ? "true" : "false");
+            returnResponse(true);
+        }
+    }
 
     uint32_t AVOutputTV::getVideoContentType(const JsonObject & parameters, JsonObject & response)
     {

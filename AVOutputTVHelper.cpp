@@ -751,8 +751,8 @@ namespace Plugin {
 
         if ( (param == "ColorTemperature") ||
              (param == "DimmingMode") || (param == "AutoBacklightMode") ||
-             (param == "DolbyVisionMode") || (param == "HDR10Mode") ||
-            (param == "HLGMode") || (param == "AspectRatio") || (param == "PictureMode")  ) {
+             (param == "DolbyVisionMode") ||
+            (param == "HDRMode") || (param == "AspectRatio") || (param == "PictureMode")  ) {
             auto iter = find(info.rangeVector.begin(), info.rangeVector.end(), inputValue);
 
             if (iter == info.rangeVector.end()) {
@@ -1390,6 +1390,29 @@ namespace Plugin {
 
         //AspectRatio
         m_aspectRatioStatus = GetAspectRatioCaps(&m_aspectRatio, &m_numAspectRatio, &m_aspectRatioCaps);
+        if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+            setDefaultAspectRatio();
+        } else {
+            updateAVoutputTVParamV2("sync", "ZoomMode", paramJson, PQ_PARAM_ASPECT_RATIO, level);
+
+            //Update m_videoZoomMode for HDMI state/mode change events
+            std::string outMode;
+            JsonObject param;
+            if (getEnumPQParamString(param, "ZoomMode", PQ_PARAM_ASPECT_RATIO, zoomModeReverseMap, outMode))
+            {
+                auto it = zoomModeMap.find(outMode);
+                if (it == zoomModeMap.end())
+                {
+                    LOGWARN("Invalid ZoomMode value: %s. Init m_videoZoomMode to tvDisplayMode_AUTO \n", outMode.c_str());
+                    m_videoZoomMode = tvDisplayMode_AUTO;
+                }
+                else
+                {
+                    m_videoZoomMode = it->second;
+                    LOGINFO("m_videoZoomMode initialized to %d\n", m_videoZoomMode);
+                }
+            }
+        }
 
         //LowLatencyState
         m_lowLatencyStateStatus = GetLowLatencyStateCaps(&m_maxlowLatencyState, &m_lowLatencyStateCaps);
@@ -1435,9 +1458,17 @@ namespace Plugin {
         if (m_MEMCStatus == tvERROR_NONE) {
             updateAVoutputTVParamV2("sync", "MEMC", paramJson, PQ_PARAM_MEMC, level);
         }
+
+        //SDRGamma
         m_sdrGammaModeStatus = GetSdrGammaCaps(&m_sdrGammaModes, &m_numsdrGammaModes, &m_sdrGammaModeCaps);
         if (m_sdrGammaModeStatus == tvERROR_NONE) {
             updateAVoutputTVParamV2("sync", "SDRGamma", paramJson, PQ_PARAM_SDR_GAMMA, level);
+        }
+
+         // dimmingLevel
+        m_dimmingLevelStatus = GetBacklightDimmingLevelCaps(&m_maxDimmingLevel, &m_dimmingLevelCaps);
+        if (m_dimmingLevelStatus == tvERROR_NONE) {
+            updateAVoutputTVParamV2("sync", "DimmingLevel", paramJson, PQ_PARAM_BACKLIGHT_DIMMINGLEVEL, level);
         }
 
         m_cmsStatus = GetCMSCaps(&m_maxCmsHue, &m_maxCmsSaturation, &m_maxCmsLuma,
@@ -1462,9 +1493,19 @@ namespace Plugin {
             //syncWBParams();  Enable once Get2PointWBCaps is implemented
         if(m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
-        // Dolby Vision Mode
-        info.format = "DV"; // Sync only for Dolby
-        updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
+            // HDRMode
+            if (!updateAVoutputTVParam("sync", "HDRMode", info, PQ_PARAM_DOLBY_MODE, level))
+            {
+                LOGINFO("HDRMode Successfully Synced to Drive Cache\n");
+            }
+            else
+            {
+                LOGERR("HDRMode Sync to cache Failed !!!\n");
+            }
+
+            // Dolby Vision Mode
+            info.format = "DV"; // Sync only for Dolby
+            updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
         }
 
         LOGINFO("Exit %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
@@ -1768,6 +1809,9 @@ namespace Plugin {
         else if (forParam.compare("WhiteBalance") == 0) {
             generateStorageIdentifierWB(key, forParam, indexInfo);
         }
+        else if (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+            generateStorageIdentifier(key, forParam, indexInfo);
+        }
         else {
             generateStorageIdentifierV2(key, forParam, indexInfo);
         }
@@ -1842,7 +1886,7 @@ namespace Plugin {
                    value = tvDolbyMode_Dark;
                }
                else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("DV") != std::string::npos ) {
-                   value = tvDolbyMode_Game;
+                   value = tvDolbyMode_Bright;
                }
 	           else if(strncmp(param.value, "Dark", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
                    value = tvHDR10Mode_Dark;
@@ -2316,6 +2360,9 @@ namespace Plugin {
     {
         tvError_t ret = tvERROR_GENERAL;
         LOGINFO("%s: mode selected is: %d", __FUNCTION__, m_videoZoomMode);
+
+        // backup the selected zoom mode
+        m_videoZoomMode = mode;
 #if !defined (HDMIIN_4K_ZOOM)
         if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
             if (AVOutputTV::instance->m_currentHdmiInResoluton<dsVIDEO_PIXELRES_3840x2160 ||
@@ -2771,6 +2818,7 @@ namespace Plugin {
         {PQ_MODE_STANDARD, "Standard"},
         {PQ_MODE_VIVID, "Vivid"},
         {PQ_MODE_ENERGY_SAVING, "EnergySaving"},
+        {PQ_MODE_DISABLE, "PQ Disable"},
         {PQ_MODE_CUSTOM, "Custom"}
     };
 
@@ -3110,6 +3158,7 @@ namespace Plugin {
         else if (paramName == "BacklightMode") caps = m_backlightModeCaps;
         else if (paramName == "CMS") caps = m_cmsCaps;
         else if (paramName == "SDRGamma") caps = m_sdrGammaModeCaps;
+        else if (paramName == "DimmingLevel") caps = m_dimmingLevelCaps;
         else {
             LOGERR("Unknown ParamName: %s", paramName.c_str());
             return nullptr;
@@ -3621,6 +3670,12 @@ namespace Plugin {
                                             (tvVideoFormatType_t)paramIndex.formatIndex,
                                             static_cast<tvBacklightMode_t>(level));
                     break;
+                case PQ_PARAM_BACKLIGHT_DIMMINGLEVEL:
+                    ret |= SetBacklightDimmingLevel((tvVideoSrcType_t)paramIndex.sourceIndex,
+                                (tvPQModeIndex_t)paramIndex.pqmodeIndex,
+                                (tvVideoFormatType_t)paramIndex.formatIndex,
+                                level);
+                    break;
                 case PQ_PARAM_HDR10_MODE:
                 case PQ_PARAM_HLG_MODE:
                 case PQ_PARAM_LDIM:
@@ -3689,7 +3744,7 @@ namespace Plugin {
 
             if ( (param == "ColorTemperature") || (param == "DimmingMode") ||
                  ( param == "BacklightControl") || (param == "DolbyVisionMode") ||
-                 (param == "HDR10Mode") || (param == "HLGMode") || (param == "AspectRatio") ||
+                 (param == "AspectRatio") ||
                  (param == "PictureMode") || (param == "VideoSource") || (param == "VideoFormat") ||
                  (param == "VideoFrameRate") || (param == "HDRMode") ) {
                 configString =  param + ".range";
