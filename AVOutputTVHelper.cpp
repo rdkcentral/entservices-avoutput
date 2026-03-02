@@ -1079,7 +1079,7 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::updateAVoutputTVParam( const std::string& action, const std::string& tr181ParamName, capDetails_t& info, tvPQParameterIndex_t pqParamIndex, int level )
+    int AVOutputTV::updateAVoutputTVParam( const std::string& action, const std::string& tr181ParamName, const capDetails_t& info, tvPQParameterIndex_t pqParamIndex, int level )
     {
         LOGINFO("Entry : %s\n",__FUNCTION__);
         valueVectors_t values;
@@ -1095,7 +1095,9 @@ namespace Plugin {
         bool set = !(action.compare("set"));
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
-        ret = getSaveConfig(tr181ParamName,info, values);
+        // Make a local copy since getSaveConfig mutates the struct
+        capDetails_t localInfo = info;
+        ret = getSaveConfig(tr181ParamName,localInfo, values);
         if( 0 == ret ) {
             for( int sourceType: values.sourceValues ) {
                 paramIndex.sourceIndex = sourceType;
