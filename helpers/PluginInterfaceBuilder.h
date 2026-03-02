@@ -209,7 +209,7 @@ namespace Plugin {
 
         // Coverity fix: Remove redundant const from primitive return type
         // const qualifier on return value of primitive types is meaningless
-        const int retryCount() const
+        int retryCount() const
         {
             return _retry_count;
         }
