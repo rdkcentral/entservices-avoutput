@@ -2584,6 +2584,7 @@ namespace Plugin {
 
                 if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
                     LOGERR("%s: %s/%s Param Not Found \n",__FUNCTION__,inputInfo.control.c_str(),inputInfo.color.c_str());
+                    continue;
                 }
 	        // Coverity fix: Check return value to prevent undefined behavior
                 // The function returns 0 on success non-zero on failure, must be validated
