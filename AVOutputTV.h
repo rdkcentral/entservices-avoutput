@@ -16,12 +16,6 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-/**
- * Portions of this file are derived from rdkcentral/rdkservices (Apache-2.0).
- * Original source:
- * https://github.com/rdkcentral/rdkservices
- * Licensed under the Apache License, Version 2.0.
- */
 
 #ifndef AVOutputTV_H
 #define AVOutputTV_H
