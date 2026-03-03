@@ -1706,19 +1706,20 @@ namespace Plugin {
 
         int ret = 0;
 
-        if (getAvailableCapabilityModes(capInfo) != 0) {
+        capDetails_t localCapInfo = capInfo;
+        if (getAvailableCapabilityModes(localCapInfo) != 0) {
             LOGERR("%s: failed to get picture/source/format mode capability \n", __FUNCTION__);
             return -1;
         }
         //pqmode
-        char *modeString = strdup(capInfo.pqmode.c_str());
+        char *modeString = strdup(localCapInfo.pqmode.c_str());
         char *token = NULL;
         while ((token = strtok_r(modeString,",",&modeString))) {
             std::string local = token;
             values.pqmodeValues.push_back(getPictureModeIndex(local));
         }
         //source
-        char *sourceString = strdup(capInfo.source.c_str());
+        char *sourceString = strdup(localCapInfo.source.c_str());
         char *sourceToken = NULL;
         while ((sourceToken = strtok_r(sourceString,",",&sourceString))) {
             std::string local = sourceToken;
@@ -1726,7 +1727,7 @@ namespace Plugin {
             values.sourceValues.push_back(getSourceIndex(local));
         }
         //3)check format
-        char *formatString = strdup(capInfo.format.c_str());
+        char *formatString = strdup(localCapInfo.format.c_str());
         char *formatToken = NULL;
         while ((formatToken = strtok_r(formatString,",",&formatString))) {
             std::string local = formatToken;
@@ -1736,7 +1737,7 @@ namespace Plugin {
         if( param.compare("CMS") == 0 )
         {
             //Check Color
-            char *colorString = strdup(capInfo.color.c_str());
+            char *colorString = strdup(localCapInfo.color.c_str());
             char *colorToken = NULL;
             while ((colorToken = strtok_r(colorString,",",&colorString))) {
                 std::string local = colorToken;
@@ -1749,7 +1750,7 @@ namespace Plugin {
             }
 
             //Check Component
-            char *componentString = strdup(capInfo.component.c_str());
+            char *componentString = strdup(localCapInfo.component.c_str());
             char *componentToken = NULL;
             while ((componentToken = strtok_r(componentString,",",&componentString))) {
                 std::string local = componentToken;
@@ -1765,7 +1766,7 @@ namespace Plugin {
         if( param.compare("WhiteBalance") == 0 )
         {
             //Check Color
-            char *colorString = strdup(capInfo.color.c_str());
+            char *colorString = strdup(localCapInfo.color.c_str());
             char *colorToken = NULL;
             while ((colorToken = strtok_r(colorString,",",&colorString))) {
                 std::string local = colorToken;
@@ -1778,7 +1779,7 @@ namespace Plugin {
             }
 
             //Check Control
-            char *controlString = strdup(capInfo.control.c_str());
+            char *controlString = strdup(localCapInfo.control.c_str());
             char *controlToken = NULL;
             while ((controlToken = strtok_r(controlString,",",&controlString))) {
                 std::string local = controlToken;
@@ -1805,7 +1806,7 @@ namespace Plugin {
             }*/
         }
 
-        LOGINFO("Exit : %s pqmode : %s source :%s format :%s ret:%d\n",__FUNCTION__,capInfo.pqmode.c_str(),capInfo.source.c_str(),capInfo.format.c_str(), ret);
+        LOGINFO("Exit : %s pqmode : %s source :%s format :%s ret:%d\n",__FUNCTION__,localCapInfo.pqmode.c_str(),localCapInfo.source.c_str(),localCapInfo.format.c_str(), ret);
         return ret;
     }
 
