@@ -694,6 +694,10 @@ class AVOutputTV : public AVOutputBase {
 		tvContextCaps_t* m_wbContextCaps = nullptr;
 		tvError_t m_wbStatus = tvERROR_NONE;
 		void populateWBStringListsFromCaps();
+		bool isWBParamSupported(const std::string& color,
+                                const std::string& control,
+                                const std::string& colorTemp);
+
 
 		bool setCMSParam(const JsonObject& parameters);
 

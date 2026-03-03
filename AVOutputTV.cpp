@@ -5797,6 +5797,11 @@ namespace Plugin {
                 returnResponse(false);
             }
 
+            if (!isWBParamSupported(color, control, colorTemp)) {
+                LOGERR("%s: Unsupported WB parameters", __FUNCTION__);
+                returnResponse(false);
+            }
+
             // Get valid context based on pictureMode/videoSource/videoFormat parameters
             tvConfigContext_t validContext = getValidContextFromGetParameters(parameters, "WhiteBalance");
             if (validContext.videoSrcType == VIDEO_SOURCE_ALL &&
@@ -5959,6 +5964,11 @@ namespace Plugin {
                 returnResponse(false);
             }
 
+            if (!isWBParamSupported(colorStr, controlStr, colorTempStr)) {
+                LOGERR("%s: Unsupported WB parameters", __FUNCTION__);
+                returnResponse(false);
+            }
+
             int level = std::stoi(levelStr);
 
             // Validate based on Gain or Offset ranges
@@ -5980,31 +5990,27 @@ namespace Plugin {
             }
 
             // Get enums
-            tvWBColor_t color;
-            if (getWBColorEnumFromString(colorStr, color) == -1) {
-                LOGERR("%s: Invalid color string: %s", __FUNCTION__, colorStr.c_str());
-                returnResponse(false);
-            }
-
+            tvWBColor_t   color;
             tvWBControl_t control;
-            if (getWBControlEnumFromString(controlStr, control) == -1) {
-                LOGERR("%s: Invalid control string: %s", __FUNCTION__, controlStr.c_str());
-                returnResponse(false);
-            }
-
             tvColorTemp_t colorTemp;
-            if (getColorTempEnumFromString(colorTempStr, colorTemp) != 0) {
-                LOGERR("%s: Invalid color temperature string: %s", __FUNCTION__, colorTempStr.c_str());
+
+            if (getWBColorEnumFromString(colorStr, color) != 0 ||
+                getWBControlEnumFromString(controlStr, control) != 0 ||
+                getColorTempEnumFromString(colorTempStr, colorTemp) != 0) {
+                LOGERR("%s: WB enum conversion failed", __FUNCTION__);
                 returnResponse(false);
             }
-
             // Perform HAL call only if required
-            if (isSetRequiredForParam(parameters, "WhiteBalance")) {
-                LOGINFO("Calling HAL Set2PointWB(%d, %d, %d, %d)", colorTemp, color, control, level);
-                tvError_t halStatus = Set2PointWB(colorTemp, color, control, level);
-                if (halStatus != tvERROR_NONE) {
-                    LOGERR("%s: HAL Set2PointWB failed", __FUNCTION__);
-                    returnResponse(false);
+            tvColorTemp_t activeCT;
+            if (GetColorTemperature(&activeCT) == tvERROR_NONE &&
+                activeCT == colorTemp) {
+                if (isSetRequiredForParam(parameters, "WhiteBalance")) {
+                    LOGINFO("Calling HAL Set2PointWB(%d, %d, %d, %d)", colorTemp, color, control, level);
+                    tvError_t halStatus = Set2PointWB(colorTemp, color, control, level);
+                    if (halStatus != tvERROR_NONE) {
+                        LOGERR("%s: HAL Set2PointWB failed", __FUNCTION__);
+                        returnResponse(false);
+                    }
                 }
             }
 

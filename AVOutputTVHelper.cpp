@@ -3308,6 +3308,15 @@ namespace Plugin {
         return convertVideoFormatToStringV2(formatIndex);
     }
 
+    bool AVOutputTV::isWBParamSupported(const std::string& color,
+                                   const std::string& control,
+                                   const std::string& colorTemp)
+    {
+        return (std::find(m_wbColorList.begin(), m_wbColorList.end(), color) != m_wbColorList.end() &&
+                std::find(m_wbControlList.begin(), m_wbControlList.end(), control) != m_wbControlList.end() &&
+                std::find(m_wbColorTempList.begin(), m_wbColorTempList.end(), colorTemp) != m_wbColorTempList.end());
+    }
+
     bool AVOutputTV::isSetRequiredForParam(const JsonObject& parameters, const std::string& paramName)
     {
         // Get current state once
