@@ -404,6 +404,7 @@ class AVOutputTV : public AVOutputBase {
 		uint32_t generateStorageIdentifier(std::string &key, std::string forParam,paramIndex_t info);
 		uint32_t generateStorageIdentifierCMS(std::string &key, std::string forParam, paramIndex_t info);
 		uint32_t generateStorageIdentifierWB(std::string &key, std::string forParam, paramIndex_t info);
+		uint32_t generateStorageIdentifierWBV2(std::string &key, std::string forParam, paramIndex_t info);
 		uint32_t generateStorageIdentifierDirty(std::string &key, std::string forParam,uint32_t contentFormat, int pqmode);
 
 		std::string getErrorString (tvError_t eReturn);
@@ -536,6 +537,7 @@ class AVOutputTV : public AVOutputBase {
 		int syncAvoutputTVPQModeParamsToHALV2(std::string pqmode, std::string source, std::string format);
 		std::string getCMSNameFromEnum(tvDataComponentColor_t colorEnum);
         void syncCMSParamsV2();
+		void syncWBParamsV2();
 
 		// Thread pool for non-blocking parameter updates
 		std::queue<std::function<void()>> paramUpdateQueue;
@@ -675,6 +677,27 @@ class AVOutputTV : public AVOutputBase {
 		std::unordered_map<std::string, int> m_cmsIndexMap;
 		tvContextCaps_t* m_cmsCaps = nullptr;
 		tvError_t m_cmsStatus = tvERROR_NONE;
+
+		int m_minWBOffset = 0;
+		int m_maxWBOffset = 0;
+		int m_minWBGain = 0;
+		int m_maxWBGain = 0;
+		tvColorTemp_t*      m_wbColorTempArr = nullptr;
+		tvWBColor_t*        m_wbColorArr = nullptr;
+		tvWBControl_t*      m_wbControlArr = nullptr;
+		size_t m_numWBColorTemp = 0;
+		size_t m_numWBColor     = 0;
+		size_t m_numWBControl   = 0;
+		std::vector<std::string> m_wbColorList;
+		std::vector<std::string> m_wbControlList;
+		std::vector<std::string> m_wbColorTempList;
+		tvContextCaps_t* m_wbContextCaps = nullptr;
+		tvError_t m_wbStatus = tvERROR_NONE;
+		void populateWBStringListsFromCaps();
+		bool isWBParamSupported(const std::string& color,
+                                const std::string& control,
+                                const std::string& colorTemp);
+
 
 		bool setCMSParam(const JsonObject& parameters);
 

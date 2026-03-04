@@ -5742,184 +5742,350 @@ namespace Plugin {
     uint32_t AVOutputTV::get2PointWB(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
+        if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            capDetails_t inputInfo;
+            paramIndex_t indexInfo;
+            int level = 0;
+            tvPQParameterIndex_t tvPQEnum;
 
-        capDetails_t inputInfo;
-        paramIndex_t indexInfo;
-        int level = 0;
-        tvPQParameterIndex_t tvPQEnum;
+            inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
+            inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
 
-        inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
-        inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
+            if( inputInfo.color.empty() || inputInfo.control.empty() ) {
+                LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
+                returnResponse(false);
+            }
 
-        if( inputInfo.color.empty() || inputInfo.control.empty() ) {
-            LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
-            returnResponse(false);
+            if (isPlatformSupport("WhiteBalance") != 0) {
+                returnResponse(false);
+            }
+
+            if (parsingGetInputArgument(parameters, "WhiteBalance", inputInfo) != 0) {
+                LOGINFO("%s: Failed to parse argument\n", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if (getParamIndex("WhiteBalance", inputInfo,indexInfo) == -1) {
+                LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
+                LOGINFO("%s: Control/Color Param Not Found \n",__FUNCTION__);
+                returnResponse(false);
+            }
+
+            int err = getLocalparam("WhiteBalance",indexInfo,level, tvPQEnum);
+            if( err == 0 ) {
+                response["level"] = level;
+                LOGINFO("Exit : params Value: %d \n", level);
+                returnResponse(true);
+            }
+            else {
+                returnResponse(false);
+            }
         }
+        else
+        {
+            std::string color = parameters.HasLabel("color") ? parameters["color"].String() : "";
+            std::string control = parameters.HasLabel("control") ? parameters["control"].String() : "";
+            std::string colorTemp = parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
 
-        if (isPlatformSupport("WhiteBalance") != 0) {
-            returnResponse(false);
-        }
+            if (color.empty() || control.empty() || colorTemp.empty()) {
+                LOGERR("%s : 'color', 'control' or 'colorTemperature' param missing\n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if (parsingGetInputArgument(parameters, "WhiteBalance", inputInfo) != 0) {
-            LOGINFO("%s: Failed to parse argument\n", __FUNCTION__);
-            returnResponse(false);
-        }
+            if (!isWBParamSupported(color, control, colorTemp)) {
+                LOGERR("%s: Unsupported WB parameters", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if (getParamIndex("WhiteBalance", inputInfo,indexInfo) == -1) {
-            LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
-            returnResponse(false);
-        }
+            // Get valid context based on pictureMode/videoSource/videoFormat parameters
+            tvConfigContext_t validContext = getValidContextFromGetParameters(parameters, "WhiteBalance");
+            if (validContext.videoSrcType == VIDEO_SOURCE_ALL &&
+                validContext.videoFormatType == VIDEO_FORMAT_NONE &&
+                validContext.pq_mode == PQ_MODE_INVALID) {
+                LOGERR("%s : No valid context resolved\n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
-            LOGINFO("%s: Control/Color Param Not Found \n",__FUNCTION__);
-            returnResponse(false);
-        }
+            // Initialize param index with context info
+            paramIndex_t indexInfo {
+                .sourceIndex = static_cast<uint8_t>(validContext.videoSrcType),
+                .pqmodeIndex = static_cast<uint8_t>(validContext.pq_mode),
+                .formatIndex = static_cast<uint8_t>(validContext.videoFormatType),
+                .colorIndex = 0,
+                .componentIndex = 0,
+                .colorTempIndex = 0,
+                .controlIndex = 0
+            };
 
-        int err = getLocalparam("WhiteBalance",indexInfo,level, tvPQEnum);
-        if( err == 0 ) {
+            // Map colorTemperature to enum
+            tvColorTemp_t colorTempEnum;
+            if (getColorTempEnumFromString(colorTemp, colorTempEnum) != 0) {
+                LOGERR("%s : Invalid colorTemperature value: %s\n", __FUNCTION__, colorTemp.c_str());
+                returnResponse(false);
+            }
+            indexInfo.colorTempIndex = static_cast<uint8_t>(colorTempEnum);
+
+            // Map color string to tvWBColor_t
+            tvWBColor_t colorEnum;
+            if (getWBColorEnumFromString(color, colorEnum) != 0) {
+                LOGERR("%s : Invalid color value: %s\n", __FUNCTION__, color.c_str());
+                returnResponse(false);
+            }
+            indexInfo.colorIndex = static_cast<uint8_t>(colorEnum);
+
+            // Map control string to tvWBControl_t
+            tvWBControl_t controlEnum;
+            if (getWBControlEnumFromString(control, controlEnum) != 0) {
+                LOGERR("%s : Invalid control value: %s\n", __FUNCTION__, control.c_str());
+                returnResponse(false);
+            }
+            indexInfo.controlIndex = static_cast<uint8_t>(controlEnum);
+
+            // Fetch current level from localparam
+            int level = 0;
+            if (getLocalparam("WhiteBalance", indexInfo, level, PQ_PARAM_WB_GAIN_RED /* dummy */) != 0) {
+                LOGERR("%s : WB getLocalparam failed (%s/%s/%s)\n",
+                                    __FUNCTION__,
+                                    colorTemp.c_str(),
+                                    color.c_str(),
+                                    control.c_str());
+                returnResponse(false);
+            }
+
             response["level"] = level;
-            LOGINFO("Exit : params Value: %d \n", level);
+            LOGINFO("Exit: WhiteBalance %s/%s/%s level = %d\n", control.c_str(), color.c_str(), colorTemp.c_str(), level);
             returnResponse(true);
-        }
-        else {
-            returnResponse(false);
         }
     }
 
     uint32_t AVOutputTV::set2PointWB(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
+        if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            capDetails_t inputInfo;
+            int level = 0;
+            tvPQParameterIndex_t tvPQEnum;
+            int retVal = 0;
+            std::string color,control,value;
+            tvError_t ret = tvERROR_NONE;
 
-        capDetails_t inputInfo;
-        int level = 0;
-        tvPQParameterIndex_t tvPQEnum;
-        int retVal = 0;
-        std::string color,control,value;
-        tvError_t ret = tvERROR_NONE;
+            inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
+            inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
 
-        inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
-        inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
-
-        if (isPlatformSupport("WhiteBalance") != 0) {
-            returnResponse(false);
-        }
-
-        if( inputInfo.color.empty() || inputInfo.control.empty()  ) {
-            LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
-            returnResponse(false);
-        }
-
-        value = parameters.HasLabel("level") ? parameters["level"].String() : "";
-        returnIfParamNotFound(parameters,"level");
-        level = std::stoi(value);
-
-        if (validateWBParameter("WhiteBalance",inputInfo.control,level) != 0) {
-            LOGERR("%s: CMS Failed in range validation", __FUNCTION__);
-            returnResponse(false);
-        }
-
-        if (parsingSetInputArgument(parameters,"WhiteBalance",inputInfo) != 0) {
-            LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
-            returnResponse(false);
-        }
-
-        if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
-            LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
-            returnResponse(false);
-        }
-
-        if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
-            LOGERR("%s: %s/%s Param Not Found \n",__FUNCTION__,inputInfo.component.c_str(),inputInfo.color.c_str());
-            returnResponse(false);
-        }    
-
-        if( (isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format))) {
-            LOGINFO("Proceed with %s\n",__FUNCTION__);
-
-            tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
-            tvError_t ret = GetCurrentVideoSource(&currentSource);
-
-            if(ret != tvERROR_NONE) {
-                LOGWARN("%s: GetCurrentVideoSource( ) Failed \n",__FUNCTION__);
-                return -1;
-            }
-    
-            tvWBColor_t colorLevel;
-            if ( getWBColorEnumFromString(inputInfo.color,colorLevel ) == -1 ) {
-                LOGERR("%s : GetColorEnumFromString Failed!!! ",__FUNCTION__);
-                return -1;
-            }
-	
-            tvWBControl_t controlLevel;
-            if ( getWBControlEnumFromString(inputInfo.control,controlLevel ) == -1 ) {
-                LOGERR("%s : GetComponentEnumFromString Failed!!! ",__FUNCTION__);
-                return -1;
-            }
-             
-            ret = SetCustom2PointWhiteBalance(colorLevel,controlLevel,level);
-        }       
-
-        if(ret != tvERROR_NONE) {
-            LOGERR("%s: Failed to set WhiteBalance\n",__FUNCTION__);
-            returnResponse(false);
-        }
-        else  {
-            retVal= updateAVoutputTVParam("set","WhiteBalance",inputInfo,tvPQEnum,level);
-            if(retVal != 0 ) {
-                LOGERR("%s : Failed to Save WB %s/%s : %d to ssm_data\n",__FUNCTION__,inputInfo.control.c_str(),inputInfo.color.c_str(),level);
+            if (isPlatformSupport("WhiteBalance") != 0) {
                 returnResponse(false);
             }
-            LOGINFO("Exit : set2PointWB %s/%s successful to value: %d\n", inputInfo.control.c_str(),inputInfo.color.c_str(),level);
+
+            if( inputInfo.color.empty() || inputInfo.control.empty()  ) {
+                LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
+                returnResponse(false);
+            }
+
+            value = parameters.HasLabel("level") ? parameters["level"].String() : "";
+            returnIfParamNotFound(parameters,"level");
+            level = std::stoi(value);
+
+            if (validateWBParameter("WhiteBalance",inputInfo.control,level) != 0) {
+                LOGERR("%s: CMS Failed in range validation", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if (parsingSetInputArgument(parameters,"WhiteBalance",inputInfo) != 0) {
+                LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
+                LOGERR("%s: %s/%s Param Not Found \n",__FUNCTION__,inputInfo.component.c_str(),inputInfo.color.c_str());
+                returnResponse(false);
+            }
+
+            if( (isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format))) {
+                LOGINFO("Proceed with %s\n",__FUNCTION__);
+
+                tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
+                tvError_t ret = GetCurrentVideoSource(&currentSource);
+
+                if(ret != tvERROR_NONE) {
+                    LOGWARN("%s: GetCurrentVideoSource( ) Failed \n",__FUNCTION__);
+                    return -1;
+                }
+
+                tvWBColor_t colorLevel;
+                if ( getWBColorEnumFromString(inputInfo.color,colorLevel ) == -1 ) {
+                    LOGERR("%s : GetColorEnumFromString Failed!!! ",__FUNCTION__);
+                    return -1;
+                }
+
+                tvWBControl_t controlLevel;
+                if ( getWBControlEnumFromString(inputInfo.control,controlLevel ) == -1 ) {
+                    LOGERR("%s : GetComponentEnumFromString Failed!!! ",__FUNCTION__);
+                    return -1;
+                }
+
+                ret = SetCustom2PointWhiteBalance(colorLevel,controlLevel,level);
+            }
+
+            if(ret != tvERROR_NONE) {
+                LOGERR("%s: Failed to set WhiteBalance\n",__FUNCTION__);
+                returnResponse(false);
+            }
+            else  {
+                retVal= updateAVoutputTVParam("set","WhiteBalance",inputInfo,tvPQEnum,level);
+                if(retVal != 0 ) {
+                    LOGERR("%s : Failed to Save WB %s/%s : %d to ssm_data\n",__FUNCTION__,inputInfo.control.c_str(),inputInfo.color.c_str(),level);
+                    returnResponse(false);
+                }
+                LOGINFO("Exit : set2PointWB %s/%s successful to value: %d\n", inputInfo.control.c_str(),inputInfo.color.c_str(),level);
+                returnResponse(true);
+            }
+        }
+        else
+        {
+            // Extract params
+            std::string colorTempStr = parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
+            std::string colorStr   = parameters.HasLabel("color")            ? parameters["color"].String()            : "";
+            std::string controlStr = parameters.HasLabel("control")          ? parameters["control"].String()          : "";
+            std::string levelStr   = parameters.HasLabel("level")            ? parameters["level"].String()            : "";
+
+            if (colorStr.empty() || controlStr.empty() || levelStr.empty() || colorTempStr.empty()) {
+                LOGERR("%s: Missing one of required params: color/control/level/colorTemperature", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if (!isWBParamSupported(colorStr, controlStr, colorTempStr)) {
+                LOGERR("%s: Unsupported WB parameters", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            int level = std::stoi(levelStr);
+
+            // Validate based on Gain or Offset ranges
+            int minVal = 0, maxVal = 0;
+            if (controlStr == "Gain") {
+                minVal = m_minWBGain;
+                maxVal = m_maxWBGain;
+            } else if (controlStr == "Offset") {
+                minVal = m_minWBOffset;
+                maxVal = m_maxWBOffset;
+            } else {
+                LOGERR("%s: Unknown control type: %s", __FUNCTION__, controlStr.c_str());
+                returnResponse(false);
+            }
+
+            if (level < minVal || level > maxVal) {
+                LOGERR("%s: Level %d out of range for control %s (%d - %d)", __FUNCTION__, level, controlStr.c_str(), minVal, maxVal);
+                returnResponse(false);
+            }
+
+            // Get enums
+            tvWBColor_t   color;
+            tvWBControl_t control;
+            tvColorTemp_t colorTemp;
+
+            if (getWBColorEnumFromString(colorStr, color) != 0 ||
+                getWBControlEnumFromString(controlStr, control) != 0 ||
+                getColorTempEnumFromString(colorTempStr, colorTemp) != 0) {
+                LOGERR("%s: WB enum conversion failed", __FUNCTION__);
+                returnResponse(false);
+            }
+            // Perform HAL call only if required
+            tvColorTemp_t activeCT;
+            if (GetColorTemperature(&activeCT) == tvERROR_NONE &&
+                activeCT == colorTemp) {
+                if (isSetRequiredForParam(parameters, "WhiteBalance")) {
+                    LOGINFO("Calling HAL Set2PointWB(%d, %d, %d, %d)", colorTemp, color, control, level);
+                    tvError_t halStatus = Set2PointWB(colorTemp, color, control, level);
+                    if (halStatus != tvERROR_NONE) {
+                        LOGERR("%s: HAL Set2PointWB failed", __FUNCTION__);
+                        returnResponse(false);
+                    }
+                }
+            }
+
+            int persistStatus = updateAVoutputTVParamV2("set", "WhiteBalance", parameters, PQ_PARAM_WB_GAIN_RED, level);
+            if (persistStatus != 0) {
+                LOGERR("%s: Persistence failed for %s/%s", __FUNCTION__, controlStr.c_str(), colorStr.c_str());
+                returnResponse(false);
+            }
+
+            LOGINFO("Exit: set2PointWB %s/%s/%s = %d", colorStr.c_str(), controlStr.c_str(), colorTempStr.c_str(), level);
             returnResponse(true);
         }
+
     }
 
     uint32_t AVOutputTV::reset2PointWB(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
+        if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            capDetails_t inputInfo;
+            tvPQParameterIndex_t tvPQEnum;
+            int retVal = 0;
+            int level = 0;
+            std::string color,control;
+            inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
+            inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
 
-        capDetails_t inputInfo;
-        tvPQParameterIndex_t tvPQEnum;
-        int retVal = 0;
-        int level = 0;
-        std::string color,control;
-        inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
-        inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
+            if (isPlatformSupport("WhiteBalance") != 0) {
+                returnResponse(false);
+            }
 
-        if (isPlatformSupport("WhiteBalance") != 0) {
-            returnResponse(false);
-        }
+            if (parsingSetInputArgument(parameters,"WhiteBalance",inputInfo) != 0) {
+                LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if (parsingSetInputArgument(parameters,"WhiteBalance",inputInfo) != 0) {
-            LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
-            returnResponse(false);
-        }
+            if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
-            LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
-            returnResponse(false);
-        }
+            for( int colorIndex= tvWB_COLOR_RED; colorIndex < tvWB_COLOR_MAX; colorIndex++)  {
+                for(int controlIndex = tvWB_CONTROL_GAIN;controlIndex < tvWB_CONTROL_MAX;controlIndex++) {
+                    inputInfo.control = getWBControlStringFromEnum((tvWBControl_t)controlIndex);
+                    inputInfo.color   = getWBColorStringFromEnum((tvWBColor_t)colorIndex);
+                    if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
+                        LOGERR("%s: %s/%s Param Not Found \n",__FUNCTION__,inputInfo.control.c_str(),inputInfo.color.c_str());
+                        returnResponse(false);
+                    }
 
-        for( int colorIndex= tvWB_COLOR_RED; colorIndex < tvWB_COLOR_MAX; colorIndex++)  {
-            for(int controlIndex = tvWB_CONTROL_GAIN;controlIndex < tvWB_CONTROL_MAX;controlIndex++) {
-                inputInfo.control = getWBControlStringFromEnum((tvWBControl_t)controlIndex);
-                inputInfo.color   = getWBColorStringFromEnum((tvWBColor_t)colorIndex);
-                if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
-                    LOGERR("%s: %s/%s Param Not Found \n",__FUNCTION__,inputInfo.control.c_str(),inputInfo.color.c_str());
-                    returnResponse(false);
-                }    
+                    retVal |= updateAVoutputTVParam("reset","WhiteBalance",inputInfo,tvPQEnum,level);
+                }
+            }
 
-                retVal |= updateAVoutputTVParam("reset","WhiteBalance",inputInfo,tvPQEnum,level);
+            if( retVal != 0 ) {
+                LOGWARN("Failed to reset WhiteBalance\n");
+                returnResponse(false);
+            }
+            else {
+                LOGINFO("Exit : reset2PointWB successful \n");
+                returnResponse(true);
             }
         }
-
-        if( retVal != 0 ) {
-            LOGWARN("Failed to reset WhiteBalance\n");
-            returnResponse(false);
-        }
-        else {        
-            LOGINFO("Exit : reset2PointWB successful \n");
-            returnResponse(true);
+        else
+        {
+            int persistStatus = updateAVoutputTVParamV2("reset", "WhiteBalance", parameters, PQ_PARAM_WB_GAIN_RED, 0);
+            if (persistStatus != 0) {
+                LOGERR("Failed to reset WhiteBalance\n");
+                returnResponse(false);
+            }
+            else {
+                LOGINFO("Exit : reset2PointWB successful \n");
+                returnResponse(true);
+            }
         }
     }
 
@@ -5928,17 +6094,19 @@ namespace Plugin {
         LOGINFO("Entry: get2PointWBCapsV2");
 
         int min_gain = 0, min_offset = 0, max_gain = 0, max_offset = 0;
+        tvColorTemp_t* colorTempArray = nullptr;
         tvWBColor_t* colorArray = nullptr;
         tvWBControl_t* controlArray = nullptr;
-        size_t num_color = 0, num_control = 0;
+        size_t num_colorTemp = 0, num_color = 0, num_control = 0;
         tvContextCaps_t* context_caps = nullptr;
 
-        tvError_t ret = GetCustom2PointWhiteBalanceCaps(&min_gain, &min_offset, &max_gain, &max_offset,
-                                                        &colorArray, &controlArray,
-                                                        &num_color, &num_control, &context_caps);
+        tvError_t ret = Get2PointWBCaps(&min_gain, &min_offset, &max_gain, &max_offset,
+                                        &colorArray, &colorTempArray, &controlArray,
+                                        &num_colorTemp, &num_color, &num_control,
+                                        &context_caps);
 
         if (ret != tvERROR_NONE) {
-            LOGERR("GetCustom2PointWhiteBalanceCaps failed with error: %d", ret);
+            LOGERR("Get2PointWBCaps failed with error: %d", ret);
             response["platformSupport"] = false;
             returnResponse(false);
         }
@@ -5968,6 +6136,15 @@ namespace Plugin {
             colorJson.Add(getWBColorStringFromEnum(colorArray[i]));
         }
         response["color"] = colorJson;
+
+        // ColorTemperature Info
+        JsonArray colorTempJson;
+        for (size_t i = 0; i < num_colorTemp; ++i) {
+            std::string tempStr;
+            getColorTempStringFromEnum(static_cast<int>(colorTempArray[i]), tempStr);
+            colorTempJson.Add(tempStr);
+        }
+        response["colorTemperature"] = colorTempJson;
         response["context"] = parseContextCaps(context_caps);
 
 
