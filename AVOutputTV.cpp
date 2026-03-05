@@ -1238,7 +1238,7 @@ namespace Plugin {
         response["platformSupport"] = platformSupport;
 
         for (size_t i = 0; i < num_component; ++i) {
-            Core::JSON::Object range;
+            JsonObject range;
 
             switch (component[i]) {
                 case tvDVCalibrationComponent_TMAX:
@@ -1379,7 +1379,7 @@ namespace Plugin {
             if (parameters.HasLabel(key)) {
                 Core::JSON::Double numField;
                 numField.FromString(parameters[key].Value().c_str());
-                overrideValues[comp] = static_cast<double>(numField.Value());
+                overrideValues[comp] = numField.Value();
                 presentFields.push_back(comp);
             }
         }
