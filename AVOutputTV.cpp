@@ -1222,88 +1222,91 @@ namespace Plugin {
         returnResponse(platformSupport);
     }
 
-    uint32_t AVOutputTV::getDolbyVisionCalibrationCaps(const JsonObject& parameters, JsonObject& response)
+    uint32_t AVOutputTV::getDolbyVisionCalibrationCaps(const JsonObject& parameters,
+                                                    JsonObject& response)
     {
-        tvDVCalibrationSettings_t* min_values = nullptr;
-        tvDVCalibrationSettings_t* max_values = nullptr;
-        tvDVCalibrationComponent_t* component = nullptr;
-        size_t num_component = 0;
-        tvContextCaps_t* context_caps = nullptr;
+        tvDVCalibrationSettings_t* minValues = nullptr;
+        tvDVCalibrationSettings_t* maxValues = nullptr;
+        tvDVCalibrationComponent_t* components = nullptr;
+        size_t numComponents = 0;
+        tvContextCaps_t* contextCaps = nullptr;
 
-        if (GetDVCalibrationCaps(&min_values, &max_values, &component, &num_component, &context_caps) != tvERROR_NONE) {
+        if (GetDVCalibrationCaps(&minValues, &maxValues,
+                                &components, &numComponents,
+                                &contextCaps) != tvERROR_NONE) {
             returnResponse(false);
         }
 
-        bool platformSupport = (num_component > 0);
+        bool platformSupport = (numComponents > 0);
         response["platformSupport"] = platformSupport;
 
-        for (size_t i = 0; i < num_component; ++i) {
+        for (size_t i = 0; i < numComponents; ++i) {
             JsonObject range;
 
-            switch (component[i]) {
+            switch (components[i]) {
                 case tvDVCalibrationComponent_TMAX:
-                    range["from"] = min_values[i].Tmax;
-                    range["to"]   = max_values[i].Tmax;
+                    range["from"] = minValues->Tmax;
+                    range["to"]   = maxValues->Tmax;
                     response["rangeTmax"] = range;
                     break;
 
                 case tvDVCalibrationComponent_TMIN:
-                    range["from"] = min_values[i].Tmin;
-                    range["to"]   = max_values[i].Tmin;
+                    range["from"] = minValues->Tmin;
+                    range["to"]   = maxValues->Tmin;
                     response["rangeTmin"] = range;
                     break;
 
                 case tvDVCalibrationComponent_TGAMMA:
-                    range["from"] = min_values[i].Tgamma;
-                    range["to"]   = max_values[i].Tgamma;
+                    range["from"] = minValues->Tgamma;
+                    range["to"]   = maxValues->Tgamma;
                     response["rangeTgamma"] = range;
                     break;
 
                 case tvDVCalibrationComponent_RX:
-                    range["from"] = min_values[i].Rx;
-                    range["to"]   = max_values[i].Rx;
+                    range["from"] = minValues->Rx;
+                    range["to"]   = maxValues->Rx;
                     response["rangeRx"] = range;
                     break;
 
                 case tvDVCalibrationComponent_RY:
-                    range["from"] = min_values[i].Ry;
-                    range["to"]   = max_values[i].Ry;
+                    range["from"] = minValues->Ry;
+                    range["to"]   = maxValues->Ry;
                     response["rangeRy"] = range;
                     break;
 
                 case tvDVCalibrationComponent_GX:
-                    range["from"] = min_values[i].Gx;
-                    range["to"]   = max_values[i].Gx;
+                    range["from"] = minValues->Gx;
+                    range["to"]   = maxValues->Gx;
                     response["rangeGx"] = range;
                     break;
 
                 case tvDVCalibrationComponent_GY:
-                    range["from"] = min_values[i].Gy;
-                    range["to"]   = max_values[i].Gy;
+                    range["from"] = minValues->Gy;
+                    range["to"]   = maxValues->Gy;
                     response["rangeGy"] = range;
                     break;
 
                 case tvDVCalibrationComponent_BX:
-                    range["from"] = min_values[i].Bx;
-                    range["to"]   = max_values[i].Bx;
+                    range["from"] = minValues->Bx;
+                    range["to"]   = maxValues->Bx;
                     response["rangeBx"] = range;
                     break;
 
                 case tvDVCalibrationComponent_BY:
-                    range["from"] = min_values[i].By;
-                    range["to"]   = max_values[i].By;
+                    range["from"] = minValues->By;
+                    range["to"]   = maxValues->By;
                     response["rangeBy"] = range;
                     break;
 
                 case tvDVCalibrationComponent_WX:
-                    range["from"] = min_values[i].Wx;
-                    range["to"]   = max_values[i].Wx;
+                    range["from"] = minValues->Wx;
+                    range["to"]   = maxValues->Wx;
                     response["rangeWx"] = range;
                     break;
 
                 case tvDVCalibrationComponent_WY:
-                    range["from"] = min_values[i].Wy;
-                    range["to"]   = max_values[i].Wy;
+                    range["from"] = minValues->Wy;
+                    range["to"]   = maxValues->Wy;
                     response["rangeWy"] = range;
                     break;
 
@@ -1312,10 +1315,9 @@ namespace Plugin {
             }
         }
 
-        response["context"] = parseContextCaps(context_caps);
+        response["context"] = parseContextCaps(contextCaps);
         returnResponse(platformSupport);
     }
-
     static const std::vector<std::string> kDVCalibrationComponents = {
         "tmax", "tmin", "tgamma", "rx", "ry", "gx", "gy", "bx", "by", "wx", "wy"
         };

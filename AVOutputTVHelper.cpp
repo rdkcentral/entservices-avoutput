@@ -3234,8 +3234,12 @@ namespace Plugin {
             );
         }
         tvContextCaps_t* caps = getCapsForParam(paramName);
-        LOGINFO("Looking for context: PQMode=%d, Format=%d, Source=%d",
-            validContext.pq_mode, validContext.videoFormatType, validContext.videoSrcType);
+        std::string pqStr  = convertPictureIndexToStringV2(validContext.pq_mode);
+        std::string fmtStr = convertVideoFormatToStringV2(validContext.videoFormatType);
+        std::string srcStr = convertSourceIndexToStringV2(validContext.videoSrcType);
+
+        LOGINFO("getValidContextFromGetParameters: Looking for context: PQMode=%s, Format=%s, Source=%s",
+        pqStr.c_str(), fmtStr.c_str(), srcStr.c_str());
         // Match context if caps exist
         if (caps && caps->num_contexts > 0) {
             for (size_t i = 0; i < caps->num_contexts; ++i) {
@@ -3244,7 +3248,7 @@ namespace Plugin {
                 if (available.videoSrcType == validContext.videoSrcType &&
                     available.videoFormatType == validContext.videoFormatType &&
                     available.pq_mode == validContext.pq_mode) {
-                    return available; // valid context found
+                    return available;
                 }
             }
         }
