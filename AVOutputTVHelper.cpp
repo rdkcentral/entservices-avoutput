@@ -3381,6 +3381,7 @@ namespace Plugin {
         else if (paramName == "CMS") caps = m_cmsCaps;
         else if (paramName == "SDRGamma") caps = m_sdrGammaModeCaps;
         else if (paramName == "DimmingLevel") caps = m_dimmingLevelCaps;
+        else if (paramName == "DolbyVisionCalibration") caps = m_dvCalibrationCaps;
         else {
             LOGERR("Unknown ParamName: %s", paramName.c_str());
             return nullptr;
