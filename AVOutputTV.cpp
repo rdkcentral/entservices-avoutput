@@ -370,7 +370,12 @@ namespace Plugin {
         registerMethod("getColorTemperatureCapsV2", &AVOutputTV::getColorTemperatureCapsV2, this);
         registerMethod("getBacklightDimmingModeCapsV2", &AVOutputTV::getBacklightDimmingModeCapsV2, this);
         registerMethod("getZoomModeCapsV2", &AVOutputTV::getZoomModeCapsV2, this);
+
         registerMethod("getDolbyVisionCalibrationCaps", &AVOutputTV::getDolbyVisionCalibrationCaps, this);
+        registerMethod("getDolbyVisionCalibration", &AVOutputTV::getDolbyVisionCalibration, this);
+        registerMethod("setDolbyVisionCalibration", &AVOutputTV::setDolbyVisionCalibration, this);
+        registerMethod("resetDolbyVisionCalibration", &AVOutputTV::resetDolbyVisionCalibration, this);
+
         registerMethod("getPictureModeCapsV2", &AVOutputTV::getPictureModeCapsV2, this);
         registerMethod("getAutoBacklightModeCapsV2", &AVOutputTV::getAutoBacklightModeCapsV2, this);
         registerMethod("getCMSCapsV2", &AVOutputTV::getCMSCapsV2, this);
@@ -1220,7 +1225,181 @@ namespace Plugin {
 
     uint32_t AVOutputTV::getDolbyVisionCalibrationCaps(const JsonObject& parameters, JsonObject& response)
     {
+        tvDVCalibrationSettings_t* min_values = nullptr;
+        tvDVCalibrationSettings_t* max_values = nullptr;
+        tvDVCalibrationComponent_t* component = nullptr;
+        size_t num_component = 0;
+        tvContextCaps_t* context_caps = nullptr;
+
+        if (GetDVCalibrationCaps(&min_values, &max_values, &component, &num_component, &context_caps) != tvERROR_NONE) {
+            returnResponse(false);
+        }
+
+        bool platformSupport = (num_component > 0);
+        response["platformSupport"] = platformSupport;
+
+        for (size_t i = 0; i < num_component; ++i) {
+            switch (component[i]) {
+                case tvDVCalibrationComponent_TMAX:
+                    response["rangeTmax"]["from"] = min_values[i].Tmax;
+                    response["rangeTmax"]["to"]   = max_values[i].Tmax;
+                    break;
+                case tvDVCalibrationComponent_TMIN:
+                    response["rangeTmin"]["from"] = min_values[i].Tmin;
+                    response["rangeTmin"]["to"]   = max_values[i].Tmin;
+                    break;
+                case tvDVCalibrationComponent_TGAMMA:
+                    response["rangeTgamma"]["from"] = min_values[i].Tgamma;
+                    response["rangeTgamma"]["to"]   = max_values[i].Tgamma;
+                    break;
+                case tvDVCalibrationComponent_RX:
+                    response["rangeRx"]["from"] = min_values[i].Rx;
+                    response["rangeRx"]["to"]   = max_values[i].Rx;
+                    break;
+                case tvDVCalibrationComponent_RY:
+                    response["rangeRy"]["from"] = min_values[i].Ry;
+                    response["rangeRy"]["to"]   = max_values[i].Ry;
+                    break;
+                case tvDVCalibrationComponent_GX:
+                    response["rangeGx"]["from"] = min_values[i].Gx;
+                    response["rangeGx"]["to"]   = max_values[i].Gx;
+                    break;
+                case tvDVCalibrationComponent_GY:
+                    response["rangeGy"]["from"] = min_values[i].Gy;
+                    response["rangeGy"]["to"]   = max_values[i].Gy;
+                    break;
+                case tvDVCalibrationComponent_BX:
+                    response["rangeBx"]["from"] = min_values[i].Bx;
+                    response["rangeBx"]["to"]   = max_values[i].Bx;
+                    break;
+                case tvDVCalibrationComponent_BY:
+                    response["rangeBy"]["from"] = min_values[i].By;
+                    response["rangeBy"]["to"]   = max_values[i].By;
+                    break;
+                case tvDVCalibrationComponent_WX:
+                    response["rangeWx"]["from"] = min_values[i].Wx;
+                    response["rangeWx"]["to"]   = max_values[i].Wx;
+                    break;
+                case tvDVCalibrationComponent_WY:
+                    response["rangeWy"]["from"] = min_values[i].Wy;
+                    response["rangeWy"]["to"]   = max_values[i].Wy;
+                    break;
+                default: break;
+            }
+        }
+        response["context"] = parseContextCaps(context_caps);
+        returnResponse(platformSupport);
+    }
+
+    static const std::vector<std::string> kDVCalibrationComponents = {
+        "tmax", "tmin", "tgamma", "rx", "ry", "gx", "gy", "bx", "by", "wx", "wy"
+        };
+
+    uint32_t AVOutputTV::getDolbyVisionCalibration(const JsonObject& parameters, JsonObject& response)
+    {
+        if (!m_isDVCalibrationPlatformSupported) returnResponse(false);
+
+        tvConfigContext_t ctx = getValidContextFromGetParameters(parameters, "DolbyVisionCalibration");
+        if (ctx.pq_mode == PQ_MODE_INVALID) returnResponse(false);
+
+        JsonObject calib;
+        paramIndex_t indexInfo = { static_cast<uint8_t>(ctx.videoSrcType),
+                static_cast<uint8_t>(ctx.pq_mode),
+                static_cast<uint8_t>(ctx.videoFormatType)
+        };
+        for (const auto& comp : kDVCalibrationComponents) {
+            double val = 0.0;
+            if (getDVCalibrationParam("DolbyVisionCalibration", indexInfo, val, comp) == tvERROR_NONE) {
+                calib[comp.c_str()] = val;
+            }
+        }
+
+        std::string pq = convertPictureIndexToStringV2(indexInfo.pqmodeIndex);
+        std::string src = convertSourceIndexToStringV2(indexInfo.sourceIndex);
+        std::string fmt = convertVideoFormatToStringV2(indexInfo.formatIndex);
+        uint64_t ts = getLastDVCalibrationSetTimestamp(pq, src, fmt);
+        response = calib;
+        response["utcTimestamp"] = static_cast<double>(ts);
         returnResponse(true);
+    }
+
+    uint32_t AVOutputTV::setDolbyVisionCalibration(const JsonObject& parameters, JsonObject& response)
+    {
+        if (!m_isDVCalibrationPlatformSupported) {
+            LOGERR("DV Calibration not supported on this platform");
+            returnResponse(false);
+        }
+
+        std::vector<tvConfigContext_t> contexts = getValidContextsFromParameters(parameters, "DolbyVisionCalibration");
+        if (contexts.empty()) {
+            LOGERR("No valid context found for DV Calibration");
+            returnResponse(false);
+        }
+
+        if (!parameters.HasLabel("utcTimestamp")) {
+            LOGERR("Missing required parameter: utcTimestamp");
+            returnResponse(false);
+        }
+
+        Core::JSON::DecUInt64 tsField;
+        tsField.FromString(parameters["utcTimestamp"].Value().c_str());
+        uint64_t timestamp = tsField.Value();
+
+        std::map<std::string, double> overrideValues;
+        std::vector<std::string> presentFields;
+
+        // Collect override values
+        for (const auto& comp : kDVCalibrationComponents) {
+            const char* key = comp.c_str();
+            if (parameters.HasLabel(key)) {
+                Core::JSON::DecDouble numField;
+                numField.FromString(parameters[key].Value().c_str());
+                overrideValues[comp] = static_cast<double>(numField.Value());
+                presentFields.push_back(comp);
+            }
+        }
+
+        // Validate that either all or only one component is present
+        if (presentFields.size() != 1 && presentFields.size() != kDVCalibrationComponents.size()) {
+            LOGERR("Must provide either exactly one or all DV calibration parameters");
+            returnResponse(false);
+        }
+
+        // Apply calibration update
+        tvError_t result = updateDVCalibration(contexts, presentFields, overrideValues, "set");
+
+        // Save timestamp per context
+        for (const auto& ctx : contexts) {
+            paramIndex_t index {
+                static_cast<uint8_t>(ctx.videoSrcType),
+                static_cast<uint8_t>(ctx.pq_mode),
+                static_cast<uint8_t>(ctx.videoFormatType)
+            };
+            setDVCalibrationTimestamp(index, timestamp);
+        }
+
+        returnResponse(result == tvERROR_NONE);
+    }
+
+    uint32_t AVOutputTV::resetDolbyVisionCalibration(const JsonObject& parameters, JsonObject& response)
+    {
+        if (!m_isDVCalibrationPlatformSupported) returnResponse(false);
+
+        std::vector<tvConfigContext_t> contexts = getValidContextsFromParameters(parameters, "DolbyVisionCalibration");
+        if (contexts.empty()) returnResponse(false);
+
+        tvError_t ret = updateDVCalibration(contexts, kDVCalibrationComponents, {}, "reset");
+
+        uint64_t now = static_cast<uint64_t>(time(nullptr));
+        for (const auto& ctx : contexts) {
+            paramIndex_t idx = {
+                static_cast<uint8_t>(ctx.videoSrcType),
+                static_cast<uint8_t>(ctx.pq_mode),
+                static_cast<uint8_t>(ctx.videoFormatType)
+            };
+            setDVCalibrationTimestamp(idx, now);
+        }
+        returnResponse(ret == tvERROR_NONE);
     }
 
 
