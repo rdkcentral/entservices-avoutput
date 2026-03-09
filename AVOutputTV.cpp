@@ -22,6 +22,8 @@
 #include "UtilsIarm.h"
 #include "rfcapi.h"
 
+#include <telemetry_busmessage_sender.h>
+
 #define BUFFER_SIZE     (128)
 
 #define registerMethod(...) for (uint8_t i = 1; GetHandler(i); i++) GetHandler(i)->Register<JsonObject, JsonObject>(__VA_ARGS__)
@@ -6155,6 +6157,9 @@ namespace Plugin {
                 }
                 else {
                     LOGINFO("setLocalParam for %s Successful, Value: %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, value.c_str());
+
+                    std::string value = "setLocalParam for " + AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM + " Successful, Value: " + value;
+                    t2_event_s("AutoBLMode_split", (char*)value.c_str());
                 }
                 LOGINFO("Exit : SetAutoBacklightMode() value : %s\n",value.c_str());
                 returnResponse(true);
