@@ -6158,8 +6158,8 @@ namespace Plugin {
                 else {
                     LOGINFO("setLocalParam for %s Successful, Value: %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, value.c_str());
 
-                    std::string value = "setLocalParam for " + AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM + " Successful, Value: " + value;
-                    t2_event_s("AutoBLMode_split", (char*)value.c_str());
+                    std::string marker_msg = "setLocalParam for " + AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM + " Successful, Value: " + value;
+                    t2_event_s("AutoBLMode_split", (char*)marker_msg.c_str());
                 }
                 LOGINFO("Exit : SetAutoBacklightMode() value : %s\n",value.c_str());
                 returnResponse(true);
