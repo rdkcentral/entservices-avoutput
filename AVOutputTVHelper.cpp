@@ -1091,6 +1091,13 @@ namespace Plugin {
         bool set = !(action.compare("set"));
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
+
+        // Check for the platform support for the parameter.
+        if( isPlatformSupport(tr181ParamName) != 0 ) {
+            LOGERR("%s: Block set/reset/sync for unsupported feature %s\n", __FUNCTION__, tr181ParamName.c_str());
+            return -1;
+        }
+
         ret = getSaveConfig(tr181ParamName,info, values);
         if( 0 == ret ) {
             for( int sourceType: values.sourceValues ) {
