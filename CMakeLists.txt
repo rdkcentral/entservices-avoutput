@@ -91,6 +91,7 @@ target_link_libraries(${MODULE_NAME}
     PRIVATE
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
 
+target_link_libraries(-ltelemetry_msgsender)
 
 install(TARGETS ${MODULE_NAME} 
     DESTINATION lib/wpeframework/plugins)
