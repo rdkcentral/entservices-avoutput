@@ -110,3 +110,10 @@ mark_as_advanced(
     TELEMETRY_FOUND
     TELEMETRY_INCLUDE_DIRS
     TELEMETRY_LIBRARIES)
+
+find_package(Telemetry)
+
+if(TELEMETRY_FOUND)
+    target_link_libraries(${MODULE_NAME} PRIVATE ${TELEMETRY_LIBRARIES})
+    target_include_directories(${MODULE_NAME} PRIVATE ${TELEMETRY_INCLUDE_DIRS})
+endif()
