@@ -66,6 +66,8 @@ add_library(${MODULE_NAME} SHARED
 target_link_libraries(${MODULE_NAME} "-lglib-2.0 -lpthread -lIARMBus -lds")
 endif()
 
+target_link_libraries(${MODULE_NAME} PRIVATE -ltelemetry_msgsender)
+
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
