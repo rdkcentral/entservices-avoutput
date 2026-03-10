@@ -97,3 +97,16 @@ install(TARGETS ${MODULE_NAME}
     DESTINATION lib/wpeframework/plugins)
 
 write_config(${PLUGIN_NAME})
+
+find_package(PkgConfig)
+
+find_library(TELEMETRY_LIBRARIES NAMES telemetry_msgsender)
+find_path(TELEMETRY_INCLUDE_DIRS NAMES telemetry_busmessage_sender.h)
+
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(TELEMETRY DEFAULT_MSG TELEMETRY_INCLUDE_DIRS TELEMETRY_LIBRARIES)
+
+mark_as_advanced(
+    TELEMETRY_FOUND
+    TELEMETRY_INCLUDE_DIRS
+    TELEMETRY_LIBRARIES)
