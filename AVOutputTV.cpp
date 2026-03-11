@@ -5750,9 +5750,10 @@ namespace Plugin {
 
         inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
         inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
+        inputInfo.colorTemperature = parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
 
-        if( inputInfo.color.empty() || inputInfo.control.empty() ) {
-            LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
+        if( inputInfo.color.empty() || inputInfo.control.empty() || inputInfo.colorTemperature.empty() ) {
+            LOGERR("%s : Color/Control/ColorTemperature param not found!!!\n",__FUNCTION__);
             returnResponse(false);
         }
 
@@ -5799,13 +5800,14 @@ namespace Plugin {
 
         inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
         inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
+        inputInfo.colorTemperature = parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
 
         if (isPlatformSupport("WhiteBalance") != 0) {
             returnResponse(false);
         }
 
-        if( inputInfo.color.empty() || inputInfo.control.empty()  ) {
-            LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
+        if( inputInfo.color.empty() || inputInfo.control.empty() || inputInfo.colorTemperature.empty() ) {
+            LOGERR("%s : Color/Control/ColorTemperature param not found!!!\n",__FUNCTION__);
             returnResponse(false);
         }
 
@@ -5987,6 +5989,7 @@ namespace Plugin {
         JsonArray sourceArray;
         JsonArray colorArray;
         JsonArray controlArray;
+        JsonArray colorTempArray;
 
         JsonObject gainInfo;
         JsonObject offsetInfo;
@@ -6028,6 +6031,13 @@ namespace Plugin {
                     formatArray.Add(info.formatVector[index]);
                 }
                 response["videoFormatInfo"]=formatArray;
+            }
+
+            if ((info.colorTempVector.front()).compare("none") != 0) {
+                for (index = 0; index < info.colorTempVector.size(); index++) {
+                    colorTempArray.Add(info.colorTempVector[index]);
+                }
+                response["colorTemperatureInfo"]=colorTempArray;
             }
 
             if ((info.colorVector.front()).compare("none") != 0) {
