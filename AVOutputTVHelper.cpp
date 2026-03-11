@@ -288,15 +288,15 @@ namespace Plugin {
 
             indexInfo.controlIndex = controlLevel;
 
-            /*tvColorTemp_t colorTemp;
+            tvColorTemp_t colorTemp;
             if ( getColorTempEnumFromString(paramInfo.colorTemperature,colorTemp ) == -1 ) {
                 LOGERR("%s : GetComponentEnumFromString Failed!!! ",__FUNCTION__);
                 return -1;
             }
 
-            indexInfo.colorTempIndex = colorTemp; */
+            indexInfo.colorTempIndex = colorTemp;
 
-            LOGINFO("%s colorIndex : %d , controlIndex : %d \n",__FUNCTION__,indexInfo.colorIndex, indexInfo.controlIndex);
+            LOGINFO("%s colorIndex : %d , controlIndex : %d , colorTempIndex : %d \n",__FUNCTION__,indexInfo.colorIndex, indexInfo.controlIndex, indexInfo.colorTempIndex);
 
         }
 
@@ -524,7 +524,7 @@ namespace Plugin {
         }
         else if( param == "WhiteBalance")
         {
-            if ( ( paramInfo.color.find(inputInfo.color) == std::string::npos ) || ( paramInfo.control.find(inputInfo.control) == std::string::npos) )
+            if ( ( paramInfo.color.find(inputInfo.color) == std::string::npos ) || ( paramInfo.control.find(inputInfo.control) == std::string::npos) || ( paramInfo.colorTemperature.find(inputInfo.colorTemperature) == std::string::npos) )
                 return false;
         }
         //Compare capabilityInfo with Input params
@@ -3805,6 +3805,8 @@ namespace Plugin {
                 configString = param + ".control";
                 info.control = inFile.Get<std::string>(configString);
 
+                configString = param + ".ColorTemperature";
+                info.colorTemperature = inFile.Get<std::string>(configString);
             }
 
             if ((param == "DolbyVisionMode") || (param == "Backlight") || (param == "CMS") || (param == "CustomWhiteBalance") || (param == "HDRMode") || (param == "BacklightControl") || (param == "DimmingMode")) {
