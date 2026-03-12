@@ -1369,7 +1369,10 @@ namespace Plugin {
         }
 
         Core::JSON::DecUInt64 tsField;
-        tsField.FromString(parameters["utcTimestamp"].Value().c_str());
+        if (!tsField.FromString(parameters["utcTimestamp"].Value().c_str())) {
+            LOGERR("Invalid utcTimestamp value");
+            returnResponse(false);
+        }
         uint64_t timestamp = tsField.Value();
 
         std::map<std::string, double> overrideValues;
@@ -1377,10 +1380,12 @@ namespace Plugin {
 
         // Collect override values
         for (const auto& comp : kDVCalibrationComponents) {
-            const char* key = comp.c_str();
-            if (parameters.HasLabel(key)) {
+            if (parameters.HasLabel(comp.c_str())) {
                 Core::JSON::Double numField;
-                numField.FromString(parameters[key].Value().c_str());
+                if (!numField.FromString(parameters[comp.c_str()].Value().c_str())) {
+                    LOGERR("Invalid value for component %s", comp.c_str());
+                    returnResponse(false);
+                }
                 overrideValues[comp] = numField.Value();
                 presentFields.push_back(comp);
             }
@@ -1396,13 +1401,15 @@ namespace Plugin {
         tvError_t result = updateDVCalibration(contexts, presentFields, overrideValues, "set");
 
         // Save timestamp per context
-        for (const auto& ctx : contexts) {
-            paramIndex_t index {
-                static_cast<uint8_t>(ctx.videoSrcType),
-                static_cast<uint8_t>(ctx.pq_mode),
-                static_cast<uint8_t>(ctx.videoFormatType)
-            };
-            setDVCalibrationTimestamp(index, timestamp);
+        if (result == tvERROR_NONE) {
+            for (const auto& ctx : contexts) {
+                paramIndex_t index {
+                    static_cast<uint8_t>(ctx.videoSrcType),
+                    static_cast<uint8_t>(ctx.pq_mode),
+                    static_cast<uint8_t>(ctx.videoFormatType)
+                };
+                setDVCalibrationTimestamp(index, timestamp);
+            }
         }
 
         returnResponse(result == tvERROR_NONE);

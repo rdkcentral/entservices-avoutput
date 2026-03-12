@@ -3485,18 +3485,27 @@ namespace Plugin {
         }
     }
 
-    tvDVCalibrationComponent_t AVOutputTV::getDVComponentEnumFromString(const std::string& str) {
-        if (str == "Tmax") return tvDVCalibrationComponent_TMAX;
-        if (str == "Tmin") return tvDVCalibrationComponent_TMIN;
-        if (str == "Tgamma") return tvDVCalibrationComponent_TGAMMA;
-        if (str == "Rx") return tvDVCalibrationComponent_RX;
-        if (str == "Ry") return tvDVCalibrationComponent_RY;
-        if (str == "Gx") return tvDVCalibrationComponent_GX;
-        if (str == "Gy") return tvDVCalibrationComponent_GY;
-        if (str == "Bx") return tvDVCalibrationComponent_BX;
-        if (str == "By") return tvDVCalibrationComponent_BY;
-        if (str == "Wx") return tvDVCalibrationComponent_WX;
-        if (str == "Wy") return tvDVCalibrationComponent_WY;
+    tvDVCalibrationComponent_t AVOutputTV::getDVComponentEnumFromString(const std::string& str)
+    {
+        static const std::unordered_map<std::string, tvDVCalibrationComponent_t> componentMap = {
+            {"tmax",   tvDVCalibrationComponent_TMAX},
+            {"tmin",   tvDVCalibrationComponent_TMIN},
+            {"tgamma", tvDVCalibrationComponent_TGAMMA},
+            {"rx",     tvDVCalibrationComponent_RX},
+            {"ry",     tvDVCalibrationComponent_RY},
+            {"gx",     tvDVCalibrationComponent_GX},
+            {"gy",     tvDVCalibrationComponent_GY},
+            {"bx",     tvDVCalibrationComponent_BX},
+            {"by",     tvDVCalibrationComponent_BY},
+            {"wx",     tvDVCalibrationComponent_WX},
+            {"wy",     tvDVCalibrationComponent_WY}
+        };
+        std::string key = str;
+        std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+        auto it = componentMap.find(key);
+        if (it != componentMap.end()) {
+            return it->second;
+        }
         return tvDVCalibrationComponent_MAX;
     }
 
@@ -3560,6 +3569,11 @@ namespace Plugin {
                     val = overrideValues.at(comp);
 
                     tvDVCalibrationComponent_t compEnum = getDVComponentEnumFromString(comp);
+                    if (compEnum == tvDVCalibrationComponent_MAX) {
+                        LOGERR("Invalid DV calibration component: %s", comp.c_str());
+                        overallStatus = tvERROR_INVALID_PARAM;
+                        continue;
+                    }
                     if (!isDVCalibrationComponentValueInRange(compEnum, val)) {
                         LOGERR("Value %f out of range for component %s", val, comp.c_str());
                         overallStatus = tvERROR_INVALID_PARAM;
