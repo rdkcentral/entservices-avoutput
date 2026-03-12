@@ -2991,6 +2991,11 @@ namespace Plugin {
         key += STRING_SOURCE + convertSourceIndexToStringV2(info.sourceIndex) + ".";
         key += STRING_PICMODE + convertPictureIndexToStringV2(info.pqmodeIndex) + ".";
         key += STRING_FORMAT + convertVideoFormatToStringV2(info.formatIndex) + ".";
+
+        if (forParam == "UtcTimestamp") {
+            key += forParam;
+            return tvERROR_NONE;
+        }
         if (info.componentIndex >= static_cast<uint8_t>(tvDVCalibrationComponent_TMAX) &&
             info.componentIndex <= static_cast<uint8_t>(tvDVCalibrationComponent_WY)) {
             key += "Component." + dvComponentToString(static_cast<tvDVCalibrationComponent_t>(info.componentIndex)) + ".";
