@@ -3004,23 +3004,69 @@ namespace Plugin {
 
     bool AVOutputTV::isDVCalibrationComponentValueInRange(tvDVCalibrationComponent_t comp, double val)
     {
-        int minVal = 0, maxVal = 0;
+        double minVal = 0.0, maxVal = 0.0;
+
         switch (comp) {
-            case tvDVCalibrationComponent_TMAX:   minVal = m_minDVCalibrationSettings->Tmax;   maxVal = m_maxDVCalibrationSettings->Tmax; break;
-            case tvDVCalibrationComponent_TMIN:   minVal = m_minDVCalibrationSettings->Tmin;   maxVal = m_maxDVCalibrationSettings->Tmin; break;
-            case tvDVCalibrationComponent_TGAMMA: minVal = m_minDVCalibrationSettings->Tgamma; maxVal = m_maxDVCalibrationSettings->Tgamma; break;
-            case tvDVCalibrationComponent_RX:     minVal = m_minDVCalibrationSettings->Rx;     maxVal = m_maxDVCalibrationSettings->Rx; break;
-            case tvDVCalibrationComponent_RY:     minVal = m_minDVCalibrationSettings->Ry;     maxVal = m_maxDVCalibrationSettings->Ry; break;
-            case tvDVCalibrationComponent_GX:     minVal = m_minDVCalibrationSettings->Gx;     maxVal = m_maxDVCalibrationSettings->Gx; break;
-            case tvDVCalibrationComponent_GY:     minVal = m_minDVCalibrationSettings->Gy;     maxVal = m_maxDVCalibrationSettings->Gy; break;
-            case tvDVCalibrationComponent_BX:     minVal = m_minDVCalibrationSettings->Bx;     maxVal = m_maxDVCalibrationSettings->Bx; break;
-            case tvDVCalibrationComponent_BY:     minVal = m_minDVCalibrationSettings->By;     maxVal = m_maxDVCalibrationSettings->By; break;
-            case tvDVCalibrationComponent_WX:     minVal = m_minDVCalibrationSettings->Wx;     maxVal = m_maxDVCalibrationSettings->Wx; break;
-            case tvDVCalibrationComponent_WY:     minVal = m_minDVCalibrationSettings->Wy;     maxVal = m_maxDVCalibrationSettings->Wy; break;
+            case tvDVCalibrationComponent_TMAX:
+                minVal = m_minDVCalibrationSettings->Tmax;
+                maxVal = m_maxDVCalibrationSettings->Tmax;
+                break;
+
+            case tvDVCalibrationComponent_TMIN:
+                minVal = m_minDVCalibrationSettings->Tmin;
+                maxVal = m_maxDVCalibrationSettings->Tmin;
+                break;
+
+            case tvDVCalibrationComponent_TGAMMA:
+                minVal = m_minDVCalibrationSettings->Tgamma;
+                maxVal = m_maxDVCalibrationSettings->Tgamma;
+                break;
+
+            case tvDVCalibrationComponent_RX:
+                minVal = m_minDVCalibrationSettings->Rx;
+                maxVal = m_maxDVCalibrationSettings->Rx;
+                break;
+
+            case tvDVCalibrationComponent_RY:
+                minVal = m_minDVCalibrationSettings->Ry;
+                maxVal = m_maxDVCalibrationSettings->Ry;
+                break;
+
+            case tvDVCalibrationComponent_GX:
+                minVal = m_minDVCalibrationSettings->Gx;
+                maxVal = m_maxDVCalibrationSettings->Gx;
+                break;
+
+            case tvDVCalibrationComponent_GY:
+                minVal = m_minDVCalibrationSettings->Gy;
+                maxVal = m_maxDVCalibrationSettings->Gy;
+                break;
+
+            case tvDVCalibrationComponent_BX:
+                minVal = m_minDVCalibrationSettings->Bx;
+                maxVal = m_maxDVCalibrationSettings->Bx;
+                break;
+
+            case tvDVCalibrationComponent_BY:
+                minVal = m_minDVCalibrationSettings->By;
+                maxVal = m_maxDVCalibrationSettings->By;
+                break;
+
+            case tvDVCalibrationComponent_WX:
+                minVal = m_minDVCalibrationSettings->Wx;
+                maxVal = m_maxDVCalibrationSettings->Wx;
+                break;
+
+            case tvDVCalibrationComponent_WY:
+                minVal = m_minDVCalibrationSettings->Wy;
+                maxVal = m_maxDVCalibrationSettings->Wy;
+                break;
+
             default:
                 LOGERR("Unknown DV Calibration component enum: %d", comp);
                 return false;
         }
+
         return (val >= minVal && val <= maxVal);
     }
 
