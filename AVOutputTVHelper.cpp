@@ -290,7 +290,7 @@ namespace Plugin {
 
             tvColorTemp_t colorTemp;
             if ( getColorTempEnumFromString(paramInfo.colorTemperature,colorTemp ) == -1 ) {
-                LOGERR("%s : GetComponentEnumFromString Failed!!! ",__FUNCTION__);
+                LOGERR("%s : getColorTempEnumFromString failed for colorTemperature '%s'", __FUNCTION__, paramInfo.colorTemperature.c_str());
                 return -1;
             }
 

@@ -5766,6 +5766,11 @@ namespace Plugin {
             returnResponse(false);
         }
 
+        if( !isCapablityCheckPassed( "WhiteBalance",inputInfo )) {
+            LOGERR("%s: CapablityCheck failed for WhiteBalance\n", __FUNCTION__);
+            returnResponse(false);
+        }
+
         if (getParamIndex("WhiteBalance", inputInfo,indexInfo) == -1) {
             LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
             returnResponse(false);
