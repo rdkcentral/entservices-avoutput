@@ -22,7 +22,7 @@
 #include "UtilsIarm.h"
 #include "rfcapi.h"
 
-#define CAPABLITY_FILE_NAME    "pq_capabilities.ini"
+#define CAPABILITY_FILE_NAME    "pq_capabilities.ini"
 
 static std::map<std::string, int> supportedSourcemap;
 static std::map<std::string, int> supportedPictureModemap;
@@ -514,13 +514,13 @@ namespace Plugin {
         {
             // Check color
             if (! checkCMSColorAndComponentCapability(paramInfo.color, inputInfo.color)) {
-                LOGINFO( "%s:CMS color Capablity Failed CapColor : %s inputColor : %s!!!\n",__FUNCTION__,paramInfo.color.c_str(), inputInfo.color.c_str());
+                LOGINFO( "%s:CMS color Capability Failed CapColor : %s inputColor : %s!!!\n",__FUNCTION__,paramInfo.color.c_str(), inputInfo.color.c_str());
                 return false;
             }
 
             // Check component
             if (! checkCMSColorAndComponentCapability(paramInfo.component, inputInfo.component)) {
-                LOGINFO( "%s:CMS component Capablity capComponent : %s inputComponent : %s Failed!!!.\n",__FUNCTION__,paramInfo.component.c_str(), inputInfo.component.c_str());
+                LOGINFO( "%s:CMS component Capability capComponent : %s inputComponent : %s Failed!!!.\n",__FUNCTION__,paramInfo.component.c_str(), inputInfo.component.c_str());
                 return false;
             }
         }
@@ -529,15 +529,15 @@ namespace Plugin {
             if ( ( paramInfo.color.find(inputInfo.color) == std::string::npos ) || ( paramInfo.control.find(inputInfo.control) == std::string::npos) )
                 return false;
         }
-        //Compare capablityInfo with Input params
+        //Compare capabilityInfo with Input params
 
-        //1.convertCapablity Info to set for comparison
+        //1.convertCapability Info to set for comparison
         spliltStringsAndConvertToSet( paramInfo.pqmode, paramInfo.format, paramInfo.source, pqmodeCapSet, formatCapSet, sourceCapset);
 
         //2.convert Application Input Info to set for comparison
         spliltStringsAndConvertToSet( inputInfo.pqmode, inputInfo.format, inputInfo.source, pqmodeInputSet, formatInputSet, sourceInputSet );
 
-        //3.Compare Each pqmode/format/source InputInfo against CapablityInfo
+        //3.Compare Each pqmode/format/source InputInfo against CapabilityInfo
         if ( isIncluded(pqmodeCapSet,pqmodeInputSet) && isIncluded(formatCapSet,formatInputSet) && isIncluded(sourceCapset,sourceInputSet) ) {
             LOGINFO("%s : Capability Check passed \n", __FUNCTION__);
             return true;
@@ -3732,7 +3732,7 @@ namespace Plugin {
         }
 
         try {
-            CIniFile inFile(CAPABLITY_FILE_NAME);
+            CIniFile inFile(CAPABILITY_FILE_NAME);
             std::string configString;
 
             if(param == "CMS")

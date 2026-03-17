@@ -80,7 +80,7 @@
 #define STRING_CONTROL   "Control."
 #define STRING_COLORTEMPERATURE   "ColorTemperature."
 #define CREATE_DIRTY(__X__) (__X__+=STRING_DIRTY)
-#define CAPABLITY_FILE_NAME    "pq_capabilities.ini"
+#define CAPABILITY_FILE_NAME    "pq_capabilities.ini"
 
 class CIniFile
 {
