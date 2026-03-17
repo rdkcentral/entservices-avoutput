@@ -4852,12 +4852,12 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            value = parameters.HasLabel("LowLatencyState") ? parameters["LowLatencyState"].String() : "";
-            returnIfParamNotFound(parameters,"LowLatencyState");
+            value = parameters.HasLabel("lowLatencyState") ? parameters["lowLatencyState"].String() : "";
+            returnIfParamNotFound(parameters,"lowLatencyState");
             lowLatencyIndex = std::stoi(value);
 
             if (validateIntegerInputParameter("LowLatencyState",lowLatencyIndex) != 0) {
-                LOGERR("Failed in Brightness range validation:%s", __FUNCTION__);
+                LOGERR("Failed in LowLatencyState range validation:%s", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -4962,7 +4962,7 @@ namespace Plugin {
 
             int err = getLocalparam("LowLatencyState", indexInfo ,lowlatencystate, PQ_PARAM_LOWLATENCY_STATE);
             if( err == 0 ) {
-                response["lowLatencyState"] = std::to_string(lowlatencystate);
+                response["lowLatencyState"] = lowlatencystate;
                 LOGINFO("Exit : LowLatencyState Value: %d \n", lowlatencystate);
                 returnResponse(true);
             }
@@ -5048,10 +5048,11 @@ namespace Plugin {
         LOGINFO("Entry");
         capVectors_t info;
 
-        JsonArray rangeArray;
         JsonArray pqmodeArray;
         JsonArray formatArray;
         JsonArray sourceArray;
+        JsonObject rangeObj;
+
 
         unsigned int index = 0;
 
@@ -5061,11 +5062,10 @@ namespace Plugin {
             returnResponse(false);
         }
         else {
-            for (index = 0; index < info.rangeVector.size(); index++) {
-                rangeArray.Add(stoi(info.rangeVector[index]));
-	    }
+            rangeObj["from"] = stoi(info.rangeVector[0]);
+            rangeObj["to"] = stoi(info.rangeVector[1]);
+            response["rangeInfo"]=rangeObj;
 
-            response["LowLatencyInfo"]=rangeArray;
             if ((info.pqmodeVector.front()).compare("none") != 0) {
                 for (index = 0; index < info.pqmodeVector.size(); index++) {
                     pqmodeArray.Add(info.pqmodeVector[index]);
