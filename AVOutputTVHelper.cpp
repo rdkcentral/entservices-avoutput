@@ -1091,6 +1091,19 @@ namespace Plugin {
         bool set = !(action.compare("set"));
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
+
+	// Check for the platform support for the parameter.
+	// Soft-skip during "sync" (boot/init) to avoid aborting the whole flow.
+	// Preserve the original behavior (-1) for explicit "set"/"reset".
+	if (isPlatformSupport(tr181ParamName) != 0) {
+		if (action == "sync") {
+			LOGINFO("%s: Skipping unsupported feature during sync: %s", __FUNCTION__, tr181ParamName.c_str());
+			return 0;   /* soft-skip keeps boot moving; no functional change to rest of flow */
+		}
+		LOGERR("%s: Block %s for unsupported feature %s",__FUNCTION__, action.c_str(), tr181ParamName.c_str());
+		return -1;      /* unchanged behavior for set/reset */
+	}
+
         ret = getSaveConfig(tr181ParamName,info, values);
         if( 0 == ret ) {
             for( int sourceType: values.sourceValues ) {
@@ -1299,6 +1312,7 @@ namespace Plugin {
         info.pqmode = pqmode;
         info.source = source;
         info.format = format;
+	int ret=0;
 
         JsonObject paramJson;
         paramJson["pictureMode"] = info.pqmode;
@@ -1310,7 +1324,9 @@ namespace Plugin {
         m_brightnessStatus = GetBrightnessCaps(&m_maxBrightness, &m_brightnessCaps);
         LOGINFO("GetBrightnessCaps returned status: %d, max: %d", m_brightnessStatus, m_maxBrightness);
         if (m_brightnessStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
-            updateAVoutputTVParam("sync", "Brightness", info, PQ_PARAM_BRIGHTNESS, level);
+            LOGINFO(" << Hack >> updateAVoutputTVParam - Entry ");
+            ret = updateAVoutputTVParam("sync", "Brightness", info, PQ_PARAM_BRIGHTNESS, level);
+            LOGINFO(" << Hack >> updateAVoutputTVParam - Exit\n ret:%d\n ", ret);
         } else {
             updateAVoutputTVParamV2("sync", "Brightness", paramJson, PQ_PARAM_BRIGHTNESS,level);
         }
