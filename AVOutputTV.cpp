@@ -1424,15 +1424,6 @@ namespace Plugin {
 
         tvError_t ret = updateDVCalibration(contexts, kDVCalibrationComponents, {}, "reset");
 
-        uint64_t now = static_cast<uint64_t>(time(nullptr));
-        for (const auto& ctx : contexts) {
-            paramIndex_t idx = {
-                static_cast<uint8_t>(ctx.videoSrcType),
-                static_cast<uint8_t>(ctx.pq_mode),
-                static_cast<uint8_t>(ctx.videoFormatType)
-            };
-            setDVCalibrationTimestamp(idx, now);
-        }
         returnResponse(ret == tvERROR_NONE);
     }
 

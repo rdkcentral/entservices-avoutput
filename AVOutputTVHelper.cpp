@@ -2993,7 +2993,7 @@ namespace Plugin {
         key += STRING_FORMAT + convertVideoFormatToStringV2(info.formatIndex) + ".";
 
         if (forParam == "UtcTimestamp") {
-            key += forParam;
+            key += forParam + ".DolbyVisionCalibration";;
             return tvERROR_NONE;
         }
         if (info.componentIndex >= static_cast<uint8_t>(tvDVCalibrationComponent_TMAX) &&
@@ -3098,7 +3098,6 @@ namespace Plugin {
             return tvERROR_GENERAL;
         }
 
-        LOGINFO("DV Calibration param saved: %s = %.6f", key.c_str(), value);
         return tvERROR_NONE;
     }
 
@@ -3536,73 +3535,120 @@ namespace Plugin {
         return tvERROR_NONE;
     }
 
-    tvError_t AVOutputTV::updateDVCalibration(const std::vector<tvConfigContext_t>& contexts,
-                            const std::vector<std::string>& components,
-                            const std::map<std::string, double>& overrideValues,
-                            const std::string& action)
+    tvError_t AVOutputTV::updateDVCalibration(
+        const std::vector<tvConfigContext_t>& contexts,
+        const std::vector<std::string>& components,
+        const std::map<std::string, double>& overrideValues,
+        const std::string& action)
     {
-        bool isSet = (action == "set");
+        bool isSet   = (action == "set");
         bool isReset = (action == "reset");
-        bool isSync = (action == "sync");
+        bool isSync  = (action == "sync");
 
         tvError_t overallStatus = tvERROR_NONE;
 
         for (const auto& ctx : contexts) {
-            paramIndex_t indexInfo;
+            paramIndex_t indexInfo = {};
             indexInfo.sourceIndex = ctx.videoSrcType;
             indexInfo.pqmodeIndex = ctx.pq_mode;
             indexInfo.formatIndex = ctx.videoFormatType;
 
             tvDVCalibrationSettings_t dvValues = {};
 
-            if (isReset) {
-                if (GetDVCalibrationDefault(ctx.videoSrcType, ctx.pq_mode, ctx.videoFormatType, &dvValues) != tvERROR_NONE) {
-                    LOGERR("Failed to get default DV Calibration");
+            // Load defaults if not resetting
+            if (!isReset) {
+                if (GetDVCalibration(ctx.videoSrcType, ctx.pq_mode, ctx.videoFormatType, &dvValues) != tvERROR_NONE) {
+                    LOGERR("Failed to get current DV Calibration");
                     overallStatus = tvERROR_GENERAL;
-                    continue;
                 }
-            } else {
-                GetDVCalibration(ctx.videoSrcType, ctx.pq_mode, ctx.videoFormatType, &dvValues);
             }
 
+            if (isReset) {
+                // Clear all components
+                for (const auto& comp : components) {
+                    paramIndex_t fullIndex = indexInfo;
+                    fullIndex.componentIndex = static_cast<uint8_t>(getDVComponentEnumFromString(comp));
+
+                    std::string key;
+                    if (generateStorageIdentifierDV(key, "DolbyVisionCalibration", fullIndex) == tvERROR_NONE) {
+                        tr181ErrorCode_t err = clearLocalParam(rfc_caller_id, key.c_str());
+                        if (err != tr181Success) {
+                            LOGERR("Failed to clear DV param %s", key.c_str());
+                            overallStatus = tvERROR_GENERAL;
+                        }
+                    }
+                }
+
+                // Clear timestamp
+                std::string tsKey;
+                if (generateStorageIdentifierDV(tsKey, "UtcTimestamp", indexInfo) == tvERROR_NONE) {
+                    tr181ErrorCode_t err = clearLocalParam(rfc_caller_id, tsKey.c_str());
+                    if (err != tr181Success) {
+                        LOGERR("Failed to clear DV timestamp %s", tsKey.c_str());
+                        overallStatus = tvERROR_GENERAL;
+                    }
+                }
+
+                // Skip writing values
+                continue;
+            }
+
+            // --- SET / SYNC logic ---
             for (const auto& comp : components) {
                 double val = 0.0;
+                paramIndex_t fullIndex = indexInfo;
+                fullIndex.componentIndex = static_cast<uint8_t>(getDVComponentEnumFromString(comp));
 
-                if (isSync || isReset) {
-                    getDVCalibrationParam("DolbyVisionCalibration", indexInfo, val, comp);
-                } else if (isSet && overrideValues.find(comp) != overrideValues.end()) {
-                    val = overrideValues.at(comp);
-
-                    tvDVCalibrationComponent_t compEnum = getDVComponentEnumFromString(comp);
-                    if (compEnum == tvDVCalibrationComponent_MAX) {
-                        LOGERR("Invalid DV calibration component: %s", comp.c_str());
-                        overallStatus = tvERROR_INVALID_PARAM;
-                        continue;
-                    }
-                    if (!isDVCalibrationComponentValueInRange(compEnum, val)) {
-                        LOGERR("Value %f out of range for component %s", val, comp.c_str());
-                        overallStatus = tvERROR_INVALID_PARAM;
+                // SYNC → read from storage
+                if (isSync) {
+                    if (getDVCalibrationParam("DolbyVisionCalibration", fullIndex, val, comp) != tvERROR_NONE) {
                         continue;
                     }
                 }
 
-                if (comp == "tmax")   dvValues.Tmax = val;
-                else if (comp == "tmin")   dvValues.Tmin = val;
-                else if (comp == "tgamma") dvValues.Tgamma = val;
-                else if (comp == "rx")     dvValues.Rx = val;
-                else if (comp == "ry")     dvValues.Ry = val;
-                else if (comp == "gx")     dvValues.Gx = val;
-                else if (comp == "gy")     dvValues.Gy = val;
-                else if (comp == "bx")     dvValues.Bx = val;
-                else if (comp == "by")     dvValues.By = val;
-                else if (comp == "wx")     dvValues.Wx = val;
-                else if (comp == "wy")     dvValues.Wy = val;
+                // SET → apply override values
+                if (isSet && overrideValues.find(comp) != overrideValues.end()) {
+                    val = overrideValues.at(comp);
 
-                if (isSet || isReset) {
-                    setDVCalibrationParam("DolbyVisionCalibration", indexInfo, val, comp);
+                    if (!isDVCalibrationComponentValueInRange(static_cast<tvDVCalibrationComponent_t>(fullIndex.componentIndex), val)) {
+                        LOGERR("Value %f out of range for %s", val, comp.c_str());
+                        overallStatus = tvERROR_INVALID_PARAM;
+                        continue;
+                    }
+
+                    setDVCalibrationParam("DolbyVisionCalibration", fullIndex, val, comp);
+                }
+
+                // Update HAL struct
+                if (comp == "tmax") dvValues.Tmax = val;
+                else if (comp == "tmin") dvValues.Tmin = val;
+                else if (comp == "tgamma") dvValues.Tgamma = val;
+                else if (comp == "rx") dvValues.Rx = val;
+                else if (comp == "ry") dvValues.Ry = val;
+                else if (comp == "gx") dvValues.Gx = val;
+                else if (comp == "gy") dvValues.Gy = val;
+                else if (comp == "bx") dvValues.Bx = val;
+                else if (comp == "by") dvValues.By = val;
+                else if (comp == "wx") dvValues.Wx = val;
+                else if (comp == "wy") dvValues.Wy = val;
+            }
+
+            // Handle timestamp (SET or SYNC)
+            std::string tsKey;
+            if (generateStorageIdentifierDV(tsKey, "UtcTimestamp", indexInfo) == tvERROR_NONE) {
+                if (isSet) {
+                    int64_t timestamp = overrideValues.count("utcTimestamp") ?
+                                        static_cast<int64_t>(overrideValues.at("utcTimestamp")) : time(nullptr);
+                    char valStr[32];
+                    snprintf(valStr, sizeof(valStr), "%lld", timestamp);
+                    setLocalParam(rfc_caller_id, tsKey.c_str(), valStr);
+                } else if (isSync) {
+                    double tsVal = 0;
+                    getDVCalibrationParam("UtcTimestamp", indexInfo, tsVal, "UtcTimestamp");
                 }
             }
 
+            // Update HAL
             if (SetDVCalibration(ctx.videoSrcType, ctx.pq_mode, ctx.videoFormatType, &dvValues) != tvERROR_NONE) {
                 LOGERR("SetDVCalibration failed for %d/%d/%d", ctx.videoSrcType, ctx.pq_mode, ctx.videoFormatType);
                 overallStatus = tvERROR_GENERAL;
@@ -3649,7 +3695,6 @@ namespace Plugin {
         const auto resolvedPicModes = resolveParam("pictureMode", curPicMode);
         const auto resolvedFormats  = resolveParam("videoFormat", curFormat);
         const auto resolvedSources  = resolveParam("videoSource", curSource);
-
 
         // Check if current combination exists in resolved sets
         for (const auto& pm : resolvedPicModes) {
