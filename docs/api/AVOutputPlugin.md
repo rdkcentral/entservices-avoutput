@@ -9310,6 +9310,7 @@ AVOutput interface events:
 | Event | Description |
 | :-------- | :-------- |
 | [onVideoFormatChanged](#onVideoFormatChanged) | Event notification when there is a change in video format of the video being played |
+| [onVideoSourceChanged](#onVideoSourceChanged) | Event notification when there is a change in the current video source |
 | [onVideoResolutionChanged](#onVideoResolutionChanged) | Event notification when there is a change in video resolution of the current video played out on HDMI and Composite1 video sources when they are selected |
 | [onVideoFrameRateChanged](#onVideoFrameRateChanged) | Event notification when there is a change in video frame rate of the video being played |
 | [onVideoContentChanged](#onVideoContentChanged) | Event notification when there is any form of video content changes were detected |
@@ -9336,6 +9337,30 @@ Event notification when there is a change in video format of the video being pla
     "method": "client.events.onVideoFormatChanged",
     "params": {
         "currentVideoFormat": "DV"
+    }
+}
+```
+
+<a name="onVideoSourceChanged"></a>
+## *onVideoSourceChanged*
+
+Event notification when there is a change in the current video source.<br><br>This method is only available in the RDK TV device profile.
+
+### Parameters
+
+| Name | Type | Description |
+| :-------- | :-------- | :-------- |
+| params | object |  |
+| params.currentVideoSource | string | Current video source. Possible values are the video sources returned by [getVideoSourceCaps](#getVideoSourceCaps). |
+
+### Example
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "client.events.onVideoSourceChanged",
+    "params": {
+        "currentVideoSource": "HDMI1"
     }
 }
 ```
