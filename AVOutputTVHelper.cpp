@@ -2830,15 +2830,20 @@ namespace Plugin {
         {VIDEO_FORMAT_DV, "DV"},
         {VIDEO_FORMAT_HLG, "HLG"}
     };
-
     const std::unordered_map<int, std::string> AVOutputTV::videoSrcMap = {
+        {VIDEO_SOURCE_ANALOGUE,   "Analogue"},
         {VIDEO_SOURCE_COMPOSITE1, "Composite1"},
-        {VIDEO_SOURCE_HDMI1, "HDMI1"},
-        {VIDEO_SOURCE_HDMI2, "HDMI2"},
-        {VIDEO_SOURCE_HDMI3, "HDMI3"},
-        {VIDEO_SOURCE_HDMI4, "HDMI4"},
-        {VIDEO_SOURCE_IP, "IP"},
-        {VIDEO_SOURCE_TUNER, "Tuner"}
+        {VIDEO_SOURCE_COMPOSITE2, "Composite2"},
+        {VIDEO_SOURCE_YPBPR1,     "Component1"},
+        {VIDEO_SOURCE_YPBPR2,     "Component2"},
+        {VIDEO_SOURCE_HDMI1,      "HDMI1"},
+        {VIDEO_SOURCE_HDMI2,      "HDMI2"},
+        {VIDEO_SOURCE_HDMI3,      "HDMI3"},
+        {VIDEO_SOURCE_HDMI4,      "HDMI4"},
+        {VIDEO_SOURCE_VGA,        "VGA"},
+        {VIDEO_SOURCE_IP,         "IP"},
+        {VIDEO_SOURCE_TUNER,      "Tuner"},
+        {VIDEO_SOURCE_SVIDEO,     "SVideo"}
     };
     const std::unordered_map<int, std::string> AVOutputTV::backlightModeMap = {
         {tvBacklightMode_MANUAL, "Manual"},
@@ -2874,17 +2879,17 @@ namespace Plugin {
 
     std::string AVOutputTV::convertSourceIndexToStringV2(int source) {
         auto it = videoSrcMap.find(source);
-        return (it != videoSrcMap.end()) ? it->second : "";
+        return (it != videoSrcMap.end()) ? it->second : "None";
     }
 
     std::string AVOutputTV::convertVideoFormatToStringV2(int format) {
         auto it = videoFormatMap.find(format);
-        return (it != videoFormatMap.end()) ? it->second : "";
+        return (it != videoFormatMap.end()) ? it->second : "None";
     }
 
     std::string AVOutputTV::convertPictureIndexToStringV2(int pqmode) {
         auto it = pqModeMap.find(pqmode);
-        return (it != pqModeMap.end()) ? it->second : "";
+        return (it != pqModeMap.end()) ? it->second : "None";
     }
 
     tvPQModeIndex_t AVOutputTV::convertPictureStringToIndexV2(const std::string& modeStr) {

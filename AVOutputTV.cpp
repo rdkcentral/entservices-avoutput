@@ -70,6 +70,16 @@ namespace Plugin {
 	}
     }
 
+    static void tvVideoSourceChangeHandler(tvVideoSrcType_t source, void *userData)
+    {
+        LOGINFO("tvVideoSourceChangeHandler source:%d \n", source);
+        AVOutputTV *obj = static_cast<AVOutputTV *>(userData);
+        if (obj)
+        {
+            obj->NotifyVideoSourceChange(source);
+        }
+    }
+
     static bool getVideoContentTypeToString(tvContentType_t content)
     {
         bool fmmMode = false;
@@ -197,6 +207,14 @@ namespace Plugin {
         response["currentVideoFrameRate"] = getVideoFrameRateTypeToString(frameRate);
         sendNotify("onVideoFrameRateChanged", response);
     }
+
+    void AVOutputTV:: NotifyVideoSourceChange(tvVideoSrcType_t source)
+    {
+        JsonObject response;
+        response["currentVideoSource"] = convertSourceIndexToStringV2(source);
+        sendNotify("onVideoSourceChanged", response);
+    }
+
 
 	//Event
     void AVOutputTV::dsHdmiStatusEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
@@ -489,6 +507,12 @@ namespace Plugin {
         ret = RegisterVideoFrameRateChangeCB(&FpscallbackData);
         if(ret != tvERROR_NONE) {
             LOGWARN("RegisterVideoFrameRateChangeCB failed");
+        }
+
+        tvVideoSourceCallbackData SrccallbackData = {this, tvVideoSourceChangeHandler};
+        ret = RegisterVideoSourceChangeCB(&SrccallbackData);
+        if (ret != tvERROR_NONE) {
+            LOGWARN("RegisterVideoSourceChangeCB failed");
         }
 
         locatePQSettingsFile();
@@ -6297,7 +6321,7 @@ namespace Plugin {
 
         tvError_t ret = GetCurrentVideoSource(&currentSource);
         if(ret != tvERROR_NONE) {
-            response["currentVideoSource"] = "NONE";
+            response["currentVideoSource"] = "None";
             returnResponse(false);
         }
         else {
