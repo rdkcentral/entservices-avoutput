@@ -1092,19 +1092,31 @@ namespace Plugin {
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
 
-	// Check for the platform support for the parameter.
-	// Soft-skip during "sync" (boot/init) to avoid aborting the whole flow.
-	// Preserve the original behavior (-1) for explicit "set"/"reset".
-	if (isPlatformSupport(tr181ParamName) != 0) {
-		if (action == "sync") {
-			LOGINFO("%s: Skipping unsupported feature during sync: %s", __FUNCTION__, tr181ParamName.c_str());
-			return 0;   /* soft-skip keeps boot moving; no functional change to rest of flow */
-		}
-		LOGERR("%s: Block %s for unsupported feature %s",__FUNCTION__, action.c_str(), tr181ParamName.c_str());
-		return -1;      /* unchanged behavior for set/reset */
-	}
+#if 0
+	LOGINFO("%s: SupportCheck: calling isPlatformSupport('%s'), action='%s'",
+			__FUNCTION__, tr181ParamName.c_str(), action.c_str());
 
-        ret = getSaveConfig(tr181ParamName,info, values);
+	int support = isPlatformSupport(tr181ParamName);  // std::string signature
+
+	LOGINFO("%s: SupportCheck: result=%d for '%s', action='%s'",
+			__FUNCTION__, support, tr181ParamName.c_str(), action.c_str());
+
+	// Soft-skip ONLY for sync; keep your original behavior for set/reset
+	if (support != 0) {
+		if (action == "sync") {
+			LOGINFO("%s: Skipping unsupported feature during sync: %s",
+					__FUNCTION__, tr181ParamName.c_str());
+			// Use your function’s normal exit path to avoid skipping cleanup
+			ret = 0;                // or reuse your existing status var
+			goto exit_syncAvoutput; // place label above your existing Exit LOGINFO near ~1470
+		}
+		LOGERR("%s: Block %s for unsupported feature %s",
+				__FUNCTION__, action.c_str(), tr181ParamName.c_str());
+		ret = -1;
+		goto exit_syncAvoutput;
+	}
+#endif
+	ret = getSaveConfig(tr181ParamName,info, values);
         if( 0 == ret ) {
             for( int sourceType: values.sourceValues ) {
                 paramIndex.sourceIndex = sourceType;
@@ -1280,6 +1292,9 @@ namespace Plugin {
            }
 
         }
+#if 0
+exit_syncAvoutput:
+#endif
         return ret;
     }
     void AVOutputTV::syncCMSParamsV2() {
@@ -1312,7 +1327,6 @@ namespace Plugin {
         info.pqmode = pqmode;
         info.source = source;
         info.format = format;
-	int ret=0;
 
         JsonObject paramJson;
         paramJson["pictureMode"] = info.pqmode;
@@ -1320,19 +1334,85 @@ namespace Plugin {
         paramJson["videoFormat"] = info.format;
         LOGINFO("Entry %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
 
-        // Brightness
-        m_brightnessStatus = GetBrightnessCaps(&m_maxBrightness, &m_brightnessCaps);
-        LOGINFO("GetBrightnessCaps returned status: %d, max: %d", m_brightnessStatus, m_maxBrightness);
-        if (m_brightnessStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
-            LOGINFO(" << Hack >> updateAVoutputTVParam - Entry ");
-            ret = updateAVoutputTVParam("sync", "Brightness", info, PQ_PARAM_BRIGHTNESS, level);
-            LOGINFO(" << Hack >> updateAVoutputTVParam - Exit\n ret:%d\n ", ret);
-        } else {
-            updateAVoutputTVParamV2("sync", "Brightness", paramJson, PQ_PARAM_BRIGHTNESS,level);
-        }
+#if 1
 
-        // Contrast
-        m_contrastStatus = GetContrastCaps(&m_maxContrast, &m_contrastCaps);
+	if (pqmode == "none" && source == "none" && format == "none") {
+		LOGINFO("%s: PQ context is none/none/none — skipping PQ sync this cycle", __FUNCTION__);
+		// Either return tvERROR_NONE or proceed to only truly-mandatory defaults.
+		return tvERROR_NONE;
+	}
+
+#endif
+#if 0
+
+	// Brightness
+	m_brightnessStatus = GetBrightnessCaps(&m_maxBrightness, &m_brightnessCaps);
+	LOGINFO("GetBrightnessCaps returned status: %d, max: %d",
+			m_brightnessStatus, m_maxBrightness);
+
+	/* 1) Caps API not implemented on this platform → use legacy setter.*/
+	if (m_brightnessStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+		LOGINFO("%s: Brightness caps API not supported; using legacy path", __FUNCTION__);
+		updateAVoutputTVParam("sync", "Brightness", info, PQ_PARAM_BRIGHTNESS, level);
+	}
+	/* 2) Caps query failed for another reason → skip Brightness, continue with next param.*/
+	else if (m_brightnessStatus != tvERROR_NONE) {
+		LOGWARN("%s: Brightness caps query failed (status=%d) — skipping Brightness",
+				__FUNCTION__, m_brightnessStatus);
+	}
+	/* 3) Caps exist but invalid (max <= 0) → skip Brightness, continue. */
+	else if (m_maxBrightness <= 0) {
+		LOGWARN("%s: Brightness caps invalid (max=%d) — skipping Brightness",
+				__FUNCTION__, m_maxBrightness);
+	}
+	/* 4) Normal case: caps are valid → use V2 path. */
+	else {
+		updateAVoutputTVParamV2("sync", "Brightness", paramJson, PQ_PARAM_BRIGHTNESS, level);
+	}
+	
+	// Contrast
+	m_contrastStatus = GetContrastCaps(&m_maxContrast, &m_contrastCaps);
+	LOGINFO("GetContrastCaps returned status: %d, max: %d",
+			m_contrastStatus, m_maxContrast);
+
+	if (m_contrastStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+		LOGINFO("%s: Contrast caps API not supported; using legacy path", __FUNCTION__);
+		updateAVoutputTVParam("sync", "Contrast", info, PQ_PARAM_CONTRAST, level);
+	}
+	else if (m_contrastStatus != tvERROR_NONE) {
+		LOGWARN("%s: Contrast caps query failed (status=%d) — skipping Contrast",
+				__FUNCTION__, m_contrastStatus);
+	}
+	else if (m_maxContrast <= 0) {
+		LOGWARN("%s: Contrast caps invalid (max=%d) — skipping Contrast",
+				__FUNCTION__, m_maxContrast);
+	}
+	else {
+		updateAVoutputTVParamV2("sync", "Contrast", paramJson, PQ_PARAM_CONTRAST, level);
+	}
+
+#else
+	// Brightness
+	m_brightnessStatus = GetBrightnessCaps(&m_maxBrightness, &m_brightnessCaps);
+	LOGINFO("GetBrightnessCaps returned status: %d, max: %d", m_brightnessStatus, m_maxBrightness);
+	if (m_brightnessStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+		updateAVoutputTVParam("sync", "Brightness", info, PQ_PARAM_BRIGHTNESS, level);
+	} else {
+		updateAVoutputTVParamV2("sync", "Brightness", paramJson, PQ_PARAM_BRIGHTNESS,level);
+	}
+
+	// Contrast
+	m_contrastStatus = GetContrastCaps(&m_maxContrast, &m_contrastCaps);
+	LOGINFO("GetContrastCaps returned status: %d, max: %d",	m_contrastStatus, m_maxContrast);
+	if (m_contrastStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+		updateAVoutputTVParam("sync", "Contrast", info, PQ_PARAM_CONTRAST, level);
+	}else {
+		updateAVoutputTVParamV2("sync", "Contrast", paramJson, PQ_PARAM_CONTRAST, level);
+	}
+
+
+#endif
+	m_contrastStatus = GetContrastCaps(&m_maxContrast, &m_contrastCaps);
         LOGINFO("GetContrastCaps returned status: %d, max: %d", m_contrastStatus, m_maxContrast);
         if (m_contrastStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
             updateAVoutputTVParam("sync", "Contrast", info, PQ_PARAM_CONTRAST, level);
@@ -1523,7 +1603,6 @@ namespace Plugin {
             info.format = "DV"; // Sync only for Dolby
             updateAVoutputTVParam("sync", "DolbyVisionMode", info, PQ_PARAM_DOLBY_MODE, level);
         }
-
         LOGINFO("Exit %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
         return tvERROR_NONE;
     }
@@ -1533,6 +1612,40 @@ namespace Plugin {
         TR181_ParamData_t param = {0};
         bool contextSynced = false;
 
+	
+    // Log entry with parameters to aid field debugging
+    LOGINFO("%s: Entry pqmode='%s' source='%s' format='%s'", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
+
+    static std::atomic<bool> s_v2InProgress{false};
+    if (s_v2InProgress.exchange(true)) {
+        LOGINFO("%s: V2 sync already in progress — skipping re-entry", __FUNCTION__);
+        return tvERROR_NONE;
+    }
+    struct _AutoFlag { std::atomic<bool>& f; ~_AutoFlag(){ f.store(false); } } _autoFlag{s_v2InProgress};
+
+    auto toLower = [](std::string s){
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
+        return s;
+    };
+    const std::string _pm  = toLower(pqmode);
+    const std::string _src = toLower(source);
+    const std::string _fmt = toLower(format);
+    auto isUnknown = [](const std::string& s){ return s.empty() || s == "none" || s == "global" || s == "current"; };
+    if (isUnknown(_pm) || isUnknown(_src) || isUnknown(_fmt)) {
+        LOGINFO("%s: PQ context has unknowns (pqmode='%s', source='%s', format='%s') — skipping PQ sync (V2)",
+                __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
+        return tvERROR_NONE;
+    }
+
+    if ((m_pictureModeStatus != tvERROR_NONE) || (m_pictureModeCaps == nullptr) || (m_pictureModeCaps->num_contexts == 0) || (m_pictureModeCaps->contexts == nullptr)) {
+        LOGINFO("%s: PictureMode caps unavailable/invalid (status=%d, caps=%p, contexts=%p, num=%zu) — skipping V2",
+                __FUNCTION__, m_pictureModeStatus, m_pictureModeCaps,
+                (m_pictureModeCaps ? m_pictureModeCaps->contexts : nullptr),
+                (m_pictureModeCaps ? m_pictureModeCaps->num_contexts : 0U));
+        return tvERROR_NONE;
+    }
+
+	                                             
         // Treat "none" as "Global"
         if (source == "none")
             source = "Global";
