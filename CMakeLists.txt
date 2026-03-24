@@ -54,9 +54,7 @@ add_library(${MODULE_NAME} SHARED
         AVOutputTVHelper.cpp	
         AVOutput.cpp
         Module.cpp)
-    if (NOT RDK_SERVICE_L2_TEST)
         target_link_libraries(${MODULE_NAME} "-lglib-2.0 -lpthread -lIARMBus -ltvsettings-hal -ltr181api -lds")
-    endif()
 else()
 add_library(${MODULE_NAME} SHARED
 	AVOutputBase.cpp
@@ -69,16 +67,6 @@ endif()
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
-
-if (RDK_SERVICE_L2_TEST)
-    find_library(TESTMOCKLIB_LIBRARIES NAMES TestMocklib)
-    if (TESTMOCKLIB_LIBRARIES)
-        message ("linking mock libraries ${TESTMOCKLIB_LIBRARIES} library")
-        target_link_libraries(${MODULE_NAME} PRIVATE ${TESTMOCKLIB_LIBRARIES})
-    else (TESTMOCKLIB_LIBRARIES)
-        message ("Require ${TESTMOCKLIB_LIBRARIES} library")
-    endif (TESTMOCKLIB_LIBRARIES)
-endif (RDK_SERVICES_L2_TEST)
 
 list(APPEND CMAKE_MODULE_PATH
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")

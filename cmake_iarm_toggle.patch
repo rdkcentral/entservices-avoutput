@@ -1,0 +1,81 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1234567..abcdef0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,17 @@
+ cmake_minimum_required (VERSION 2.6)
+
+ Project(AVOUTPUT-PLUGINS)
+
++# ----------------------------------------------------------------------
++# OPTION: ENABLE/DISABLE IARM FOR CI BUILDS
++# ----------------------------------------------------------------------
++option(USE_IARM "Enable IARM integration (libIARM, libIBus*, iarmUtil.h)" ON)
++
++if(NOT USE_IARM)
++    add_definitions(-DDISABLE_IARM)
++    message(STATUS "IARM DISABLED: Using mock headers from Tests/mocks")
++endif()
++
+ set(CMAKE_BUILD_TYPE "Debug")
+
+ set(PLUGIN_NAME AVOutput)
+@@ -23,23 +34,31 @@ find_package(WPEFramework)
+ find_package(${NAMESPACE}Plugins REQUIRED)
+
+ set (CMAKE_CXX_STANDARD 11)
+
+-find_path (STAGING_INCDIR glib-2.0)
+-include_directories(${STAGING_INCDIR})
+-include_directories(${STAGING_INCDIR}/glib-2.0)
+-include_directories(${STAGING_INCDIR}/../lib/glib-2.0/include)
+-include_directories(${STAGING_INCDIR}/rdk/iarmbus)
+-include_directories(${STAGING_INCDIR}/rdk/iarmmgrs-hal)
+-include_directories(${STAGING_INCDIR}/rdk/tv-hal)
+-include_directories(${STAGING_INCDIR}/rdk/ds-hal)
+-include_directories(${STAGING_INCDIR}/rdk/ds-rpc)
+-include_directories(${STAGING_INCDIR}/rdk/ds)
++# ----------------------------------------------------------------------
++# FIX INCLUDE PATHS
++# ----------------------------------------------------------------------
++find_path (STAGING_INCDIR glib-2.0)
++
++target_include_directories(${MODULE_NAME} PRIVATE
++    ${STAGING_INCDIR}
++    ${STAGING_INCDIR}/glib-2.0
++    ${STAGING_INCDIR}/../lib/glib-2.0/include
++    ${STAGING_INCDIR}/rdk/ds
++    ${STAGING_INCDIR}/rdk/ds-hal
++    ${STAGING_INCDIR}/rdk/ds-rpc
++    ${STAGING_INCDIR}/rdk/tv-hal
++)
++
++# Only add real IARM include paths if enabled
++if(USE_IARM)
++    target_include_directories(${MODULE_NAME} PRIVATE
++        ${STAGING_INCDIR}/rdk/iarmbus
++        ${STAGING_INCDIR}/rdk/iarmmgrs-hal
++    )
++else()
++    target_include_directories(${MODULE_NAME} PRIVATE
++        ${CMAKE_CURRENT_SOURCE_DIR}/Tests/mocks
++        ${CMAKE_CURRENT_SOURCE_DIR}/Tests/headers
++    )
++endif()
+
+@@ -60,6 +79,10 @@ if (AVOUTPUT_TV)
+ else()
+ add_library(${MODULE_NAME} SHARED
+         AVOutputBase.cpp
++        # CI-only mock IARM replacement (ignored when USE_IARM=ON)
++        $<$<NOT:$<BOOL:${USE_IARM}>>:Tests/mocks/iarmUtil.h>
++
+         AVOutputSTB.cpp
+         AVOutput.cpp
+         Module.cpp)
+@@ -94,4 +117,6 @@ install(TARGETS ${MODULE_NAME}
+     DESTINATION lib/wpeframework/plugins)
+
+ write_config(${PLUGIN_NAME})
++
++message(STATUS "AVOutput build complete. IARM = ${USE_IARM}")
