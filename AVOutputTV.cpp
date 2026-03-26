@@ -360,6 +360,9 @@ namespace Plugin {
         registerMethod("resetAutoBacklightMode", &AVOutputTV::resetAutoBacklightMode, this);
         registerMethod("getAutoBacklightModeCaps", &AVOutputTV::getAutoBacklightModeCaps, this);
 
+        registerMethod("getFadeDisplayCaps", &AVOutputTV::getFadeDisplayCaps, this);
+        registerMethod("fadeDisplay", &AVOutputTV::fadeDisplay, this);
+
         registerMethod("getBacklightCapsV2", &AVOutputTV::getBacklightCapsV2, this);
         registerMethod("getBrightnessCapsV2", &AVOutputTV::getBrightnessCapsV2, this);
         registerMethod("getContrastCapsV2", &AVOutputTV::getContrastCapsV2, this);
@@ -6305,7 +6308,92 @@ namespace Plugin {
                     });
             returnResponse(success);
         }
-    }    
+    }
+
+    uint32_t AVOutputTV::getFadeDisplayCaps(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry");
+        capVectors_t info;
+        JsonObject rangeObj;
+
+        tvError_t ret = getParamsCaps("BacklightFade",info);
+        if(ret != tvERROR_NONE) {
+            returnResponse(false);
+        }
+
+        response["platformSupport"] = (info.isPlatformSupportVector[0].compare("true") == 0 ) ? true : false;
+        response["from"] = stoi(info.rangeVector[0]);
+        response["to"] = stoi(info.rangeVector[1]);
+        rangeObj["from"] = stoi(info.rangeVector[2]);
+        rangeObj["to"] = stoi(info.rangeVector[3]);
+        response["durationInfo"] = rangeObj;
+        LOGINFO("Exit\n");
+        returnResponse(true);
+    }
+
+    uint32_t AVOutputTV::fadeDisplay(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry\n");
+        std::string from,to,duration;
+        int fromValue = 0,toValue = 0, durationValue = 0;
+
+        if (isPlatformSupport("BacklightFade") != 0) {
+            LOGERR("Platform Support (%s) false", __FUNCTION__);
+            returnResponse(false);
+        }
+        if (!parameters.HasLabel("from") || !parameters.HasLabel("to") || !parameters.HasLabel("duration")) {
+            LOGERR("%s: Missing required parameters for BacklightFade (expected 'from', 'to', and 'duration')", __FUNCTION__);
+            returnResponse(false);
+        }
+
+        from = parameters.HasLabel("from") ? parameters["from"].String() : "";
+        to = parameters.HasLabel("to") ? parameters["to"].String() : "";
+        duration = parameters.HasLabel("duration") ? parameters["duration"].String() : "";
+        
+        try {
+            fromValue =  std::stoi(from);
+        } catch (...) {
+            LOGERR("Invalid input param. from: %s\n", from.c_str());
+            returnResponse(false);
+        }
+        try {
+            toValue =  std::stoi(to);
+        } catch (...) {
+            LOGERR("Invalid input param. to: %s\n", to.c_str());
+            returnResponse(false);
+        }
+        try {
+            durationValue =  std::stoi(duration);
+        } catch (...) {
+            LOGERR("Invalid input param. duration: %s\n", duration.c_str());
+            returnResponse(false);
+        }
+        if (validateFadeDisplayInputParameter("BacklightFade", "Range", fromValue) != 0) {
+            LOGERR("%s: Range validation failed for BacklightFade From (value=%d)\n", __FUNCTION__, fromValue);
+            returnResponse(false);
+        }
+
+        if(validateFadeDisplayInputParameter("BacklightFade", "Range", toValue) != 0) {
+            LOGERR("%s: Range validation failed for BacklightFade To (value=%d)\n", __FUNCTION__, toValue);
+            returnResponse(false);
+        }
+        if(validateFadeDisplayInputParameter("BacklightFade", "Duration", durationValue) != 0) {
+            LOGERR("%s: Range validation failed for BacklightFade Duration (value=%d)\n", __FUNCTION__, durationValue);
+            returnResponse(false);
+
+        }
+
+        LOGINFO("from = %d to = %d duration = %d\n" ,fromValue,toValue,durationValue);
+        tvError_t ret = SetBacklightFade(fromValue,toValue,durationValue);
+        if(ret != tvERROR_NONE) {
+           LOGERR("Failed to set BacklightFade \n");
+           returnResponse(false);
+        }
+        else {
+           LOGINFO("Exit : backlightFade Success \n");
+           returnResponse(true);
+        }
+    }
 
     uint32_t AVOutputTV::getVideoSource(const JsonObject& parameters,JsonObject& response)
     {
