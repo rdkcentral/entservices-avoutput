@@ -799,6 +799,56 @@ namespace Plugin {
         LOGINFO("%s : Default tvsettings file : %s\n",__FUNCTION__,rfc_caller_id);
     }
 
+    tvError_t AVOutputTV::initializeBacklightMode()
+    {
+        TR181_ParamData_t param;
+        tvError_t ret = tvERROR_NONE;
+
+        memset(&param, 0, sizeof(param));
+
+        if (isPlatformSupport("AutoBacklightMode") != 0) {
+            LOGWARN("No platform support\n");
+            return tvERROR_GENERAL;
+        }
+
+        tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, &param);
+        if ( tr181Success == err )
+        {
+            LOGINFO("getLocalParam for %s is %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, param.value);
+
+            if(!std::string(param.value).compare("none")) {
+                blMode = tvBacklightMode_NONE;
+            }
+            else if (!std::string(param.value).compare("Manual")){
+                blMode = tvBacklightMode_MANUAL;
+            }
+            else if (!std::string(param.value).compare("Ambient")){
+                blMode = tvBacklightMode_AMBIENT;
+            }
+            else if (!std::string(param.value).compare("Eco")){
+                blMode = tvBacklightMode_ECO;
+            }
+            else {
+                blMode = tvBacklightMode_NONE;
+            }
+
+            ret = SetCurrentBacklightMode(blMode);
+            if(ret != tvERROR_NONE) {
+                LOGWARN("Autobacklight Mode set failed: %s\n",getErrorString(ret).c_str());
+            }
+            else {
+                LOGINFO("Exit : Autobacklight Mode set successfully, value: %s\n", param.value);
+            }
+        }
+        else
+        {
+            LOGWARN("getLocalParam for %s Failed : %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
+            ret = tvERROR_GENERAL;
+        }
+
+        return ret;
+    }
+
     tvError_t AVOutputTV::initializePictureMode()
     {
         tvError_t ret = tvERROR_NONE;
@@ -1392,7 +1442,9 @@ namespace Plugin {
 
         //Ambient Bakclight Mode
         m_backlightModeStatus = GetBacklightModeCaps(&m_backlightModes, &m_numBacklightModes, &m_backlightModeCaps);
-        if (m_backlightModeStatus == tvERROR_NONE) {
+        if (m_backlightModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+            initializeBacklightMode();
+        } else {
             updateAVoutputTVParamV2("sync", "BacklightMode", paramJson, PQ_PARAM_BACKLIGHT_MODE, level);
         }
 
