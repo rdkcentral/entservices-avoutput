@@ -375,6 +375,8 @@ class AVOutputTV : public AVOutputBase {
 		/* Intialise the last set picture mode at bootup */
 		tvError_t initializePictureMode();		
 		
+        /* Intialise the last set backlight mode at bootup */
+        tvError_t initializeBacklightMode();
 
 		std::string convertToString(std::vector<std::string> vec_strings);
 		void convertParamToLowerCase(std::string &source, std::string &pqmode, std::string &format);
