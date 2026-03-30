@@ -803,6 +803,7 @@ namespace Plugin {
     {
         TR181_ParamData_t param;
         tvError_t ret = tvERROR_NONE;
+        tvBacklightMode_t blMode = tvBacklightMode_NONE;
 
         memset(&param, 0, sizeof(param));
 
@@ -815,17 +816,19 @@ namespace Plugin {
         if ( tr181Success == err )
         {
             LOGINFO("getLocalParam for %s is %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, param.value);
+            
+            const std::string mode(param.value);
 
-            if(!std::string(param.value).compare("none")) {
+            if (mode == "none") {
                 blMode = tvBacklightMode_NONE;
             }
-            else if (!std::string(param.value).compare("Manual")){
+            else if (mode == "Manual"){
                 blMode = tvBacklightMode_MANUAL;
             }
-            else if (!std::string(param.value).compare("Ambient")){
+            else if (mode == "Ambient"){
                 blMode = tvBacklightMode_AMBIENT;
             }
-            else if (!std::string(param.value).compare("Eco")){
+            else if (mode == "Eco"){
                 blMode = tvBacklightMode_ECO;
             }
             else {
