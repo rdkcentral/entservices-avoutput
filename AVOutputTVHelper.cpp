@@ -1095,7 +1095,38 @@ namespace Plugin {
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
         // Make a local copy since getSaveConfig mutates the struct
         capDetails_t localInfo = info;
-        ret = getSaveConfig(tr181ParamName,localInfo, values);
+
+	bool checkPlatformSupport = false;
+	if(tr181ParamName == "DolbyVisionMode") {
+		checkPlatformSupport = true;
+	}
+	if(tr181ParamName == "Backlight") {
+		checkPlatformSupport = true;
+	}
+	if(tr181ParamName == "DimmingMode") {
+		checkPlatformSupport = true;
+	}
+	if(tr181ParamName == "CMS") {
+		checkPlatformSupport = true;
+	}
+	if(tr181ParamName == "HDRMode") {
+		checkPlatformSupport = true;
+	}
+	if(tr181ParamName == "CustomWhiteBalance") {
+		checkPlatformSupport = true;
+	}
+	if(tr181ParamName == "BacklightControl") {
+		checkPlatformSupport = true;
+	}
+
+	if(checkPlatformSupport) {
+		if( isPlatformSupport(tr181ParamName) != 0 ) {
+			LOGERR("%s: Block set/reset/sync for unsupported feature %s\n", __FUNCTION__, tr181ParamName.c_str());
+			return -1;
+		}
+	}
+
+	ret = getSaveConfig(tr181ParamName,localInfo, values);
         if( 0 == ret ) {
             for( int sourceType: values.sourceValues ) {
                 paramIndex.sourceIndex = sourceType;
