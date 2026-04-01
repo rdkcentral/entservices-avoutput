@@ -808,8 +808,8 @@ namespace Plugin {
         memset(&param, 0, sizeof(param));
 
         if (isPlatformSupport("AutoBacklightMode") != 0) {
-            LOGWARN("No platform support\n");
-            return tvERROR_GENERAL;
+            LOGWARN("AutoBacklightMode not supported by platform\n");
+            return tvERROR_OPERATION_NOT_SUPPORTED;
         }
 
         tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, &param);
