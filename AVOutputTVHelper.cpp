@@ -1146,6 +1146,13 @@ namespace Plugin {
         bool set = !(action.compare("set"));
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
+
+        // Check for the platform support for the parameter.
+        if( isPlatformSupport(tr181ParamName) != 0 ) {
+            LOGERR("%s: Block set/reset/sync for unsupported feature %s\n", __FUNCTION__, tr181ParamName.c_str());
+            return -1;
+        }
+
         // Make a local copy since getSaveConfig mutates the struct
         capDetails_t localInfo = info;
         ret = getSaveConfig(tr181ParamName,localInfo, values);
@@ -3809,12 +3816,6 @@ namespace Plugin {
                 info.colorTemperature = inFile.Get<std::string>(configString);
             }
 
-            if ((param == "DolbyVisionMode") || (param == "Backlight") || (param == "CMS") || (param == "CustomWhiteBalance") || (param == "HDRMode") || (param == "BacklightControl") || (param == "DimmingMode")) {
-                configString = param + ".platformsupport";
-                info.isPlatformSupport = inFile.Get<std::string>(configString);
-                printf(" platformsupport : %s\n",info.isPlatformSupport.c_str() );
-            }
-
             if ( (param == "ColorTemperature") || (param == "DimmingMode") ||
                  ( param == "BacklightControl") || (param == "DolbyVisionMode") ||
                  (param == "AspectRatio") ||
@@ -3871,6 +3872,9 @@ namespace Plugin {
             info.format = inFile.Get<std::string>(configString);
             configString = param + ".source";
             info.source = inFile.Get<std::string>(configString);
+            configString = param + ".platformsupport";
+            info.isPlatformSupport = inFile.Get<std::string>(configString);
+            printf(" param : %s platform support : %s\n", param.c_str(), info.isPlatformSupport.c_str() );
             ret = 0;
         }
         catch(const boost::property_tree::ptree_error &e) {
