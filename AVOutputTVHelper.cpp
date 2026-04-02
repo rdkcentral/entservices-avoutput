@@ -3787,8 +3787,12 @@ namespace Plugin {
 
         if ( param == "WhiteBalance") {
             param = "CustomWhiteBalance";
-        } else if ( param == "AutoBacklightMode") {
-            param = "BacklightControl";
+	} else if ( param == "AutoBacklightMode") {
+		param = "BacklightControl";
+        }else if ( param == "ZoomMode") {
+                param = "AspectRatio";
+        }else if ( param == "ColorTemp") {
+                param = "ColorTemperature";
         }
 
         try {
