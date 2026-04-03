@@ -513,7 +513,20 @@ namespace Plugin {
 
     void AVOutputTV::Deinitialize()
     {
-       LOGINFO("Entry\n");
+       LOGINFO("Entry Clear all Reg functions Tamil\n");
+
+       // Explicitly clear callback registration before platform teardown.
+         tvVideoFormatCallbackData callbackData = {nullptr, nullptr};
+         RegisterVideoFormatChangeCB(&callbackData);
+
+         tvVideoContentCallbackData ConcallbackData = {nullptr, nullptr};
+         RegisterVideoContentChangeCB(&ConcallbackData);
+
+         tvVideoResolutionCallbackData RescallbackData = {nullptr, nullptr};
+         RegisterVideoResolutionChangeCB(&RescallbackData);
+
+         tvVideoFrameRateCallbackData FpscallbackData = {nullptr, nullptr};
+         RegisterVideoFrameRateChangeCB(&FpscallbackData);
 
        tvError_t ret = tvERROR_NONE;
        ret = TvTerm();
