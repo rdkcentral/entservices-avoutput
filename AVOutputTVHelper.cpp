@@ -3878,7 +3878,7 @@ namespace Plugin {
             info.source = inFile.Get<std::string>(configString);
             configString = param + ".platformsupport";
             info.isPlatformSupport = inFile.Get<std::string>(configString);
-            printf(" param : %s platform support : %s\n", param.c_str(), info.isPlatformSupport.c_str() );
+            LOGINFO(" param : %s platform support : %s\n", param.c_str(), info.isPlatformSupport.c_str() );
             ret = 0;
         }
         catch(const boost::property_tree::ptree_error &e) {
