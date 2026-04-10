@@ -1524,6 +1524,7 @@ namespace Plugin {
             syncCMSParams();
         }
 
+        LOGINFO("Calling GetDVCalibrationCaps...");
         m_dvCalibrationStatus = GetDVCalibrationCaps(
                                     &m_minDVCalibrationSettings,
                                     &m_maxDVCalibrationSettings,
@@ -3474,17 +3475,17 @@ namespace Plugin {
 
     std::string AVOutputTV::dvComponentToString(tvDVCalibrationComponent_t comp) {
         switch (comp) {
-            case tvDVCalibrationComponent_TMAX: return "Tmax";
-            case tvDVCalibrationComponent_TMIN: return "Tmin";
-            case tvDVCalibrationComponent_TGAMMA: return "Tgamma";
-            case tvDVCalibrationComponent_RX: return "Rx";
-            case tvDVCalibrationComponent_RY: return "Ry";
-            case tvDVCalibrationComponent_GX: return "Gx";
-            case tvDVCalibrationComponent_GY: return "Gy";
-            case tvDVCalibrationComponent_BX: return "Bx";
-            case tvDVCalibrationComponent_BY: return "By";
-            case tvDVCalibrationComponent_WX: return "Wx";
-            case tvDVCalibrationComponent_WY: return "Wy";
+            case tvDVCalibrationComponent_TMAX: return "tmax";
+            case tvDVCalibrationComponent_TMIN: return "tmin";
+            case tvDVCalibrationComponent_TGAMMA: return "tgamma";
+            case tvDVCalibrationComponent_RX: return "rx";
+            case tvDVCalibrationComponent_RY: return "ry";
+            case tvDVCalibrationComponent_GX: return "gx";
+            case tvDVCalibrationComponent_GY: return "gy";
+            case tvDVCalibrationComponent_BX: return "bx";
+            case tvDVCalibrationComponent_BY: return "by";
+            case tvDVCalibrationComponent_WX: return "wx";
+            case tvDVCalibrationComponent_WY: return "wy";
             default: return "Unknown";
         }
     }
@@ -3531,7 +3532,7 @@ namespace Plugin {
             return tvERROR_GENERAL;
         }
 
-        LOGINFO("DV calibration timestamp %" PRIu64 " saved successfully for %s", timestamp, key.c_str());
+        #LOGINFO("DV calibration timestamp %" PRIu64 " saved successfully for %s", timestamp, key.c_str());
         return tvERROR_NONE;
     }
 
@@ -3633,7 +3634,7 @@ namespace Plugin {
                 else if (comp == "wy") dvValues.Wy = val;
             }
 
-            // Handle timestamp (SET or SYNC)
+            // Handle timestamp (SET or no SYNC for timestamp)
             std::string tsKey;
             if (generateStorageIdentifierDV(tsKey, "UtcTimestamp", indexInfo) == tvERROR_NONE) {
                 if (isSet) {
@@ -3642,13 +3643,10 @@ namespace Plugin {
                     char valStr[32];
                     snprintf(valStr, sizeof(valStr), "%lld", timestamp);
                     setLocalParam(rfc_caller_id, tsKey.c_str(), valStr);
-                } else if (isSync) {
-                    double tsVal = 0;
-                    getDVCalibrationParam("UtcTimestamp", indexInfo, tsVal, "UtcTimestamp");
                 }
             }
 
-            // Update HAL
+            // Update HAL (wont take timestamp, only component values)
             if (SetDVCalibration(ctx.videoSrcType, ctx.pq_mode, ctx.videoFormatType, &dvValues) != tvERROR_NONE) {
                 LOGERR("SetDVCalibration failed for %d/%d/%d", ctx.videoSrcType, ctx.pq_mode, ctx.videoFormatType);
                 overallStatus = tvERROR_GENERAL;
