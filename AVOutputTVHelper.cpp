@@ -3532,7 +3532,6 @@ namespace Plugin {
             return tvERROR_GENERAL;
         }
 
-        #LOGINFO("DV calibration timestamp %" PRIu64 " saved successfully for %s", timestamp, key.c_str());
         return tvERROR_NONE;
     }
 
