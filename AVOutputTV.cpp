@@ -5766,8 +5766,8 @@ namespace Plugin {
             returnResponse(false);
         }
 
-        if( !isCapablityCheckPassed( "WhiteBalance",inputInfo )) {
-            LOGERR("%s: CapablityCheck failed for WhiteBalance\n", __FUNCTION__);
+        if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
             returnResponse(false);
         }
 
