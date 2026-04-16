@@ -22,8 +22,6 @@
 #include "UtilsIarm.h"
 #include "rfcapi.h"
 
-#define CAPABLITY_FILE_NAME    "pq_capabilities.ini"
-
 static std::map<std::string, int> supportedSourcemap;
 static std::map<std::string, int> supportedPictureModemap;
 static std::map<std::string, int> supportedFormatmap;
@@ -32,7 +30,7 @@ static bool m_isDalsEnabled = false;
 namespace WPEFramework {
 namespace Plugin {
 
-    int AVOutputTV::getPictureModeIndex(std::string pqparam)
+    int AVOutputTV::getPictureModeIndex(const std::string& pqparam)
     {
         int index = -1;
         std::map<std::string, int> :: iterator it;
@@ -46,7 +44,7 @@ namespace Plugin {
         return index;
     }
 
-    int AVOutputTV::getSourceIndex(std::string pqparam)
+    int AVOutputTV::getSourceIndex(const std::string& pqparam)
     {
         int index = -1;
         std::map<std::string, int> :: iterator it;
@@ -60,7 +58,7 @@ namespace Plugin {
         return index;
     }
 
-    int AVOutputTV::getFormatIndex(std::string pqparam)
+    int AVOutputTV::getFormatIndex(const std::string&  pqparam)
     {
         int index = -1;
         std::map<std::string, int> :: iterator it;
@@ -290,19 +288,21 @@ namespace Plugin {
 
             indexInfo.controlIndex = controlLevel;
 
-            /*tvColorTemp_t colorTemp;
+            tvColorTemp_t colorTemp;
             if ( getColorTempEnumFromString(paramInfo.colorTemperature,colorTemp ) == -1 ) {
-                LOGERR("%s : GetComponentEnumFromString Failed!!! ",__FUNCTION__);
+                LOGERR("%s : getColorTempEnumFromString failed for colorTemperature '%s'", __FUNCTION__, paramInfo.colorTemperature.c_str());
                 return -1;
             }
 
-            indexInfo.colorTempIndex = colorTemp; */
+            indexInfo.colorTempIndex = colorTemp;
 
-            LOGINFO("%s colorIndex : %d , controlIndex : %d \n",__FUNCTION__,indexInfo.colorIndex, indexInfo.controlIndex);
+            LOGINFO("%s colorIndex : %d , controlIndex : %d , colorTempIndex : %d \n",__FUNCTION__,indexInfo.colorIndex, indexInfo.controlIndex, indexInfo.colorTempIndex);
 
         }
 
-        if (indexInfo.sourceIndex == -1 || indexInfo.pqmodeIndex == -1 || indexInfo.formatIndex == -1) {
+        // Coverity fix: Compare with 255 instead of -1 since paramIndex_t uses uint8_t
+        // When get*Index() functions return -1 (error), it wraps to 255 in uint8_t
+        if (indexInfo.sourceIndex == 255 || indexInfo.pqmodeIndex == 255 || indexInfo.formatIndex == 255) {
 	        return -1;
     	}
         LOGINFO("%s: Exit sourceIndex = %d pqmodeIndex = %d formatIndex = %d\n",__FUNCTION__,indexInfo.sourceIndex,indexInfo.pqmodeIndex,indexInfo.formatIndex);
@@ -390,7 +390,7 @@ namespace Plugin {
         return index;
     }
 
-    bool AVOutputTV::isIncluded(const std::set<string> set1,const std::set<string> set2)
+    bool AVOutputTV::isIncluded(const std::set<string>& set1,const std::set<string>& set2)
     {
         for( const auto& element : set2) {
             if(set1.find(element) == set1.end()) {
@@ -444,7 +444,7 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::isPlatformSupport(std::string pqparam)
+    int AVOutputTV::isPlatformSupport(const std::string& pqparam)
     {
         capVectors_t vectorInfo;
 
@@ -463,7 +463,7 @@ namespace Plugin {
         return 0;
     }
 
-    void AVOutputTV::spliltCapablities( capVectors_t& vectorInfo, capDetails_t stringInfo)
+    void AVOutputTV::spliltCapablities( capVectors_t& vectorInfo, const capDetails_t& stringInfo)
     {
         std::vector<std::pair<std::stringstream, std::vector<std::string>&>> streamVector;
 
@@ -490,7 +490,7 @@ namespace Plugin {
         }
     }
     
-    bool AVOutputTV::isCapablityCheckPassed( std::string param, capDetails_t inputInfo )
+    bool AVOutputTV::isCapabilityCheckPassed( const std::string& param, const capDetails_t& inputInfo )
     {
 
         capDetails_t paramInfo;
@@ -512,36 +512,36 @@ namespace Plugin {
         {
             // Check color
             if (! checkCMSColorAndComponentCapability(paramInfo.color, inputInfo.color)) {
-                LOGINFO( "%s:CMS color Capablity Failed CapColor : %s inputColor : %s!!!\n",__FUNCTION__,paramInfo.color.c_str(), inputInfo.color.c_str());
+                LOGINFO( "%s:CMS color Capability Failed CapColor : %s inputColor : %s!!!\n",__FUNCTION__,paramInfo.color.c_str(), inputInfo.color.c_str());
                 return false;
             }
 
             // Check component
             if (! checkCMSColorAndComponentCapability(paramInfo.component, inputInfo.component)) {
-                LOGINFO( "%s:CMS component Capablity capComponent : %s inputComponent : %s Failed!!!.\n",__FUNCTION__,paramInfo.component.c_str(), inputInfo.component.c_str());
+                LOGINFO( "%s:CMS component Capability capComponent : %s inputComponent : %s Failed!!!.\n",__FUNCTION__,paramInfo.component.c_str(), inputInfo.component.c_str());
                 return false;
             }
         }
         else if( param == "WhiteBalance")
         {
-            if ( ( paramInfo.color.find(inputInfo.color) == std::string::npos ) || ( paramInfo.control.find(inputInfo.control) == std::string::npos) )
+            if ( ( paramInfo.color.find(inputInfo.color) == std::string::npos ) || ( paramInfo.control.find(inputInfo.control) == std::string::npos) || ( paramInfo.colorTemperature.find(inputInfo.colorTemperature) == std::string::npos) )
                 return false;
         }
-        //Compare capablityInfo with Input params
+        //Compare capabilityInfo with Input params
 
-        //1.convertCapablity Info to set for comparison
+        //1.convertCapability Info to set for comparison
         spliltStringsAndConvertToSet( paramInfo.pqmode, paramInfo.format, paramInfo.source, pqmodeCapSet, formatCapSet, sourceCapset);
 
         //2.convert Application Input Info to set for comparison
         spliltStringsAndConvertToSet( inputInfo.pqmode, inputInfo.format, inputInfo.source, pqmodeInputSet, formatInputSet, sourceInputSet );
 
-        //3.Compare Each pqmode/format/source InputInfo against CapablityInfo
+        //3.Compare Each pqmode/format/source InputInfo against CapabilityInfo
         if ( isIncluded(pqmodeCapSet,pqmodeInputSet) && isIncluded(formatCapSet,formatInputSet) && isIncluded(sourceCapset,sourceInputSet) ) {
-            LOGINFO("%s : Capablity Chesk passed \n", __FUNCTION__);
+            LOGINFO("%s : Capability Check passed \n", __FUNCTION__);
             return true;
         }
         else {
-            LOGERR("%s : Capablity Check Failed \n", __FUNCTION__);
+            LOGERR("%s : Capability Check Failed \n", __FUNCTION__);
             return false;
         }
     }
@@ -799,6 +799,59 @@ namespace Plugin {
         LOGINFO("%s : Default tvsettings file : %s\n",__FUNCTION__,rfc_caller_id);
     }
 
+    tvError_t AVOutputTV::initializeBacklightMode()
+    {
+        TR181_ParamData_t param;
+        tvError_t ret = tvERROR_NONE;
+        tvBacklightMode_t blMode = tvBacklightMode_NONE;
+
+        memset(&param, 0, sizeof(param));
+
+        if (isPlatformSupport("AutoBacklightMode") != 0) {
+            LOGWARN("AutoBacklightMode not supported by platform\n");
+            return tvERROR_OPERATION_NOT_SUPPORTED;
+        }
+
+        tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, &param);
+        if ( tr181Success == err )
+        {
+            LOGINFO("getLocalParam for %s is %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, param.value);
+            
+            const std::string mode(param.value);
+
+            if (mode == "none") {
+                blMode = tvBacklightMode_NONE;
+            }
+            else if (mode == "Manual"){
+                blMode = tvBacklightMode_MANUAL;
+            }
+            else if (mode == "Ambient"){
+                blMode = tvBacklightMode_AMBIENT;
+            }
+            else if (mode == "Eco"){
+                blMode = tvBacklightMode_ECO;
+            }
+            else {
+                blMode = tvBacklightMode_NONE;
+            }
+
+            ret = SetCurrentBacklightMode(blMode);
+            if(ret != tvERROR_NONE) {
+                LOGWARN("Autobacklight Mode set failed: %s\n",getErrorString(ret).c_str());
+            }
+            else {
+                LOGINFO("Exit : Autobacklight Mode set successfully, value: %s\n", param.value);
+            }
+        }
+        else
+        {
+            LOGWARN("getLocalParam for %s Failed : %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
+            ret = tvERROR_GENERAL;
+        }
+
+        return ret;
+    }
+
     tvError_t AVOutputTV::initializePictureMode()
     {
         tvError_t ret = tvERROR_NONE;
@@ -845,7 +898,7 @@ namespace Plugin {
         return result;
     }
 
-    int AVOutputTV::convertToValidInputParameter(std::string pqparam, capDetails_t& info)
+    int AVOutputTV::convertToValidInputParameter(const std::string& pqparam, capDetails_t& info)
     {
 
         LOGINFO("Entry %s source %s pqmode %s format %s \n", __FUNCTION__, info.source.c_str(), info.pqmode.c_str(), info.format.c_str());
@@ -978,7 +1031,7 @@ namespace Plugin {
         return ret;
     }
 
-    tvError_t AVOutputTV::updateAVoutputTVParamToHALV2(std::string forParam, paramIndex_t indexInfo, int value, bool setNotDelete)
+    tvError_t AVOutputTV::updateAVoutputTVParamToHALV2( std::string forParam, paramIndex_t indexInfo, int value, bool setNotDelete)
     {
         tvError_t ret = tvERROR_NONE;
         std::string key;
@@ -1077,11 +1130,13 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::updateAVoutputTVParam( std::string action, std::string tr181ParamName, capDetails_t info, tvPQParameterIndex_t pqParamIndex, int level )
+    int AVOutputTV::updateAVoutputTVParam( const std::string& action, const std::string& tr181ParamName, const capDetails_t& info, tvPQParameterIndex_t pqParamIndex, int level )
     {
         LOGINFO("Entry : %s\n",__FUNCTION__);
         valueVectors_t values;
-        paramIndex_t paramIndex;
+        // Coverity fix: Initialize struct to zero to prevent uninitialized field usage
+        // This ensures all 7 uint8_t fields start with defined values
+        paramIndex_t paramIndex = {};
         std::vector<int> sources;
         std::vector<int> pictureModes;
         std::vector<int> formats;
@@ -1091,7 +1146,9 @@ namespace Plugin {
         bool set = !(action.compare("set"));
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
-        ret = getSaveConfig(tr181ParamName,info, values);
+        // Make a local copy since getSaveConfig mutates the struct
+        capDetails_t localInfo = info;
+        ret = getSaveConfig(tr181ParamName,localInfo, values);
         if( 0 == ret ) {
             for( int sourceType: values.sourceValues ) {
                 paramIndex.sourceIndex = sourceType;
@@ -1251,7 +1308,11 @@ namespace Plugin {
                              {
                                 if(sync) {
                                     int value=0;
-                                    getLocalparam(tr181ParamName,paramIndex,value,pqParamIndex,sync);
+                                    // Coverity fix: Check return value to ensure value is properly initialized
+                                    // The function returns int (-1 on error, 0 on success), validate before use
+                                    if (getLocalparam(tr181ParamName,paramIndex,value,pqParamIndex,sync) != 0) {
+                                        LOGERR("%s: getLocalparam failed for LOCALDIMMING_LEVEL\n", __FUNCTION__);
+                                    }
                                     level=value;
                                 }
                                 ret |= SaveTVDimmingMode((tvVideoSrcType_t)paramIndex.sourceIndex, paramIndex.pqmodeIndex,(tvVideoFormatType_t)paramIndex.formatIndex,(tvDimmingMode_t)level);
@@ -1384,7 +1445,9 @@ namespace Plugin {
 
         //Ambient Bakclight Mode
         m_backlightModeStatus = GetBacklightModeCaps(&m_backlightModes, &m_numBacklightModes, &m_backlightModeCaps);
-        if (m_backlightModeStatus == tvERROR_NONE) {
+        if (m_backlightModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+            initializeBacklightMode();
+        } else {
             updateAVoutputTVParamV2("sync", "BacklightMode", paramJson, PQ_PARAM_BACKLIGHT_MODE, level);
         }
 
@@ -1600,9 +1663,10 @@ namespace Plugin {
             TR181_ParamData_t param = {0};
             int ret = 0;
 
-            inputInfo.pqmode = pqmode;
-            inputInfo.source = source;
-            inputInfo.format = format;
+            // Coverity fix: Use std::move() since parameters are passed by value and not reused
+            inputInfo.pqmode = std::move(pqmode);
+            inputInfo.source = std::move(source);
+            inputInfo.format = std::move(format);
 
             ret = getSaveConfig("PictureMode", inputInfo, valueVectors);
 
@@ -1689,25 +1753,26 @@ namespace Plugin {
          return "UNKNOWN ERROR";
     }
 
-    int AVOutputTV::getSaveConfig(std::string param, capDetails_t capInfo, valueVectors_t &values)
+    int AVOutputTV::getSaveConfig(const std::string& param, const capDetails_t& capInfo, valueVectors_t &values)
     {
         LOGINFO("Entry : %s pqmode : %s source :%s format :%s component : %s color : %s control:%s\n",__FUNCTION__,capInfo.pqmode.c_str(),capInfo.source.c_str(),capInfo.format.c_str(),capInfo.component.c_str(),capInfo.color.c_str(),capInfo.control.c_str());
 
         int ret = 0;
 
-        if (getAvailableCapabilityModes(capInfo) != 0) {
+        capDetails_t localCapInfo = capInfo;
+        if (getAvailableCapabilityModes(localCapInfo) != 0) {
             LOGERR("%s: failed to get picture/source/format mode capability \n", __FUNCTION__);
             return -1;
         }
         //pqmode
-        char *modeString = strdup(capInfo.pqmode.c_str());
+        char *modeString = strdup(localCapInfo.pqmode.c_str());
         char *token = NULL;
         while ((token = strtok_r(modeString,",",&modeString))) {
             std::string local = token;
             values.pqmodeValues.push_back(getPictureModeIndex(local));
         }
         //source
-        char *sourceString = strdup(capInfo.source.c_str());
+        char *sourceString = strdup(localCapInfo.source.c_str());
         char *sourceToken = NULL;
         while ((sourceToken = strtok_r(sourceString,",",&sourceString))) {
             std::string local = sourceToken;
@@ -1715,7 +1780,7 @@ namespace Plugin {
             values.sourceValues.push_back(getSourceIndex(local));
         }
         //3)check format
-        char *formatString = strdup(capInfo.format.c_str());
+        char *formatString = strdup(localCapInfo.format.c_str());
         char *formatToken = NULL;
         while ((formatToken = strtok_r(formatString,",",&formatString))) {
             std::string local = formatToken;
@@ -1725,7 +1790,7 @@ namespace Plugin {
         if( param.compare("CMS") == 0 )
         {
             //Check Color
-            char *colorString = strdup(capInfo.color.c_str());
+            char *colorString = strdup(localCapInfo.color.c_str());
             char *colorToken = NULL;
             while ((colorToken = strtok_r(colorString,",",&colorString))) {
                 std::string local = colorToken;
@@ -1738,7 +1803,7 @@ namespace Plugin {
             }
 
             //Check Component
-            char *componentString = strdup(capInfo.component.c_str());
+            char *componentString = strdup(localCapInfo.component.c_str());
             char *componentToken = NULL;
             while ((componentToken = strtok_r(componentString,",",&componentString))) {
                 std::string local = componentToken;
@@ -1754,7 +1819,7 @@ namespace Plugin {
         if( param.compare("WhiteBalance") == 0 )
         {
             //Check Color
-            char *colorString = strdup(capInfo.color.c_str());
+            char *colorString = strdup(localCapInfo.color.c_str());
             char *colorToken = NULL;
             while ((colorToken = strtok_r(colorString,",",&colorString))) {
                 std::string local = colorToken;
@@ -1767,7 +1832,7 @@ namespace Plugin {
             }
 
             //Check Control
-            char *controlString = strdup(capInfo.control.c_str());
+            char *controlString = strdup(localCapInfo.control.c_str());
             char *controlToken = NULL;
             while ((controlToken = strtok_r(controlString,",",&controlString))) {
                 std::string local = controlToken;
@@ -1794,7 +1859,7 @@ namespace Plugin {
             }*/
         }
 
-        LOGINFO("Exit : %s pqmode : %s source :%s format :%s ret:%d\n",__FUNCTION__,capInfo.pqmode.c_str(),capInfo.source.c_str(),capInfo.format.c_str(), ret);
+        LOGINFO("Exit : %s pqmode : %s source :%s format :%s ret:%d\n",__FUNCTION__,localCapInfo.pqmode.c_str(),localCapInfo.source.c_str(),localCapInfo.format.c_str(), ret);
         return ret;
     }
 
@@ -2016,7 +2081,7 @@ namespace Plugin {
         return CompColorEnum;
     }
 
-    tvError_t AVOutputTV::getParamsCaps(std::string param, capVectors_t &vecInfo)
+    tvError_t AVOutputTV::getParamsCaps(const std::string& param, capVectors_t &vecInfo)
     {
         tvError_t ret = tvERROR_NONE;
         capDetails_t stringInfo;
@@ -2392,9 +2457,10 @@ namespace Plugin {
         tvError_t ret = tvERROR_NONE;
         capDetails_t inputInfo;
         
-        inputInfo.pqmode = pqmode;
-        inputInfo.source = source;
-        inputInfo.format = format;
+        // Coverity fix: Use std::move() since parameters are passed by value and not reused
+        inputInfo.pqmode = std::move(pqmode);
+        inputInfo.source = std::move(source);
+        inputInfo.format = std::move(format);
 
         JsonObject paramJson;
         paramJson["pictureMode"] = inputInfo.pqmode;
@@ -2466,7 +2532,7 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::getCMSComponentEnumFromString(std::string component, tvComponentType_t& value)
+    int AVOutputTV::getCMSComponentEnumFromString(const std::string& component, tvComponentType_t& value)
     {
         int ret = 0;
 	
@@ -2482,7 +2548,7 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::getCMSColorEnumFromString(std::string color,tvDataComponentColor_t& value)
+    int AVOutputTV::getCMSColorEnumFromString(const std::string& color,tvDataComponentColor_t& value)
     {
         int ret = 0;
 	
@@ -2572,8 +2638,13 @@ namespace Plugin {
 
                 if ( convertWBParamToPQEnum(inputInfo.control,inputInfo.color,tvPQEnum) != 0 ) {
                     LOGERR("%s: %s/%s Param Not Found \n",__FUNCTION__,inputInfo.control.c_str(),inputInfo.color.c_str());
-                }    
-                updateAVoutputTVParam("sync","WhiteBalance",inputInfo,tvPQEnum,level);
+                    continue;
+                }
+	        // Coverity fix: Check return value to prevent undefined behavior
+                // The function returns 0 on success non-zero on failure, must be validated
+                if (updateAVoutputTVParam("sync","WhiteBalance",inputInfo,tvPQEnum,level) != 0) {
+                    LOGERR("%s: updateAVoutputTVParam failed for WhiteBalance sync\n", __FUNCTION__);
+                }	
             }
         }
     }
@@ -2714,7 +2785,7 @@ namespace Plugin {
         }
     }
 
-    int AVOutputTV::getWBColorEnumFromString(std::string color,tvWBColor_t& value) {
+    int AVOutputTV::getWBColorEnumFromString(const std::string& color,tvWBColor_t& value) {
         int ret = 0;
 	
         if( color.compare("Red") == 0 )
@@ -2729,7 +2800,7 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::getWBControlEnumFromString(std::string color,tvWBControl_t& value) {
+    int AVOutputTV::getWBControlEnumFromString(const std::string& color,tvWBControl_t& value) {
         int ret = 0;
 	
         if( color.compare("Gain") == 0 )
@@ -3714,7 +3785,7 @@ namespace Plugin {
         }
 
         try {
-            CIniFile inFile(CAPABLITY_FILE_NAME);
+            CIniFile inFile(CAPABILITY_FILE_NAME);
             std::string configString;
 
             if(param == "CMS")
@@ -3734,6 +3805,8 @@ namespace Plugin {
                 configString = param + ".control";
                 info.control = inFile.Get<std::string>(configString);
 
+                configString = param + ".ColorTemperature";
+                info.colorTemperature = inFile.Get<std::string>(configString);
             }
 
             if ((param == "DolbyVisionMode") || (param == "Backlight") || (param == "CMS") || (param == "CustomWhiteBalance") || (param == "HDRMode") || (param == "BacklightControl") || (param == "DimmingMode")) {

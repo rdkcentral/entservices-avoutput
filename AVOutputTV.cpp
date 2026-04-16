@@ -1294,8 +1294,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "AspectRatio",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for AspectRatio\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "AspectRatio",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for AspectRatio\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -1445,8 +1445,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "AspectRatio",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for AspectRatio\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "AspectRatio",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for AspectRatio\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -1937,8 +1937,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Backlight" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Backlight\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Backlight" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Backlight\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2148,8 +2148,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Backlight",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Backlight\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Backlight",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Backlight\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2304,8 +2304,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Brightness",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Brightness\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Brightness",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Brightness\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2353,8 +2353,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Brightness",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Brightness\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Brightness",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Brightness\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2509,8 +2509,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Contrast" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Contrast\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Contrast" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Contrast\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2556,8 +2556,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Contrast" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Contrast\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Contrast" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Contrast\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2715,8 +2715,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Saturation" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Saturation\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Saturation" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Saturation\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2761,8 +2761,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Saturation", inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Saturation\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Saturation", inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Saturation\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2921,8 +2921,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Sharpness", inputInfo  )) {
-                LOGERR("%s: CapablityCheck failed for Sharpness\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Sharpness", inputInfo  )) {
+                LOGERR("%s: CapabilityCheck failed for Sharpness\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -2968,8 +2968,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Sharpness" , inputInfo)) {
-                LOGERR("%s: CapablityCheck failed for Sharpness\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Sharpness" , inputInfo)) {
+                LOGERR("%s: CapabilityCheck failed for Sharpness\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -3128,8 +3128,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Hue", inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Hue\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Hue", inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Hue\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -3175,8 +3175,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "Hue" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for Hue\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "Hue" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for Hue\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -3368,8 +3368,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "ColorTemperature", inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for colorTemperature\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "ColorTemperature", inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for colorTemperature\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -3430,8 +3430,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "ColorTemperature", inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for colorTemperature\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "ColorTemperature", inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for colorTemperature\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -3620,8 +3620,8 @@ namespace Plugin {
 	            returnResponse(false);
 	        }
 
-            if( !isCapablityCheckPassed( "DimmingMode" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for DimmingMode\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "DimmingMode" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for DimmingMode\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -3698,8 +3698,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "DimmingMode" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for DimmingMode\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "DimmingMode" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for DimmingMode\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -3956,8 +3956,8 @@ namespace Plugin {
             returnResponse(false);
         }
 
-        if( !isCapablityCheckPassed( "DolbyVisionMode" , inputInfo )) {
-            LOGERR("%s: CapablityCheck failed for DolbyVisionMode\n", __FUNCTION__);
+        if( !isCapabilityCheckPassed( "DolbyVisionMode" , inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for DolbyVisionMode\n", __FUNCTION__);
             returnResponse(false);
         }
 
@@ -4001,8 +4001,8 @@ namespace Plugin {
 	    returnResponse(false);
 	}
 
-        if( !isCapablityCheckPassed( "DolbyVisionMode" , inputInfo )) {
-            LOGERR("%s: CapablityCheck failed for DolbyVisionMode\n", __FUNCTION__);
+        if( !isCapabilityCheckPassed( "DolbyVisionMode" , inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for DolbyVisionMode\n", __FUNCTION__);
             returnResponse(false);
         }
         inputInfo.format = "DV"; //Update only for DV format
@@ -4506,8 +4506,8 @@ namespace Plugin {
                 LOGERR("%s: Range validation failed for PictureMode\n", __FUNCTION__);
                 returnResponse(false);
             }
-            if( !isCapablityCheckPassed( "PictureMode" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for PictureMode\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "PictureMode" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for PictureMode\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -4697,8 +4697,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "PictureMode",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for PictureMode\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "PictureMode",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for PictureMode\n", __FUNCTION__);
                 returnResponse(false);
             }
             inputInfo.pqmode = "Current";
@@ -4812,8 +4812,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "LowLatencyState" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for LowLatencyState\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "LowLatencyState" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for LowLatencyState\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -4945,8 +4945,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "LowLatencyState" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for LowLatencyState\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "LowLatencyState" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for LowLatencyState\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -5184,8 +5184,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "CMS",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for CMS\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "CMS",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for CMS\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -5323,8 +5323,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "CMS" , inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for CMS\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "CMS" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for CMS\n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -5518,8 +5518,8 @@ namespace Plugin {
             returnResponse(false);
         }
 
-        if (!isCapablityCheckPassed("HDRMode", inputInfo)){
-            LOGERR("%s: CapablityCheck failed for hdrMode\n", __FUNCTION__);
+        if (!isCapabilityCheckPassed("HDRMode", inputInfo)){
+            LOGERR("%s: CapabilityCheck failed for hdrMode\n", __FUNCTION__);
             returnResponse(false);
         }
 
@@ -5566,8 +5566,8 @@ namespace Plugin {
             returnResponse(false);
         }
 
-        if( !isCapablityCheckPassed( "HDRMode", inputInfo )) {
-            LOGERR("%s: CapablityCheck failed for hdrMode\n", __FUNCTION__);
+        if( !isCapabilityCheckPassed( "HDRMode", inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for hdrMode\n", __FUNCTION__);
             returnResponse(false);
         }
 
@@ -5653,8 +5653,8 @@ namespace Plugin {
             returnResponse(false);
         }
 
-        if( !isCapablityCheckPassed( "HDRMode" , inputInfo )) {
-            LOGERR("%s: CapablityCheck failed for HDRMode\n", __FUNCTION__);
+        if( !isCapabilityCheckPassed( "HDRMode" , inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for HDRMode\n", __FUNCTION__);
             returnResponse(false);
         }
 
@@ -5750,9 +5750,10 @@ namespace Plugin {
 
         inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
         inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
+        inputInfo.colorTemperature = parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
 
-        if( inputInfo.color.empty() || inputInfo.control.empty() ) {
-            LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
+        if( inputInfo.color.empty() || inputInfo.control.empty() || inputInfo.colorTemperature.empty() ) {
+            LOGERR("%s : Color/Control/ColorTemperature param not found!!!\n",__FUNCTION__);
             returnResponse(false);
         }
 
@@ -5762,6 +5763,11 @@ namespace Plugin {
 
         if (parsingGetInputArgument(parameters, "WhiteBalance", inputInfo) != 0) {
             LOGINFO("%s: Failed to parse argument\n", __FUNCTION__);
+            returnResponse(false);
+        }
+
+        if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
             returnResponse(false);
         }
 
@@ -5799,13 +5805,14 @@ namespace Plugin {
 
         inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
         inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
+        inputInfo.colorTemperature = parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
 
         if (isPlatformSupport("WhiteBalance") != 0) {
             returnResponse(false);
         }
 
-        if( inputInfo.color.empty() || inputInfo.control.empty()  ) {
-            LOGERR("%s : Color/Control param not found!!!\n",__FUNCTION__);
+        if( inputInfo.color.empty() || inputInfo.control.empty() || inputInfo.colorTemperature.empty() ) {
+            LOGERR("%s : Color/Control/ColorTemperature param not found!!!\n",__FUNCTION__);
             returnResponse(false);
         }
 
@@ -5823,8 +5830,8 @@ namespace Plugin {
             returnResponse(false);
         }
 
-        if( !isCapablityCheckPassed( "WhiteBalance",inputInfo )) {
-            LOGERR("%s: CapablityCheck failed for WhiteBalance\n", __FUNCTION__);
+        if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
             returnResponse(false);
         }
 
@@ -5895,8 +5902,8 @@ namespace Plugin {
             returnResponse(false);
         }
 
-        if( !isCapablityCheckPassed( "WhiteBalance",inputInfo )) {
-            LOGERR("%s: CapablityCheck failed for WhiteBalance\n", __FUNCTION__);
+        if( !isCapabilityCheckPassed( "WhiteBalance",inputInfo )) {
+            LOGERR("%s: CapabilityCheck failed for WhiteBalance\n", __FUNCTION__);
             returnResponse(false);
         }
 
@@ -5987,6 +5994,7 @@ namespace Plugin {
         JsonArray sourceArray;
         JsonArray colorArray;
         JsonArray controlArray;
+        JsonArray colorTempArray;
 
         JsonObject gainInfo;
         JsonObject offsetInfo;
@@ -6028,6 +6036,13 @@ namespace Plugin {
                     formatArray.Add(info.formatVector[index]);
                 }
                 response["videoFormatInfo"]=formatArray;
+            }
+
+            if ((info.colorTempVector.front()).compare("none") != 0) {
+                for (index = 0; index < info.colorTempVector.size(); index++) {
+                    colorTempArray.Add(info.colorTempVector[index]);
+                }
+                response["colorTemperatureInfo"]=colorTempArray;
             }
 
             if ((info.colorVector.front()).compare("none") != 0) {
@@ -6125,8 +6140,8 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( !isCapablityCheckPassed( "AutoBacklightMode",inputInfo )) {
-                LOGERR("%s: CapablityCheck failed for AutoBacklightMode\n", __FUNCTION__);
+            if( !isCapabilityCheckPassed( "AutoBacklightMode",inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for AutoBacklightMode\n", __FUNCTION__);
                 returnResponse(false);
             }
 
