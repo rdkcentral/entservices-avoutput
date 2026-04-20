@@ -1130,39 +1130,122 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::updateAVoutputTVParam( const std::string& action, const std::string& tr181ParamName, const capDetails_t& info, tvPQParameterIndex_t pqParamIndex, int level )
+    int AVOutputTV::updateAVoutputTVParam(
+        const std::string& action,
+        const std::string& tr181ParamName,
+        const capDetails_t& info,
+        tvPQParameterIndex_t pqParamIndex,
+        int level)
     {
-        LOGINFO("Entry : %s\n",__FUNCTION__);
+        LOGINFO("Entry : %s\n", __FUNCTION__);
+
         valueVectors_t values;
-        // Coverity fix: Initialize struct to zero to prevent uninitialized field usage
-        // This ensures all 7 uint8_t fields start with defined values
-        paramIndex_t paramIndex = {};
-        std::vector<int> sources;
-        std::vector<int> pictureModes;
-        std::vector<int> formats;
-        int ret = 0;
-        bool sync = !(action.compare("sync"));
-        bool reset = !(action.compare("reset"));
-        bool set = !(action.compare("set"));
+        capDetails_t localInfo = info;
 
-        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
-
-        // Check for the platform support for the parameter.
-        if( isPlatformSupport(tr181ParamName) != 0 ) {
-            LOGERR("%s: Block set/reset/sync for unsupported feature %s\n", __FUNCTION__, tr181ParamName.c_str());
+        if (getSaveConfig(tr181ParamName, localInfo, values) != 0) {
             return -1;
         }
 
-        // Make a local copy since getSaveConfig mutates the struct
-        capDetails_t localInfo = info;
-        ret = getSaveConfig(tr181ParamName,localInfo, values);
-        if( 0 == ret ) {
+        // ---- Current context
+        tvVideoSrcType_t currentSrc = VIDEO_SOURCE_IP;
+        tvVideoFormatType_t currentFmt = VIDEO_FORMAT_SDR;
+        char picMode[PIC_MODE_NAME_MAX] = {0};
+
+        GetCurrentVideoSource(&currentSrc);
+        GetCurrentVideoFormat(&currentFmt);
+        getCurrentPictureMode(picMode);
+
+        std::string currentPicMode(picMode);
+
+        tvPQModeIndex_t currentModeEnum = (tvPQModeIndex_t)(-1);
+        auto it = pqModeReverseMap.find(currentPicMode);
+        if (it != pqModeReverseMap.end()) {
+            currentModeEnum = it->second;
+        }
+
+        bool hasCurrent = false;
+
+        for (auto src : values.sourceValues) {
+            if (src != currentSrc) continue;
+
+            for (auto mode : values.pqmodeValues) {
+                if (mode != currentModeEnum) continue;
+
+                for (auto fmt : values.formatValues) {
+                    if (fmt == currentFmt) {
+                        hasCurrent = true;
+                        break;
+                    }
+                }
+                if (hasCurrent) break;
+            }
+            if (hasCurrent) break;
+        }
+
+        int ret = 0;
+
+        // Execute current immediately
+        if (hasCurrent) {
+            LOGINFO("%s: Executing current context immediately", __FUNCTION__);
+
+            valueVectors_t currentOnly;
+            currentOnly.sourceValues = { currentSrc };
+            currentOnly.formatValues = { currentFmt };
+            currentOnly.pqmodeValues = { (int)currentModeEnum };
+
+            ret = updateAVoutputTVParamImplementation(
+                action, tr181ParamName, info,
+                pqParamIndex, level,
+                currentOnly);
+        }
+
+        // Queue request for async processing to avoid blocking current context execution
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            paramUpdateQueue.push(
+                [this, action, tr181ParamName, info, pqParamIndex, level, values]() {
+                    updateAVoutputTVParamImplementation(
+                        action, tr181ParamName, info,
+                        pqParamIndex, level,
+                        values);
+                });
+        }
+
+        queueCondition.notify_one();
+
+        LOGINFO("Exit : %s\n", __FUNCTION__);
+
+        return ret;
+    }
+
+    int AVOutputTV::updateAVoutputTVParamImplementation(
+        const std::string& action,
+        const std::string& tr181ParamName,
+        const capDetails_t& info,
+        tvPQParameterIndex_t pqParamIndex,
+        int level,
+        const valueVectors_t& values)
+    {
+        LOGINFO("Entry : %s\n",__FUNCTION__);
+        // Coverity fix: Initialize struct to zero to prevent uninitialized field usage
+        // This ensures all 7 uint8_t fields start with defined values
+        paramIndex_t paramIndex = {};
+        int ret = 0;
+
+        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
+
+        bool sync = (action == "sync");
+        bool reset = (action == "reset");
+        bool set   = (action == "set");
+
+
             for( int sourceType: values.sourceValues ) {
                 paramIndex.sourceIndex = sourceType;
                 for( int modeType : values.pqmodeValues ) {
                     paramIndex.pqmodeIndex = modeType;
                     for( int formatType : values.formatValues ) {
                         paramIndex.formatIndex = formatType;
+
                         switch(pqParamIndex) {
                             case PQ_PARAM_BRIGHTNESS:
                             case PQ_PARAM_CONTRAST:
@@ -1334,7 +1417,7 @@ namespace Plugin {
                 }
            }
 
-        }
+        LOGINFO("Exit : %s\n",__FUNCTION__);
         return ret;
     }
     void AVOutputTV::syncCMSParamsV2() {
@@ -3452,27 +3535,34 @@ namespace Plugin {
     }
 
 
-    void AVOutputTV::paramUpdateWorker() {
-        while (!shouldStopWorker) {
-            std::unique_lock<std::mutex> lock(queueMutex);
+    void AVOutputTV::paramUpdateWorker()
+    {
+        while (true) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(queueMutex);
+                // Wait until work is available OR stop is requested
+                queueCondition.wait(lock, [this] {
+                    return !paramUpdateQueue.empty() || shouldStopWorker;
+                });
 
-            // Wait for work or stop signal
-            queueCondition.wait(lock, [this] {
-                return !paramUpdateQueue.empty() || shouldStopWorker;
-            });
+                // Exit only when stop requested AND no pending work
+                if (shouldStopWorker && paramUpdateQueue.empty()) {
+                    break;
+                }
 
-            if (shouldStopWorker) {
-                break;
+                // Fetch next task
+                task = std::move(paramUpdateQueue.front());
+                paramUpdateQueue.pop();
             }
 
-            // Process all queued updates
-            while (!paramUpdateQueue.empty() && !shouldStopWorker) {
-                auto task = paramUpdateQueue.front();
-                paramUpdateQueue.pop();
-                lock.unlock();
-                // Execute the task
+            // Execute task outside lock
+            try {
                 task();
-                lock.lock();
+            } catch (const std::exception& e) {
+                LOGERR("%s: Worker task exception: %s", __FUNCTION__, e.what());
+            } catch (...) {
+                LOGERR("%s: Worker task unknown exception", __FUNCTION__);
             }
         }
     }
