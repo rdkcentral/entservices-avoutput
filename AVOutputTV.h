@@ -395,6 +395,7 @@ class AVOutputTV : public AVOutputBase {
 		 * Will be called whenever the application invokes set/reset call
 		 */
 		int updateAVoutputTVParam(const std::string& action, const std::string& tr181ParamName, const capDetails_t& info, tvPQParameterIndex_t pqParamIndex, int level );
+		int updateAVoutputTVParamImplementation( const std::string& action, const std::string& tr181ParamName, const capDetails_t& info, tvPQParameterIndex_t pqParamIndex, int level, const valueVectors_t& values );
 
 		/* Every bootup this function is called to sync TR181 to TVSettings HAL for saving the value */
 		tvError_t syncAvoutputTVParamsToHAL(std::string pqmode, std::string source, std::string format);

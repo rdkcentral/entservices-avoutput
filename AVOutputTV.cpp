@@ -426,8 +426,10 @@ namespace Plugin {
     AVOutputTV :: ~AVOutputTV()
     {
         // Signal worker thread to stop
-        shouldStopWorker = true;
-
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            shouldStopWorker = true;
+        }
         queueCondition.notify_all();
         // Wait for worker thread to finish
         if (workerThread.joinable()) {
