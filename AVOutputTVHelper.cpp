@@ -1142,6 +1142,12 @@ namespace Plugin {
         valueVectors_t values;
         capDetails_t localInfo = info;
 
+        // Check for the platform support for the parameter.
+        if( isPlatformSupport(tr181ParamName) != 0 ) {
+            LOGERR("%s: Block set/reset/sync for unsupported feature %s\n", __FUNCTION__, tr181ParamName.c_str());
+            return -1;
+        }
+
         if (getSaveConfig(tr181ParamName, localInfo, values) != 0) {
             return -1;
         }
