@@ -1159,15 +1159,21 @@ namespace Plugin {
 
         GetCurrentVideoSource(&currentSrc);
         GetCurrentVideoFormat(&currentFmt);
-        getCurrentPictureMode(picMode);
 
-        std::string currentPicMode(picMode);
+        tvPQModeIndex_t currentPQMode = PQ_MODE_STANDARD;
+        initializeReverseMaps();
 
-        tvPQModeIndex_t currentModeEnum = (tvPQModeIndex_t)(-1);
-        auto it = pqModeReverseMap.find(currentPicMode);
-        if (it != pqModeReverseMap.end()) {
-            currentModeEnum = it->second;
+        if (getCurrentPictureMode(picMode)) {
+            auto it = pqModeReverseMap.find(picMode);
+            if (it != pqModeReverseMap.end()) {
+                currentPQMode = static_cast<tvPQModeIndex_t>(it->second);
+            } else {
+                LOGERR("Unknown picture mode");
+            }
+        } else {
+            LOGERR("Failed to get current picture mode");
         }
+        LOGINFO("currentPQMode: %d, currentFmt: %d, currentSrc: %d", currentPQMode, currentFmt, currentSrc);
 
         bool hasCurrent = false;
 
@@ -1175,7 +1181,7 @@ namespace Plugin {
             if (src != currentSrc) continue;
 
             for (auto mode : values.pqmodeValues) {
-                if (mode != currentModeEnum) continue;
+                if (mode != currentPQMode) continue;
 
                 for (auto fmt : values.formatValues) {
                     if (fmt == currentFmt) {
@@ -1197,7 +1203,7 @@ namespace Plugin {
             valueVectors_t currentOnly;
             currentOnly.sourceValues = { currentSrc };
             currentOnly.formatValues = { currentFmt };
-            currentOnly.pqmodeValues = { (int)currentModeEnum };
+            currentOnly.pqmodeValues = { (int)currentPQMode };
 
             ret = updateAVoutputTVParamImplementation(
                 action, tr181ParamName, info,
