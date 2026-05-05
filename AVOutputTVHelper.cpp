@@ -845,8 +845,14 @@ namespace Plugin {
         }
         else
         {
-            LOGWARN("getLocalParam for %s Failed : %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
-            ret = tvERROR_GENERAL;
+            LOGWARN("getLocalParam for %s Failed : %s, falling back to HAL default (Manual)\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
+            blMode = tvBacklightMode_MANUAL;
+            ret = SetCurrentBacklightMode(blMode);
+            if (ret != tvERROR_NONE) {
+                LOGWARN("Autobacklight default mode set failed: %s\n", getErrorString(ret).c_str());
+            } else {
+                LOGINFO("Autobacklight Mode initialized to default Manual\n");
+            }
         }
 
         return ret;
@@ -882,8 +888,26 @@ namespace Plugin {
             }
         }
         else {
-            ret = tvERROR_GENERAL;
-            LOGWARN("getLocalParam for %s Failed : %s\n", tr181_param_name.c_str(), getTR181ErrorString(err));
+            LOGWARN("getLocalParam for %s Failed : %s, falling back to HAL default\n", tr181_param_name.c_str(), getTR181ErrorString(err));
+            tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
+            tvError_t halRet = GetDefaultPQMode(current_source, current_format, &defaultIndex);
+            if (halRet == tvERROR_NONE) {
+                std::string defaultMode = convertPictureIndexToString(defaultIndex);
+                if (!defaultMode.empty()) {
+                    ret = SetTVPictureMode(defaultMode.c_str());
+                    if (ret != tvERROR_NONE) {
+                        LOGWARN("Picture Mode set from HAL default failed: %s\n", getErrorString(ret).c_str());
+                    } else {
+                        LOGINFO("Picture Mode initialized from HAL default: %s\n", defaultMode.c_str());
+                    }
+                } else {
+                    LOGERR("convertPictureIndexToString failed for default index %d\n", defaultIndex);
+                    ret = tvERROR_GENERAL;
+                }
+            } else {
+                LOGERR("GetDefaultPQMode failed for source=%d format=%d\n", current_source, current_format);
+                ret = tvERROR_GENERAL;
+            }
         }
 
         return ret;
@@ -1783,18 +1807,25 @@ namespace Plugin {
                                             convertVideoFormatToString(formatType)+"."+"PictureModeString";
 
                         err = getLocalParam(rfc_caller_id, tr181_param_name.c_str(), &param);
+                        int pqmodeindex = -1;
                         if ( tr181Success == err ) {
                             std::string local = param.value;
-                            int pqmodeindex = (int)getPictureModeIndex(local);
-
-                            tvError_t tv_err = SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
-                            if (tv_err != tvERROR_NONE) {
-                                LOGWARN("failed to SaveSourcePictureMode \n");
+                            pqmodeindex = (int)getPictureModeIndex(local);
+                        }
+                        else {
+                            LOGWARN("getLocalParam failed for %s, falling back to HAL default\n", tr181_param_name.c_str());
+                            tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
+                            tvError_t halRet = GetDefaultPQMode(sourceType, formatType, &defaultIndex);
+                            if (halRet == tvERROR_NONE) {
+                                pqmodeindex = (int)defaultIndex;
+                            } else {
+                                LOGWARN("GetDefaultPQMode failed for source=%d format=%d\n", sourceType, formatType);
                                 return -1;
                             }
                         }
-                        else {
-                            LOGWARN("Failed to get the getLocalParam \n");
+                        tvError_t tv_err = SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
+                        if (tv_err != tvERROR_NONE) {
+                            LOGWARN("failed to SaveSourcePictureMode \n");
                             return -1;
                         }
                     }
@@ -2150,7 +2181,34 @@ namespace Plugin {
                 return 1;
             }
             GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqParamIndex,&value);
-            LOGINFO("Default value from DB : %s : %d \n",key.c_str(),value);
+
+            if (forParam.compare("ZoomMode") == 0) {
+                // PQ stores raw display-mode values; convert them back to AVOutput zoom enums.
+                switch (value) {
+                    case 0:
+                        value = tvDisplayMode_16x9;
+                        break;
+                    case 4:
+                        value = tvDisplayMode_4x3;
+                        break;
+                    case 5:
+                        value = tvDisplayMode_FULL;
+                        break;
+                    case 6:
+                    case 7:
+                        value = tvDisplayMode_DIRECT;
+                        break;
+                    case 10:
+                        value = tvDisplayMode_ZOOM;
+                        break;
+                    case 11:
+                        value = tvDisplayMode_AUTO;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            LOGINFO("No localstore value for %s - HAL default: %d\n",key.c_str(),value);
             return 0;
         }
     }
@@ -2361,7 +2419,19 @@ namespace Plugin {
             return 1;
         }
         else {
-            LOGERR("getLocalParam failed %s\n",tr181_param_name.c_str());
+            LOGWARN("getLocalParam failed for %s, falling back to HAL default picture mode\n", tr181_param_name.c_str());
+            tvPQModeIndex_t defaultMode = PQ_MODE_INVALID;
+            tvError_t halRet = GetDefaultPQMode(currentSource, current_format, &defaultMode);
+            if (halRet == tvERROR_NONE) {
+                std::string defaultModeStr = convertPictureIndexToStringV2(defaultMode);
+                if (!defaultModeStr.empty()) {
+                    strncpy(picMode, defaultModeStr.c_str(), PIC_MODE_NAME_MAX - 1);
+                    picMode[PIC_MODE_NAME_MAX - 1] = '\0';
+                    LOGINFO("getCurrentPictureMode: HAL default mode = '%s'\n", picMode);
+                    return 1;
+                }
+            }
+            LOGERR("getCurrentPictureMode: HAL default fallback failed (ret=%d)\n", halRet);
             return 0;
         }
     }
@@ -2552,13 +2622,16 @@ namespace Plugin {
         return ret;
     }
 
-    tvError_t AVOutputTV::setDefaultAspectRatio(std::string pqmode,std::string  format,std::string source)
+    tvError_t AVOutputTV::setDefaultAspectRatio(std::string pqmode, std::string format, std::string source)
     {
         tvDisplayMode_t mode = tvDisplayMode_MAX;
-        TR181_ParamData_t param;
         tvError_t ret = tvERROR_NONE;
         capDetails_t inputInfo;
-        
+        tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
+        tvVideoFormatType_t currentFormat = VIDEO_FORMAT_SDR;
+        char picMode[PIC_MODE_NAME_MAX] = {0};
+        int value = 0;
+
         // Coverity fix: Use std::move() since parameters are passed by value and not reused
         inputInfo.pqmode = std::move(pqmode);
         inputInfo.source = std::move(source);
@@ -2569,70 +2642,67 @@ namespace Plugin {
         paramJson["videoSource"] = inputInfo.source;
         paramJson["videoFormat"] = inputInfo.format;
 
-        memset(&param, 0, sizeof(param));
-        tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_ASPECTRATIO_RFC_PARAM, &param);
-        if ( tr181Success == err ) {
-            if(!std::string(param.value).compare("16:9")) {
-                mode = tvDisplayMode_16x9;
-            }
-            else if (!std::string(param.value).compare("4:3")) {
-                mode = tvDisplayMode_4x3;
-            }
-            else if (!std::string(param.value).compare("Full")) {
-                mode = tvDisplayMode_FULL;
-            }
-            else if (!std::string(param.value).compare("Normal")) {
-                mode = tvDisplayMode_NORMAL;
-            }
-            else if (!std::string(param.value).compare("TV AUTO")) {
-                mode = tvDisplayMode_AUTO;
-            }
-            else if (!std::string(param.value).compare("TV DIRECT")) {
-                mode = tvDisplayMode_DIRECT;
-            }
-            else if (!std::string(param.value).compare("TV NORMAL")) {
-                mode = tvDisplayMode_NORMAL;
-            }
-            else if (!std::string(param.value).compare("TV ZOOM")) {
-                mode = tvDisplayMode_ZOOM;
-            }
-            else if (!std::string(param.value).compare("TV 16X9 STRETCH")) {
-                mode = tvDisplayMode_16x9;
-            }
-            else if (!std::string(param.value).compare("TV 4X3 PILLARBOX")) {
-                mode = tvDisplayMode_4x3;
-            }
-            else {
-                mode = tvDisplayMode_AUTO;
-            }
+        if (GetCurrentVideoSource(&currentSource) != tvERROR_NONE) {
+            LOGERR("GetCurrentVideoSource() failed\n");
+            return tvERROR_GENERAL;
+        }
 
-            m_videoZoomMode = mode;
-            tvError_t ret = setAspectRatioZoomSettings (mode);
+        GetCurrentVideoFormat(&currentFormat);
+        if (currentFormat == VIDEO_FORMAT_NONE) {
+            currentFormat = VIDEO_FORMAT_SDR;
+        }
 
-            if(ret != tvERROR_NONE) {
-                LOGERR("AspectRatio  set failed: %s\n",getErrorString(ret).c_str());
-            }
-            else {
-                if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
-                    int retval=updateAVoutputTVParam("set","ZoomMode",inputInfo,PQ_PARAM_ASPECT_RATIO,mode);
-                    if(retval != 0) {
+        if (GetTVPictureMode(picMode) != tvERROR_NONE) {
+            LOGERR("GetTVPictureMode() failed\n");
+            return tvERROR_GENERAL;
+        }
+
+        int pqmodeIndex = getPictureModeIndex(picMode);
+        if (pqmodeIndex < 0) {
+            LOGERR("Invalid picture mode: %s\n", picMode);
+            return tvERROR_GENERAL;
+        }
+
+        if (GetDefaultPQParams(pqmodeIndex, currentSource, currentFormat,
+                            PQ_PARAM_ASPECT_RATIO, &value) != tvERROR_NONE) {
+            LOGERR("GetDefaultPQParams failed for pqmode=%d source=%d format=%d\n",
+                pqmodeIndex, currentSource, currentFormat);
+            return tvERROR_GENERAL;
+        }
+
+        switch (value) {
+            case 0:  mode = tvDisplayMode_16x9; break;
+            case 4:  mode = tvDisplayMode_4x3;  break;
+            case 5:  mode = tvDisplayMode_FULL; break;
+            case 6:
+            case 7:  mode = tvDisplayMode_DIRECT; break;
+            case 10: mode = tvDisplayMode_ZOOM; break;
+            case 11: mode = tvDisplayMode_AUTO; break;
+            default: mode = tvDisplayMode_AUTO; break;
+        }
+
+        m_videoZoomMode = mode;
+        ret = setAspectRatioZoomSettings(mode);
+
+        if (ret != tvERROR_NONE) {
+            LOGERR("AspectRatio set failed: %s\n", getErrorString(ret).c_str());
+        } else {
+            if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+                int retval = updateAVoutputTVParam("sync", "ZoomMode", inputInfo,
+                                                PQ_PARAM_ASPECT_RATIO, mode);
+                if (retval != 0) {
                     LOGERR("Failed to Save DisplayMode to ssm_data\n");
-                    ret = tvERROR_GENERAL;
-                    }
-                    LOGINFO("Aspect Ratio initialized successfully, value: %s\n", param.value);
                 }
-                else {
-                    updateAVoutputTVParamV2("set", "ZoomMode", paramJson, PQ_PARAM_ASPECT_RATIO,mode);
-                }
+                LOGINFO("Aspect Ratio initialized successfully, value: %d\n", mode);
+            } else {
+                updateAVoutputTVParamV2("sync", "ZoomMode", paramJson,
+                                        PQ_PARAM_ASPECT_RATIO, mode);
             }
+        }
 
-        }
-        else {
-            LOGERR("getLocalParam for %s Failed : %s\n", AVOUTPUT_ASPECTRATIO_RFC_PARAM, getTR181ErrorString(err));
-            ret = tvERROR_GENERAL;
-        }
         return ret;
     }
+
 
     int AVOutputTV::getCMSComponentEnumFromString(const std::string& component, tvComponentType_t& value)
     {
