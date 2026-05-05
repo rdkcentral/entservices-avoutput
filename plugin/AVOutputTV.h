@@ -378,6 +378,9 @@ class AVOutputTV : public AVOutputBase {
         /* Intialise the last set backlight mode at bootup */
         tvError_t initializeBacklightMode();
 
+		/* Initialize the last set aspect ratio at bootup */
+		tvError_t initializeAspectRatio();
+
 		std::string convertToString(std::vector<std::string> vec_strings);
 		void convertParamToLowerCase(std::string &source, std::string &pqmode, std::string &format);
 		int convertToValidInputParameter(const std::string& pqparam, capDetails_t& info);
@@ -455,7 +458,8 @@ class AVOutputTV : public AVOutputBase {
 
 		void broadcastLowLatencyModeChangeEvent(bool lowLatencyMode);
 		tvError_t setAspectRatioZoomSettings(tvDisplayMode_t mode);
-		tvError_t setDefaultAspectRatio(std::string pqmode="none",std::string format="none",std::string source="none");
+		tvError_t setDefaultAspectRatio();
+		tvError_t setDefaultAutoBacklightMode();
 		template <typename T>
 		static int getEnumFromString(const std::unordered_map<std::string, int>& reverseMap, const std::string& key, T defaultVal) {
 			auto it = reverseMap.find(key);
