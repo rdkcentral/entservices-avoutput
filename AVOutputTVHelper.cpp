@@ -1469,6 +1469,9 @@ namespace Plugin {
         paramJson["videoFormat"] = info.format;
         LOGINFO("Entry %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
 
+        //PictureMode
+        m_pictureModeStatus = GetTVPictureModeCaps(&m_pictureModes, &m_numPictureModes, &m_pictureModeCaps);
+
         // Brightness
         m_brightnessStatus = GetBrightnessCaps(&m_maxBrightness, &m_brightnessCaps);
         LOGINFO("GetBrightnessCaps returned status: %d, max: %d", m_brightnessStatus, m_maxBrightness);
@@ -1591,8 +1594,6 @@ namespace Plugin {
         if (m_precisionDetailStatus == tvERROR_NONE) {
             updateAVoutputTVParamV2("sync", "PrecisionDetail", paramJson, PQ_PARAM_PRECISION_DETAIL, level);
         }
-        //PictureMode
-        m_pictureModeStatus = GetTVPictureModeCaps(&m_pictureModes, &m_numPictureModes, &m_pictureModeCaps);
 
         // LocalContrastEnhancement
         m_localContrastEnhancementStatus = GetLocalContrastEnhancementCaps(&m_maxLocalContrastEnhancement, &m_localContrastEnhancementCaps);
