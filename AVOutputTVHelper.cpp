@@ -1137,7 +1137,6 @@ namespace Plugin {
         tvPQParameterIndex_t pqParamIndex,
         int level)
     {
-        LOGINFO("Entry : %s\n", __FUNCTION__);
 
         valueVectors_t values;
         capDetails_t localInfo = info;
@@ -1149,31 +1148,36 @@ namespace Plugin {
         }
 
         if (getSaveConfig(tr181ParamName, localInfo, values) != 0) {
+            LOGERR("%s: Failed to get the saved config for parameter %s\n", __FUNCTION__, tr181ParamName.c_str());
             return -1;
         }
+
+        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),localInfo.pqmode.c_str(),localInfo.source.c_str(),localInfo.format.c_str(),localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str() );
 
         // ---- Current context
         tvVideoSrcType_t currentSrc = VIDEO_SOURCE_IP;
         tvVideoFormatType_t currentFmt = VIDEO_FORMAT_SDR;
+        tvPQModeIndex_t currentPQMode = PQ_MODE_STANDARD;
         char picMode[PIC_MODE_NAME_MAX] = {0};
 
         GetCurrentVideoSource(&currentSrc);
         GetCurrentVideoFormat(&currentFmt);
 
-        tvPQModeIndex_t currentPQMode = PQ_MODE_STANDARD;
-        initializeReverseMaps();
-
-        if (getCurrentPictureMode(picMode)) {
-            auto it = pqModeReverseMap.find(picMode);
-            if (it != pqModeReverseMap.end()) {
-                currentPQMode = static_cast<tvPQModeIndex_t>(it->second);
-            } else {
-                LOGERR("Unknown picture mode");
-            }
-        } else {
-            LOGERR("Failed to get current picture mode");
+        if ( currentFmt == VIDEO_FORMAT_NONE ) {
+            currentFmt = VIDEO_FORMAT_SDR;
         }
-        LOGINFO("currentPQMode: %d, currentFmt: %d, currentSrc: %d", currentPQMode, currentFmt, currentSrc);
+
+        if(!getCurrentPictureMode(picMode)) {
+            LOGERR("Failed to get the Current picture mode\n");
+        }
+        else {
+            std::string local = picMode;
+            currentPQMode = (tvPQModeIndex_t)getPictureModeIndex(local);
+            if ( currentPQMode == -1) {
+                LOGERR("Failed to get the Current picture mode index\n");
+                currentPQMode = PQ_MODE_STANDARD;
+            }
+        }
 
         bool hasCurrent = false;
 
@@ -1198,15 +1202,15 @@ namespace Plugin {
 
         // Execute current immediately
         if (hasCurrent) {
-            LOGINFO("%s: Executing current context immediately", __FUNCTION__);
+            LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc);
 
             valueVectors_t currentOnly;
             currentOnly.sourceValues = { currentSrc };
             currentOnly.formatValues = { currentFmt };
-            currentOnly.pqmodeValues = { (int)currentPQMode };
+            currentOnly.pqmodeValues = { currentPQMode };
 
             ret = updateAVoutputTVParamImplementation(
-                action, tr181ParamName, info,
+                action, tr181ParamName,
                 pqParamIndex, level,
                 currentOnly);
         }
@@ -1215,9 +1219,9 @@ namespace Plugin {
         {
             std::lock_guard<std::mutex> lock(queueMutex);
             paramUpdateQueue.push(
-                [this, action, tr181ParamName, info, pqParamIndex, level, values]() {
+                [this, action, tr181ParamName, pqParamIndex, level, values]() {
                     updateAVoutputTVParamImplementation(
-                        action, tr181ParamName, info,
+                        action, tr181ParamName,
                         pqParamIndex, level,
                         values);
                 });
@@ -1233,7 +1237,6 @@ namespace Plugin {
     int AVOutputTV::updateAVoutputTVParamImplementation(
         const std::string& action,
         const std::string& tr181ParamName,
-        const capDetails_t& info,
         tvPQParameterIndex_t pqParamIndex,
         int level,
         const valueVectors_t& values)
@@ -1243,8 +1246,6 @@ namespace Plugin {
         // This ensures all 7 uint8_t fields start with defined values
         paramIndex_t paramIndex = {};
         int ret = 0;
-
-        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
 
         bool sync = (action == "sync");
         bool reset = (action == "reset");
