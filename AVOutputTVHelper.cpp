@@ -1213,6 +1213,12 @@ namespace Plugin {
                 action, tr181ParamName,
                 pqParamIndex, level,
                 currentOnly);
+
+            if ( values.sourceValues.size() == 1 && values.pqmodeValues.size() == 1 && values.formatValues.size() == 1 ) {
+                // If only one context, return after processing current
+                LOGINFO("%s: Only one context available, processed current context, returning. \n", __FUNCTION__);
+                return ret;
+            }
         }
 
         // Queue request for async processing to avoid blocking current context execution
