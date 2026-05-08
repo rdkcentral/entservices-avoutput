@@ -6277,12 +6277,10 @@ namespace Plugin {
 
                 tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM,&param);
                 if ( err != tr181Success ) {
-                    LOGWARN("getLocalParam for %s Failed : %s, falling back to Manual\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
-                    ret = SetCurrentBacklightMode(tvBacklightMode_MANUAL);
+                    LOGWARN("getLocalParam for %s Failed : %s, falling back to pq.db default\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
+                    ret = setDefaultAutoBacklightMode();
                     if (ret != tvERROR_NONE) {
-                        LOGWARN("SetCurrentBacklightMode to Manual failed\n");
-                    } else {
-                        LOGINFO("AutoBacklightMode reset to Manual (HAL fallback)\n");
+                        LOGWARN("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
                     }
                     ret = tvERROR_NONE;
                 }

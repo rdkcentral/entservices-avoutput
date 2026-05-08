@@ -845,13 +845,10 @@ namespace Plugin {
         }
         else
         {
-            LOGWARN("getLocalParam for %s Failed : %s, falling back to HAL default (Manual)\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
-            blMode = tvBacklightMode_MANUAL;
-            ret = SetCurrentBacklightMode(blMode);
+            LOGWARN("getLocalParam for %s Failed : %s, falling back to pq.db default\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
+            ret = setDefaultAutoBacklightMode();
             if (ret != tvERROR_NONE) {
-                LOGWARN("Autobacklight default mode set failed: %s\n", getErrorString(ret).c_str());
-            } else {
-                LOGINFO("Autobacklight Mode initialized to default Manual\n");
+                LOGWARN("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
             }
         }
 
@@ -2698,6 +2695,66 @@ namespace Plugin {
                 updateAVoutputTVParamV2("sync", "ZoomMode", paramJson,
                                         PQ_PARAM_ASPECT_RATIO, mode);
             }
+        }
+
+        return ret;
+    }
+
+    tvError_t AVOutputTV::setDefaultAutoBacklightMode(std::string pqmode, std::string format, std::string source)
+    {
+        tvBacklightMode_t blMode = tvBacklightMode_MANUAL;
+        tvError_t ret = tvERROR_NONE;
+        capDetails_t inputInfo;
+        tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
+        tvVideoFormatType_t currentFormat = VIDEO_FORMAT_SDR;
+        char picMode[PIC_MODE_NAME_MAX] = {0};
+        int value = 0;
+
+        inputInfo.pqmode = std::move(pqmode);
+        inputInfo.source = std::move(source);
+        inputInfo.format = std::move(format);
+
+        if (GetCurrentVideoSource(&currentSource) != tvERROR_NONE) {
+            LOGERR("GetCurrentVideoSource() failed\n");
+            return tvERROR_GENERAL;
+        }
+
+        GetCurrentVideoFormat(&currentFormat);
+        if (currentFormat == VIDEO_FORMAT_NONE) {
+            currentFormat = VIDEO_FORMAT_SDR;
+        }
+
+        if (GetTVPictureMode(picMode) != tvERROR_NONE) {
+            LOGERR("GetTVPictureMode() failed\n");
+            return tvERROR_GENERAL;
+        }
+
+        int pqmodeIndex = getPictureModeIndex(picMode);
+        if (pqmodeIndex < 0) {
+            LOGERR("Invalid picture mode: %s\n", picMode);
+            return tvERROR_GENERAL;
+        }
+
+        if (GetDefaultPQParams(pqmodeIndex, currentSource, currentFormat,
+                            PQ_PARAM_BACKLIGHT_MODE, &value) != tvERROR_NONE) {
+            LOGERR("GetDefaultPQParams failed for pqmode=%d source=%d format=%d\n",
+                pqmodeIndex, currentSource, currentFormat);
+            return tvERROR_GENERAL;
+        }
+
+        switch (value) {
+            case tvBacklightMode_MANUAL:  blMode = tvBacklightMode_MANUAL;  break;
+            case tvBacklightMode_AMBIENT: blMode = tvBacklightMode_AMBIENT; break;
+            case tvBacklightMode_ECO:     blMode = tvBacklightMode_ECO;     break;
+            default:                      blMode = tvBacklightMode_MANUAL;  break;
+        }
+
+        ret = SetCurrentBacklightMode(blMode);
+        if (ret != tvERROR_NONE) {
+            LOGERR("AutoBacklightMode set failed: %s\n", getErrorString(ret).c_str());
+        } else {
+            updateAVoutputTVParam("sync", "BacklightMode", inputInfo, PQ_PARAM_BACKLIGHT_MODE, (int)blMode);
+            LOGINFO("AutoBacklightMode initialized from pq.db default, value: %d\n", blMode);
         }
 
         return ret;
