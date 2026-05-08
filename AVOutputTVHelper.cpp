@@ -1172,10 +1172,13 @@ namespace Plugin {
         }
         else {
             std::string local = picMode;
-            currentPQMode = (tvPQModeIndex_t)getPictureModeIndex(local);
-            if ( currentPQMode == -1) {
+            int pictureModeIndex = getPictureModeIndex(local);
+            if (pictureModeIndex < 0) {
                 LOGERR("Failed to get the Current picture mode index\n");
                 currentPQMode = PQ_MODE_STANDARD;
+            }
+            else {
+                currentPQMode = (tvPQModeIndex_t)pictureModeIndex;
             }
         }
 
@@ -1205,9 +1208,9 @@ namespace Plugin {
             LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc);
 
             valueVectors_t currentOnly;
-            currentOnly.sourceValues = { currentSrc };
-            currentOnly.formatValues = { currentFmt };
-            currentOnly.pqmodeValues = { currentPQMode };
+            currentOnly.sourceValues = { static_cast<int>(currentSrc) };
+            currentOnly.formatValues = { static_cast<int>(currentFmt) };
+            currentOnly.pqmodeValues = { static_cast<int>(currentPQMode) };
 
             ret = updateAVoutputTVParamImplementation(
                 action, tr181ParamName,
@@ -1216,7 +1219,6 @@ namespace Plugin {
 
             if ( values.sourceValues.size() == 1 && values.pqmodeValues.size() == 1 && values.formatValues.size() == 1 ) {
                 // If only one context, return after processing current
-                LOGINFO("%s: Only one context available, processed current context, returning. \n", __FUNCTION__);
                 return ret;
             }
         }
