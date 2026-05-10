@@ -4289,7 +4289,19 @@ namespace Plugin {
         TR181_ParamData_t param = {0};
         tr181ErrorCode_t err = getLocalParam(rfc_caller_id, tr181_param_name.c_str(), &param);
         if (err != tr181Success) {
-            LOGERR("getLocalParam failed: %d", err);
+            LOGWARN("getLocalParam for %s failed: %s, falling back to HAL default", tr181_param_name.c_str(), getTR181ErrorString(err));
+            tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
+            tvError_t halRet = GetDefaultPQMode(source, format, &defaultIndex);
+            if (halRet == tvERROR_NONE) {
+                outMode = convertPictureIndexToStringV2(static_cast<int>(defaultIndex));
+                if (outMode.empty()) {
+                    LOGERR("convertPictureIndexToStringV2 failed for default index %d", defaultIndex);
+                    return false;
+                }
+                LOGINFO("Exit: PictureMode from HAL default = %s", outMode.c_str());
+                return true;
+            }
+            LOGERR("GetDefaultPQMode failed for source=%d format=%d", source, format);
             return false;
         }
 
@@ -4667,26 +4679,39 @@ namespace Plugin {
                 continue;
             }
 
-            // Read saved TR-181 value
+            // Read saved TR-181 value; fall back to HAL default if not stored
             TR181_ParamData_t param = {0};
             err = getLocalParam(rfc_caller_id, tr181Param.c_str(), &param);
+            std::string modeStr;
             if (err != tr181Success || strlen(param.value) == 0) {
-                LOGWARN("getLocalParam failed or empty for %s", tr181Param.c_str());
-                continue;
+                LOGWARN("getLocalParam failed or empty for %s, falling back to HAL default", tr181Param.c_str());
+                tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
+                tvError_t halRet = GetDefaultPQMode(ctx.videoSrcType, ctx.videoFormatType, &defaultIndex);
+                if (halRet != tvERROR_NONE) {
+                    LOGERR("GetDefaultPQMode failed for src=%d fmt=%d", ctx.videoSrcType, ctx.videoFormatType);
+                    continue;
+                }
+                modeStr = convertPictureIndexToStringV2(static_cast<int>(defaultIndex));
+                if (modeStr.empty()) {
+                    LOGERR("convertPictureIndexToStringV2 failed for index %d", defaultIndex);
+                    continue;
+                }
+            } else {
+                modeStr = param.value;
             }
 
             // Apply to hardware if current context matches
             if (ctx.videoSrcType == currentSrc && ctx.videoFormatType == currentFmt) {
 
-                tvError_t ret = SetTVPictureMode(param.value);
+                tvError_t ret = SetTVPictureMode(modeStr.c_str());
                 if (ret != tvERROR_NONE) {
-                    LOGERR("SetTVPictureMode failed for %s", param.value);
+                    LOGERR("SetTVPictureMode failed for %s", modeStr.c_str());
                     continue;
                 }
             }
 
             // Save to internal config
-            int pqmodeIndex = static_cast<int>(convertPictureStringToIndexV2(std::string(param.value)));
+            int pqmodeIndex = static_cast<int>(convertPictureStringToIndexV2(modeStr));
             SaveSourcePictureMode(ctx.videoSrcType, ctx.videoFormatType, pqmodeIndex);
             contextHandled = true;
         }
