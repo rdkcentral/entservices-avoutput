@@ -1130,32 +1130,143 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::updateAVoutputTVParam( const std::string& action, const std::string& tr181ParamName, const capDetails_t& info, tvPQParameterIndex_t pqParamIndex, int level )
+    int AVOutputTV::updateAVoutputTVParam(
+        const std::string& action,
+        const std::string& tr181ParamName,
+        const capDetails_t& info,
+        tvPQParameterIndex_t pqParamIndex,
+        int level)
+    {
+
+        valueVectors_t values;
+        capDetails_t localInfo = info;
+
+        // Check for the platform support for the parameter.
+        if( isPlatformSupport(tr181ParamName) != 0 ) {
+            LOGERR("%s: Block set/reset/sync for unsupported feature %s\n", __FUNCTION__, tr181ParamName.c_str());
+            return -1;
+        }
+
+        if (getSaveConfig(tr181ParamName, localInfo, values) != 0) {
+            LOGERR("%s: Failed to get the saved config for parameter %s\n", __FUNCTION__, tr181ParamName.c_str());
+            return -1;
+        }
+
+        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),localInfo.pqmode.c_str(),localInfo.source.c_str(),localInfo.format.c_str(),localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str() );
+
+        // ---- Current context
+        tvVideoSrcType_t currentSrc = VIDEO_SOURCE_IP;
+        tvVideoFormatType_t currentFmt = VIDEO_FORMAT_SDR;
+        tvPQModeIndex_t currentPQMode = PQ_MODE_STANDARD;
+        char picMode[PIC_MODE_NAME_MAX] = {0};
+
+        GetCurrentVideoSource(&currentSrc);
+        GetCurrentVideoFormat(&currentFmt);
+
+        if ( currentFmt == VIDEO_FORMAT_NONE ) {
+            currentFmt = VIDEO_FORMAT_SDR;
+        }
+
+        if(!getCurrentPictureMode(picMode)) {
+            LOGERR("Failed to get the Current picture mode\n");
+        }
+        else {
+            std::string local = picMode;
+            int pictureModeIndex = getPictureModeIndex(local);
+            if (pictureModeIndex < 0) {
+                LOGERR("Failed to get the Current picture mode index\n");
+                currentPQMode = PQ_MODE_STANDARD;
+            }
+            else {
+                currentPQMode = (tvPQModeIndex_t)pictureModeIndex;
+            }
+        }
+
+        bool hasCurrent = false;
+
+        for (auto src : values.sourceValues) {
+            if (src != currentSrc) continue;
+
+            for (auto mode : values.pqmodeValues) {
+                if (mode != currentPQMode) continue;
+
+                for (auto fmt : values.formatValues) {
+                    if (fmt == currentFmt) {
+                        hasCurrent = true;
+                        break;
+                    }
+                }
+                if (hasCurrent) break;
+            }
+            if (hasCurrent) break;
+        }
+
+        int ret = 0;
+
+        // Execute current immediately
+        if (hasCurrent) {
+            LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc);
+
+            valueVectors_t currentOnly;
+            currentOnly.sourceValues = { static_cast<int>(currentSrc) };
+            currentOnly.formatValues = { static_cast<int>(currentFmt) };
+            currentOnly.pqmodeValues = { static_cast<int>(currentPQMode) };
+
+            ret = updateAVoutputTVParamImplementation(
+                action, tr181ParamName,
+                pqParamIndex, level,
+                currentOnly);
+
+            if ( values.sourceValues.size() == 1 && values.pqmodeValues.size() == 1 && values.formatValues.size() == 1 ) {
+                // If only one context, return after processing current
+                return ret;
+            }
+        }
+
+        // Queue request for async processing to avoid blocking current context execution
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            paramUpdateQueue.push(
+                [this, action, tr181ParamName, pqParamIndex, level, values]() {
+                    updateAVoutputTVParamImplementation(
+                        action, tr181ParamName,
+                        pqParamIndex, level,
+                        values);
+                });
+        }
+
+        queueCondition.notify_one();
+
+        LOGINFO("Exit : %s\n", __FUNCTION__);
+
+        return ret;
+    }
+
+    int AVOutputTV::updateAVoutputTVParamImplementation(
+        const std::string& action,
+        const std::string& tr181ParamName,
+        tvPQParameterIndex_t pqParamIndex,
+        int level,
+        const valueVectors_t& values)
     {
         LOGINFO("Entry : %s\n",__FUNCTION__);
-        valueVectors_t values;
         // Coverity fix: Initialize struct to zero to prevent uninitialized field usage
         // This ensures all 7 uint8_t fields start with defined values
         paramIndex_t paramIndex = {};
-        std::vector<int> sources;
-        std::vector<int> pictureModes;
-        std::vector<int> formats;
         int ret = 0;
-        bool sync = !(action.compare("sync"));
-        bool reset = !(action.compare("reset"));
-        bool set = !(action.compare("set"));
 
-        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
-        // Make a local copy since getSaveConfig mutates the struct
-        capDetails_t localInfo = info;
-        ret = getSaveConfig(tr181ParamName,localInfo, values);
-        if( 0 == ret ) {
+        bool sync = (action == "sync");
+        bool reset = (action == "reset");
+        bool set   = (action == "set");
+
+
             for( int sourceType: values.sourceValues ) {
                 paramIndex.sourceIndex = sourceType;
                 for( int modeType : values.pqmodeValues ) {
                     paramIndex.pqmodeIndex = modeType;
                     for( int formatType : values.formatValues ) {
                         paramIndex.formatIndex = formatType;
+
                         switch(pqParamIndex) {
                             case PQ_PARAM_BRIGHTNESS:
                             case PQ_PARAM_CONTRAST:
@@ -1327,7 +1438,7 @@ namespace Plugin {
                 }
            }
 
-        }
+        LOGINFO("Exit : %s\n",__FUNCTION__);
         return ret;
     }
     void AVOutputTV::syncCMSParamsV2() {
@@ -1366,6 +1477,9 @@ namespace Plugin {
         paramJson["videoSource"] = info.source;
         paramJson["videoFormat"] = info.format;
         LOGINFO("Entry %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
+
+        //PictureMode
+        m_pictureModeStatus = GetTVPictureModeCaps(&m_pictureModes, &m_numPictureModes, &m_pictureModeCaps);
 
         // Brightness
         m_brightnessStatus = GetBrightnessCaps(&m_maxBrightness, &m_brightnessCaps);
@@ -1489,8 +1603,6 @@ namespace Plugin {
         if (m_precisionDetailStatus == tvERROR_NONE) {
             updateAVoutputTVParamV2("sync", "PrecisionDetail", paramJson, PQ_PARAM_PRECISION_DETAIL, level);
         }
-        //PictureMode
-        m_pictureModeStatus = GetTVPictureModeCaps(&m_pictureModes, &m_numPictureModes, &m_pictureModeCaps);
 
         // LocalContrastEnhancement
         m_localContrastEnhancementStatus = GetLocalContrastEnhancementCaps(&m_maxLocalContrastEnhancement, &m_localContrastEnhancementCaps);
@@ -3445,27 +3557,34 @@ namespace Plugin {
     }
 
 
-    void AVOutputTV::paramUpdateWorker() {
-        while (!shouldStopWorker) {
-            std::unique_lock<std::mutex> lock(queueMutex);
+    void AVOutputTV::paramUpdateWorker()
+    {
+        while (true) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(queueMutex);
+                // Wait until work is available OR stop is requested
+                queueCondition.wait(lock, [this] {
+                    return !paramUpdateQueue.empty() || shouldStopWorker;
+                });
 
-            // Wait for work or stop signal
-            queueCondition.wait(lock, [this] {
-                return !paramUpdateQueue.empty() || shouldStopWorker;
-            });
+                // Exit only when stop requested AND no pending work
+                if (shouldStopWorker && paramUpdateQueue.empty()) {
+                    break;
+                }
 
-            if (shouldStopWorker) {
-                break;
+                // Fetch next task
+                task = std::move(paramUpdateQueue.front());
+                paramUpdateQueue.pop();
             }
 
-            // Process all queued updates
-            while (!paramUpdateQueue.empty() && !shouldStopWorker) {
-                auto task = paramUpdateQueue.front();
-                paramUpdateQueue.pop();
-                lock.unlock();
-                // Execute the task
+            // Execute task outside lock
+            try {
                 task();
-                lock.lock();
+            } catch (const std::exception& e) {
+                LOGERR("%s: Worker task exception: %s", __FUNCTION__, e.what());
+            } catch (...) {
+                LOGERR("%s: Worker task unknown exception", __FUNCTION__);
             }
         }
     }
@@ -3782,6 +3901,10 @@ namespace Plugin {
             param = "CustomWhiteBalance";
         } else if ( param == "AutoBacklightMode") {
             param = "BacklightControl";
+        } else if ( param == "ZoomMode") {
+            param = "AspectRatio";
+        } else if ( param == "ColorTemp") {
+            param = "ColorTemperature";
         }
 
         try {
@@ -3807,12 +3930,6 @@ namespace Plugin {
 
                 configString = param + ".ColorTemperature";
                 info.colorTemperature = inFile.Get<std::string>(configString);
-            }
-
-            if ((param == "DolbyVisionMode") || (param == "Backlight") || (param == "CMS") || (param == "CustomWhiteBalance") || (param == "HDRMode") || (param == "BacklightControl") || (param == "DimmingMode")) {
-                configString = param + ".platformsupport";
-                info.isPlatformSupport = inFile.Get<std::string>(configString);
-                printf(" platformsupport : %s\n",info.isPlatformSupport.c_str() );
             }
 
             if ( (param == "ColorTemperature") || (param == "DimmingMode") ||
@@ -3871,6 +3988,9 @@ namespace Plugin {
             info.format = inFile.Get<std::string>(configString);
             configString = param + ".source";
             info.source = inFile.Get<std::string>(configString);
+            configString = param + ".platformsupport";
+            info.isPlatformSupport = inFile.Get<std::string>(configString);
+            LOGINFO(" param : %s platform support : %s\n", param.c_str(), info.isPlatformSupport.c_str() );
             ret = 0;
         }
         catch(const boost::property_tree::ptree_error &e) {
