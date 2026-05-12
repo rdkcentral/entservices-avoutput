@@ -1205,9 +1205,9 @@ namespace Plugin {
 
         // Execute current immediately
         if (hasCurrent) {
-            LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc);
+            LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d color:%s component:%s control:%s", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc, localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str());
 
-            valueVectors_t currentOnly;
+            valueVectors_t currentOnly = values;
             currentOnly.sourceValues = { static_cast<int>(currentSrc) };
             currentOnly.formatValues = { static_cast<int>(currentFmt) };
             currentOnly.pqmodeValues = { static_cast<int>(currentPQMode) };
