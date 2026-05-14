@@ -1154,6 +1154,18 @@ namespace Plugin {
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),localInfo.pqmode.c_str(),localInfo.source.c_str(),localInfo.format.c_str(),localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str() );
 
+        int ret = 0;
+
+        if( tr181ParamName == "HDRMode" || tr181ParamName == "DolbyVisionMode") {
+            // For HDR and Dolby Vision mode changes, we want to execute immediately to ensure the changes take effect without delay.
+            ret = updateAVoutputTVParamImplementation(
+                action, tr181ParamName,
+                pqParamIndex, level,
+                values);
+            LOGINFO("Exit : %s\n", __FUNCTION__);
+            return ret;
+        }
+
         // ---- Current context
         tvVideoSrcType_t currentSrc = VIDEO_SOURCE_IP;
         tvVideoFormatType_t currentFmt = VIDEO_FORMAT_SDR;
@@ -1201,19 +1213,9 @@ namespace Plugin {
             if (hasCurrent) break;
         }
 
-        int ret = 0;
+        std::vector<paramIndex_t> skipTuples;
 
-        if( tr181ParamName == "HDRMode" || tr181ParamName == "DolbyVisionMode") {
-            // For HDR and Dolby Vision mode changes, we want to execute immediately to ensure the changes take effect without delay
-            ret = updateAVoutputTVParamImplementation(
-                action, tr181ParamName,
-                pqParamIndex, level,
-                values);
-            LOGINFO("Exit : %s\n", __FUNCTION__);
-            return ret;
-        }
-
-        // Execute current immediately
+        // Execute current immediately, then skip only the exact current tuple in the queued pass.
         if (hasCurrent) {
             LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d color:%s component:%s control:%s", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc, localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str());
 
@@ -1228,21 +1230,27 @@ namespace Plugin {
                 currentOnly);
 
             if ( values.sourceValues.size() == 1 && values.pqmodeValues.size() == 1 && values.formatValues.size() == 1 ) {
-                // If only one context, return after processing current
+                // If only one context, return after processing current.
                 return ret;
             }
+
+            paramIndex_t skipIndex = {};
+            skipIndex.sourceIndex = static_cast<uint8_t>(currentSrc);
+            skipIndex.pqmodeIndex = static_cast<uint8_t>(currentPQMode);
+            skipIndex.formatIndex = static_cast<uint8_t>(currentFmt);
+            skipTuples.push_back(skipIndex);
         }
 
-
-        // Queue request for async processing to avoid blocking current context execution
+        // Queue request for async processing using original values; skip only the current tuple.
         {
             std::lock_guard<std::mutex> lock(queueMutex);
             paramUpdateQueue.push(
-                [this, action, tr181ParamName, pqParamIndex, level, values]() {
+                [this, action, tr181ParamName, pqParamIndex, level, values, skipTuples]() {
                     updateAVoutputTVParamImplementation(
                         action, tr181ParamName,
                         pqParamIndex, level,
-                        values);
+                        values,
+                        skipTuples);
                 });
         }
 
@@ -1258,9 +1266,11 @@ namespace Plugin {
         const std::string& tr181ParamName,
         tvPQParameterIndex_t pqParamIndex,
         int level,
-        const valueVectors_t& values)
+        const valueVectors_t& values,
+        const std::vector<paramIndex_t>& skipTuples)
     {
-        LOGINFO("Entry : %s\n",__FUNCTION__);
+        LOGINFO("Entry : %s param:%s skipCount:%zu\n",
+            __FUNCTION__, tr181ParamName.c_str(), skipTuples.size());
         // Coverity fix: Initialize struct to zero to prevent uninitialized field usage
         // This ensures all 7 uint8_t fields start with defined values
         paramIndex_t paramIndex = {};
@@ -1276,6 +1286,17 @@ namespace Plugin {
                 for( int modeType : values.pqmodeValues ) {
                     paramIndex.pqmodeIndex = modeType;
                     for( int formatType : values.formatValues ) {
+                        bool shouldSkip = std::any_of(skipTuples.begin(), skipTuples.end(),
+                            [sourceType, modeType, formatType](const paramIndex_t& skipTuple) {
+                                return sourceType == skipTuple.sourceIndex &&
+                                       modeType == skipTuple.pqmodeIndex &&
+                                       formatType == skipTuple.formatIndex;
+                            });
+
+                        if (shouldSkip) {
+                            continue;
+                        }
+
                         paramIndex.formatIndex = formatType;
 
                         switch(pqParamIndex) {
