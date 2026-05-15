@@ -1458,7 +1458,7 @@ namespace Plugin {
                 ret  = tvERROR_GENERAL;
             }
             else {
-                ret = setDefaultAspectRatio(inputInfo.pqmode,inputInfo.source,inputInfo.format);
+                ret = setDefaultAspectRatio(inputInfo.pqmode,inputInfo.format,inputInfo.source);
             }
             if(ret != tvERROR_NONE) {
                 returnResponse(false);
@@ -6283,9 +6283,15 @@ namespace Plugin {
         LOGINFO("Entry\n");
         if(m_backlightModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
+            capDetails_t inputInfo;
             tvError_t ret = tvERROR_NONE;
 
             if (isPlatformSupport("AutoBacklightMode") != 0) {
+                returnResponse(false);
+            }
+
+            if (parsingSetInputArgument(parameters, "AutoBacklightMode", inputInfo) != 0) {
+                LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -6303,7 +6309,7 @@ namespace Plugin {
                 tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM,&param);
                 if ( err != tr181Success ) {
                     LOGWARN("getLocalParam for %s Failed : %s, falling back to pq.db default\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
-                    ret = setDefaultAutoBacklightMode();
+                    ret = setDefaultAutoBacklightMode(inputInfo.pqmode, inputInfo.format, inputInfo.source);
                     if (ret != tvERROR_NONE) {
                         LOGWARN("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
                     }

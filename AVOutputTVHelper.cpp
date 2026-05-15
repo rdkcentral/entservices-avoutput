@@ -535,8 +535,22 @@ namespace Plugin {
         //2.convert Application Input Info to set for comparison
         spliltStringsAndConvertToSet( inputInfo.pqmode, inputInfo.format, inputInfo.source, pqmodeInputSet, formatInputSet, sourceInputSet );
 
+        bool pqmodeMatches = isIncluded(pqmodeCapSet, pqmodeInputSet);
+        bool formatMatches = isIncluded(formatCapSet, formatInputSet);
+        bool sourceMatches = isIncluded(sourceCapset, sourceInputSet);
+
+        pqmodeMatches = (paramInfo.pqmode == "none") || pqmodeMatches;
+        formatMatches = (paramInfo.format == "none") || formatMatches;
+        sourceMatches = (paramInfo.source == "none") || sourceMatches;
+
+        if (param == "AspectRatio") {
+            pqmodeMatches = (inputInfo.pqmode == "none") || pqmodeMatches;
+            formatMatches = (inputInfo.format == "none") || formatMatches;
+            sourceMatches = (inputInfo.source == "none") || sourceMatches;
+        }
+
         //3.Compare Each pqmode/format/source InputInfo against CapabilityInfo
-        if ( isIncluded(pqmodeCapSet,pqmodeInputSet) && isIncluded(formatCapSet,formatInputSet) && isIncluded(sourceCapset,sourceInputSet) ) {
+        if ( pqmodeMatches && formatMatches && sourceMatches ) {
             LOGINFO("%s : Capability Check passed \n", __FUNCTION__);
             return true;
         }
@@ -2232,7 +2246,7 @@ namespace Plugin {
     
         if( ReadCapablitiesFromConf( param, stringInfo) != 0 )
         {
-            LOGERR( "%s: ReadCapablitiesFromConf Failed !!!\n",__FUNCTION__);
+            LOGERR( "%s: ReadCapablitiesFromConf Failed for param='%s'!!!\n",__FUNCTION__, param.c_str());
             return tvERROR_GENERAL;
         }
         else
@@ -2407,7 +2421,10 @@ namespace Plugin {
             tvPQModeIndex_t defaultMode = PQ_MODE_INVALID;
             tvError_t halRet = GetDefaultPQMode(currentSource, current_format, &defaultMode);
             if (halRet == tvERROR_NONE) {
-                std::string defaultModeStr = convertPictureIndexToStringV2(defaultMode);
+                std::string defaultModeStr = convertPictureIndexToString(defaultMode);
+                if (defaultModeStr.empty()) {
+                    defaultModeStr = convertPictureIndexToStringV2(defaultMode);
+                }
                 if (!defaultModeStr.empty()) {
                     strncpy(picMode, defaultModeStr.c_str(), PIC_MODE_NAME_MAX - 1);
                     picMode[PIC_MODE_NAME_MAX - 1] = '\0';
@@ -2689,7 +2706,7 @@ namespace Plugin {
                 int retval = updateAVoutputTVParam("sync", "ZoomMode", inputInfo,
                                                 PQ_PARAM_ASPECT_RATIO, mode);
                 if (retval != 0) {
-                    LOGERR("Failed to Save DisplayMode to ssm_data\n");
+                    LOGERR("Failed to Save AutoBacklightMode to ssm_data\n");
                 }
             } else {
                 updateAVoutputTVParamV2("sync", "ZoomMode", paramJson,
@@ -2731,9 +2748,32 @@ namespace Plugin {
             currentFormat = VIDEO_FORMAT_SDR;
         }
 
-        if (GetTVPictureMode(picMode) != tvERROR_NONE) {
+        if (inputInfo.source != "none" && inputInfo.source != "Current") {
+            int sourceIndex = getSourceIndex(inputInfo.source);
+            if (sourceIndex >= 0) {
+                currentSource = static_cast<tvVideoSrcType_t>(sourceIndex);
+            }
+        }
+
+        if (inputInfo.format != "none" && inputInfo.format != "Current") {
+            int formatIndex = getFormatIndex(inputInfo.format);
+            if (formatIndex >= 0) {
+                currentFormat = static_cast<tvVideoFormatType_t>(formatIndex);
+            }
+        }
+
+        int pqmodeIndex = -1;
+        if (inputInfo.pqmode != "none" && inputInfo.pqmode != "Current") {
+            pqmodeIndex = getPictureModeIndex(inputInfo.pqmode);
+        }
+
+        if (pqmodeIndex < 0 && GetTVPictureMode(picMode) == tvERROR_NONE) {
+            pqmodeIndex = getPictureModeIndex(picMode);
+        }
+
+        if (pqmodeIndex < 0) {
             // During early init, PictureMode may not be set in HAL yet.
-            // Fall back to the HAL default for the current source/format so
+            // Fall back to the HAL default for the selected source/format so
             // BacklightMode can still be seeded from pq.db.
             LOGWARN("GetTVPictureMode() failed - using HAL default picture mode\n");
             tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
@@ -2741,18 +2781,11 @@ namespace Plugin {
                 LOGERR("GetDefaultPQMode() also failed, cannot init BacklightMode\n");
                 return tvERROR_GENERAL;
             }
-            std::string defaultModeStr = convertPictureIndexToString(defaultIndex);
-            if (defaultModeStr.empty()) {
-                LOGERR("convertPictureIndexToString failed for default index %d\n", defaultIndex);
-                return tvERROR_GENERAL;
-            }
-            strncpy(picMode, defaultModeStr.c_str(), PIC_MODE_NAME_MAX - 1);
-            picMode[PIC_MODE_NAME_MAX - 1] = '\0';
+            pqmodeIndex = static_cast<int>(defaultIndex);
         }
 
-        int pqmodeIndex = getPictureModeIndex(picMode);
         if (pqmodeIndex < 0) {
-            LOGERR("Invalid picture mode: %s\n", picMode);
+            LOGERR("Invalid picture mode for source=%d format=%d\n", currentSource, currentFormat);
             return tvERROR_GENERAL;
         }
 
@@ -2783,7 +2816,7 @@ namespace Plugin {
                 int retval = updateAVoutputTVParam("sync", "BacklightMode", inputInfo,
                                       PQ_PARAM_BACKLIGHT_MODE, static_cast<int>(blMode));
                 if (retval != 0) {
-                    LOGERR("Failed to Save DisplayMode to ssm_data\n");
+                    LOGERR("Failed to Save BacklightMode to ssm_data\n");
                 }
             } else {
                 updateAVoutputTVParamV2("sync", "BacklightMode", paramJson,
@@ -4050,7 +4083,7 @@ namespace Plugin {
 
         if ( param == "WhiteBalance") {
             param = "CustomWhiteBalance";
-        } else if ( param == "AutoBacklightMode") {
+        } else if ( param == "AutoBacklightMode" || param == "BacklightMode") {
             param = "BacklightControl";
         } else if ( param == "ZoomMode") {
             param = "AspectRatio";
