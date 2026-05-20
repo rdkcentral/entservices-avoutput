@@ -4593,7 +4593,7 @@ namespace Plugin {
             if (params.HasLabel(key.c_str())) {
                 const JsonArray& array = params[key.c_str()].Array();
                 for (uint32_t i = 0; i < array.Length(); ++i) {
-                    result.push_back(array[i].Value());
+                    result.push_back(array[i].String());
                 }
             } else {
                 result.push_back("Global");
