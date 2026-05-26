@@ -4371,7 +4371,7 @@ namespace Plugin {
         if (parameters.HasLabel("videoSource")) {
             const JsonArray& sourceParam = parameters["videoSource"].Array();
             for (uint32_t i = 0; i < sourceParam.Length(); ++i) {
-                std::string source = sourceParam[i].Value();
+                std::string source = sourceParam[i].String();
                 if (!source.empty()) {
                     sources.push_back(source);
                 }
@@ -4386,7 +4386,7 @@ namespace Plugin {
         if (parameters.HasLabel("videoFormat")) {
             const JsonArray& formatParam = parameters["videoFormat"].Array();
             for (uint32_t i = 0; i < formatParam.Length(); ++i) {
-                std::string format = formatParam[i].Value();
+                std::string format = formatParam[i].String();
                 if (!format.empty()) {
                     formats.push_back(format);
                 }
@@ -4593,7 +4593,7 @@ namespace Plugin {
             if (params.HasLabel(key.c_str())) {
                 const JsonArray& array = params[key.c_str()].Array();
                 for (uint32_t i = 0; i < array.Length(); ++i) {
-                    result.push_back(array[i].Value());
+                    result.push_back(array[i].String());
                 }
             } else {
                 result.push_back("Global");
