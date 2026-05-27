@@ -260,6 +260,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(get2PointWBCaps)
 		DECLARE_JSON_RPC_METHOD(getHDRModeCaps)
 		DECLARE_JSON_RPC_METHOD(getAutoBacklightModeCaps)
+		DECLARE_JSON_RPC_METHOD(getFadeDisplayCaps)
 		DECLARE_JSON_RPC_METHOD(getBacklightCapsV2)
 		DECLARE_JSON_RPC_METHOD(getBrightnessCapsV2)
 		DECLARE_JSON_RPC_METHOD(getContrastCapsV2)
@@ -305,6 +306,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(setWBMode)
  		DECLARE_JSON_RPC_METHOD(signalFilmMakerMode)
 		DECLARE_JSON_RPC_METHOD(setAutoBacklightMode)
+		DECLARE_JSON_RPC_METHOD(fadeDisplay)
 		DECLARE_JSON_RPC_METHOD(setAISuperResolution)
 		DECLARE_JSON_RPC_METHOD(setPrecisionDetail)
 		DECLARE_JSON_RPC_METHOD(setLocalContrastEnhancement)
@@ -365,6 +367,7 @@ class AVOutputTV : public AVOutputBase {
 		void spliltCapablities( capVectors_t& vectorInfo, const capDetails_t& stringInfo);
 		void spliltStringsAndConvertToSet( std::string pqmodeInfo,std::string formatInfo,std::string sourceInfo,std::set<string> &pqmode, std::set<string> &format, std::set<string> &source);
 		int validateIntegerInputParameter(std::string param, int inputValue);
+		int validateFadeDisplayInputParameter(std::string param, std::string name, int inputValue);
 		int fetchCapablities(string pqparam, capDetails_t& info);
 		int validateInputParameter(std::string param, std::string inputValue);
 		int validateWBParameter(std::string param,std::string control,int inputValue);
