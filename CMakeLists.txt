@@ -49,11 +49,11 @@ include_directories(${STAGING_INCDIR}/rdk/ds)
 
 if (AVOUTPUT_TV)
 add_library(${MODULE_NAME} SHARED
-	AVOutputBase.cpp
-	AVOutputTV.cpp
-        AVOutputTVHelper.cpp	
-        AVOutput.cpp
-        Module.cpp)
+	src/AVOutputBase.cpp
+	src/AVOutputTV.cpp
+        src/AVOutputTVHelper.cpp	
+        src/AVOutput.cpp
+        src/Module.cpp)
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         glib-2.0
@@ -65,10 +65,10 @@ target_link_libraries(${MODULE_NAME}
 )
 else()
 add_library(${MODULE_NAME} SHARED
-	AVOutputBase.cpp
-	AVOutputSTB.cpp
-        AVOutput.cpp
-        Module.cpp)
+	src/AVOutputBase.cpp
+	src/AVOutputSTB.cpp
+        src/AVOutput.cpp
+        src/Module.cpp)
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         glib-2.0
@@ -86,6 +86,7 @@ find_package(DS)
 
 target_include_directories(${MODULE_NAME} PRIVATE ${DS_INCLUDE_DIRS})
 target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/helpers)
+target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(${MODULE_NAME} 
     PRIVATE
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
