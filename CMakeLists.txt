@@ -85,8 +85,8 @@ set_target_properties(${MODULE_NAME} PROPERTIES
 find_package(DS)
 
 target_include_directories(${MODULE_NAME} PRIVATE ${DS_INCLUDE_DIRS})
-target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/helpers)
 target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/helpers)
 target_link_libraries(${MODULE_NAME} 
     PRIVATE
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
