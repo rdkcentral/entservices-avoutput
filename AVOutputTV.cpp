@@ -4346,12 +4346,13 @@ namespace Plugin {
                                                     &defaultIndex);
                 if (halRet != tvERROR_NONE) {
                     returnResponse(false);
+                } else {
+                    pictureModeStr = convertPictureIndexToString(defaultIndex);
+                    if (pictureModeStr.empty()) {
+                        returnResponse(false);
+                    }
+                    LOGINFO("%s: HAL default picture mode = %s\n", __FUNCTION__, pictureModeStr.c_str());
                 }
-                pictureModeStr = convertPictureIndexToString(defaultIndex);
-                if (pictureModeStr.empty()) {
-                    returnResponse(false);
-                }
-                LOGINFO("%s: HAL default picture mode = %s\n", __FUNCTION__, pictureModeStr.c_str());
             }
         }
         else
@@ -4401,7 +4402,7 @@ namespace Plugin {
         if (parameters.HasLabel("videoSource")) {
             const JsonArray& sourceParam = parameters["videoSource"].Array();
             for (uint32_t i = 0; i < sourceParam.Length(); ++i) {
-                std::string source = sourceParam[i].Value();
+                std::string source = sourceParam[i].String();
                 if (!source.empty()) {
                     sources.push_back(source);
                 }
@@ -4416,7 +4417,7 @@ namespace Plugin {
         if (parameters.HasLabel("videoFormat")) {
             const JsonArray& formatParam = parameters["videoFormat"].Array();
             for (uint32_t i = 0; i < formatParam.Length(); ++i) {
-                std::string format = formatParam[i].Value();
+                std::string format = formatParam[i].String();
                 if (!format.empty()) {
                     formats.push_back(format);
                 }
@@ -4623,7 +4624,7 @@ namespace Plugin {
             if (params.HasLabel(key.c_str())) {
                 const JsonArray& array = params[key.c_str()].Array();
                 for (uint32_t i = 0; i < array.Length(); ++i) {
-                    result.push_back(array[i].Value());
+                    result.push_back(array[i].String());
                 }
             } else {
                 result.push_back("Global");
@@ -4779,7 +4780,14 @@ namespace Plugin {
                     }
 
                     std::string defaultModeStr = convertPictureIndexToString(defaultIndex);
-                    LOGINFO("Default PictureMode mode for src=%d fmt=%d: %s\n", sourceType, formatType, defaultModeStr.c_str());
+                    if (defaultModeStr.empty()) {
+                        defaultModeStr = convertPictureIndexToStringV2(defaultIndex);
+                    }
+                    if (defaultModeStr.empty()) {
+                        LOGERR("convertPictureIndexToString failed for defaultIndex=%d (src=%d fmt=%d)\n", defaultIndex, sourceType, formatType);
+                        returnResponse(false);
+                    }
+                    LOGINFO("Default PictureMode for src=%d fmt=%d: %s\n", sourceType, formatType, defaultModeStr.c_str());
 
                     if (currentSource == sourceType && currentFormat == formatType) {
                         tvError_t ret = SetTVPictureMode(defaultModeStr.c_str());
@@ -4791,6 +4799,11 @@ namespace Plugin {
                     }
 
                     int pqmodeindex = (int)getPictureModeIndex(defaultModeStr.c_str());
+                    if (pqmodeindex < 0) {
+                        LOGWARN("Invalid PictureMode mapping for src=%d fmt=%d defaultIndex=%d mode=%s; skipping SaveSourcePictureMode\n",
+                                sourceType, formatType, defaultIndex, defaultModeStr.c_str());
+                        continue;
+                    }
                     SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
                 }
             }
@@ -6313,7 +6326,6 @@ namespace Plugin {
                     if (ret != tvERROR_NONE) {
                         LOGWARN("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
                     }
-                    ret = tvERROR_NONE;
                 }
                 else {
                     tvBacklightMode_t blMode = tvBacklightMode_NONE;

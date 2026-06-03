@@ -543,11 +543,10 @@ namespace Plugin {
         formatMatches = (paramInfo.format == "none") || formatMatches;
         sourceMatches = (paramInfo.source == "none") || sourceMatches;
 
-        if (param == "AspectRatio") {
-            pqmodeMatches = (inputInfo.pqmode == "none") || pqmodeMatches;
-            formatMatches = (inputInfo.format == "none") || formatMatches;
-            sourceMatches = (inputInfo.source == "none") || sourceMatches;
-        }
+        // AspectRatio must follow the same capability rules as other parameters.
+        // Treating caller-supplied "none" as a match would bypass platform
+        // capability constraints for pqmode/format/source and could allow
+        // unsupported combinations to pass validation.
 
         //3.Compare Each pqmode/format/source InputInfo against CapabilityInfo
         if ( pqmodeMatches && formatMatches && sourceMatches ) {
@@ -1172,7 +1171,6 @@ namespace Plugin {
         tvPQParameterIndex_t pqParamIndex,
         int level)
     {
-        LOGINFO("Entry : %s\n", __FUNCTION__);
 
         valueVectors_t values;
         capDetails_t localInfo = info;
@@ -1184,31 +1182,51 @@ namespace Plugin {
         }
 
         if (getSaveConfig(tr181ParamName, localInfo, values) != 0) {
+            LOGERR("%s: Failed to get the saved config for parameter %s\n", __FUNCTION__, tr181ParamName.c_str());
             return -1;
+        }
+
+        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),localInfo.pqmode.c_str(),localInfo.source.c_str(),localInfo.format.c_str(),localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str() );
+
+        int ret = 0;
+
+        if( tr181ParamName == "HDRMode" || tr181ParamName == "DolbyVisionMode") {
+            // For HDR and Dolby Vision mode changes, we want to execute immediately to ensure the changes take effect without delay.
+            ret = updateAVoutputTVParamImplementation(
+                action, tr181ParamName,
+                pqParamIndex, level,
+                values);
+            LOGINFO("Exit : %s\n", __FUNCTION__);
+            return ret;
         }
 
         // ---- Current context
         tvVideoSrcType_t currentSrc = VIDEO_SOURCE_IP;
         tvVideoFormatType_t currentFmt = VIDEO_FORMAT_SDR;
+        tvPQModeIndex_t currentPQMode = PQ_MODE_STANDARD;
         char picMode[PIC_MODE_NAME_MAX] = {0};
 
         GetCurrentVideoSource(&currentSrc);
         GetCurrentVideoFormat(&currentFmt);
 
-        tvPQModeIndex_t currentPQMode = PQ_MODE_STANDARD;
-        initializeReverseMaps();
-
-        if (getCurrentPictureMode(picMode)) {
-            auto it = pqModeReverseMap.find(picMode);
-            if (it != pqModeReverseMap.end()) {
-                currentPQMode = static_cast<tvPQModeIndex_t>(it->second);
-            } else {
-                LOGERR("Unknown picture mode");
-            }
-        } else {
-            LOGERR("Failed to get current picture mode");
+        if ( currentFmt == VIDEO_FORMAT_NONE ) {
+            currentFmt = VIDEO_FORMAT_SDR;
         }
-        LOGINFO("currentPQMode: %d, currentFmt: %d, currentSrc: %d", currentPQMode, currentFmt, currentSrc);
+
+        if(!getCurrentPictureMode(picMode)) {
+            LOGERR("Failed to get the Current picture mode\n");
+        }
+        else {
+            std::string local = picMode;
+            int pictureModeIndex = getPictureModeIndex(local);
+            if (pictureModeIndex < 0) {
+                LOGERR("Failed to get the Current picture mode index\n");
+                currentPQMode = PQ_MODE_STANDARD;
+            }
+            else {
+                currentPQMode = (tvPQModeIndex_t)pictureModeIndex;
+            }
+        }
 
         bool hasCurrent = false;
 
@@ -1229,32 +1247,44 @@ namespace Plugin {
             if (hasCurrent) break;
         }
 
-        int ret = 0;
+        std::vector<paramIndex_t> skipTuples;
 
-        // Execute current immediately
+        // Execute current immediately, then skip only the exact current tuple in the queued pass.
         if (hasCurrent) {
-            LOGINFO("%s: Executing current context immediately", __FUNCTION__);
+            LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d color:%s component:%s control:%s", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc, localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str());
 
-            valueVectors_t currentOnly;
-            currentOnly.sourceValues = { currentSrc };
-            currentOnly.formatValues = { currentFmt };
-            currentOnly.pqmodeValues = { (int)currentPQMode };
+            valueVectors_t currentOnly = values;
+            currentOnly.sourceValues = { static_cast<int>(currentSrc) };
+            currentOnly.formatValues = { static_cast<int>(currentFmt) };
+            currentOnly.pqmodeValues = { static_cast<int>(currentPQMode) };
 
             ret = updateAVoutputTVParamImplementation(
-                action, tr181ParamName, info,
+                action, tr181ParamName,
                 pqParamIndex, level,
                 currentOnly);
+
+            if ( values.sourceValues.size() == 1 && values.pqmodeValues.size() == 1 && values.formatValues.size() == 1 ) {
+                // If only one context, return after processing current.
+                return ret;
+            }
+
+            paramIndex_t skipIndex = {};
+            skipIndex.sourceIndex = static_cast<uint8_t>(currentSrc);
+            skipIndex.pqmodeIndex = static_cast<uint8_t>(currentPQMode);
+            skipIndex.formatIndex = static_cast<uint8_t>(currentFmt);
+            skipTuples.push_back(skipIndex);
         }
 
-        // Queue request for async processing to avoid blocking current context execution
+        // Queue request for async processing using original values; skip only the current tuple.
         {
             std::lock_guard<std::mutex> lock(queueMutex);
             paramUpdateQueue.push(
-                [this, action, tr181ParamName, info, pqParamIndex, level, values]() {
+                [this, action, tr181ParamName, pqParamIndex, level, values, skipTuples]() {
                     updateAVoutputTVParamImplementation(
-                        action, tr181ParamName, info,
+                        action, tr181ParamName,
                         pqParamIndex, level,
-                        values);
+                        values,
+                        skipTuples);
                 });
         }
 
@@ -1268,18 +1298,17 @@ namespace Plugin {
     int AVOutputTV::updateAVoutputTVParamImplementation(
         const std::string& action,
         const std::string& tr181ParamName,
-        const capDetails_t& info,
         tvPQParameterIndex_t pqParamIndex,
         int level,
-        const valueVectors_t& values)
+        const valueVectors_t& values,
+        const std::vector<paramIndex_t>& skipTuples)
     {
-        LOGINFO("Entry : %s\n",__FUNCTION__);
+        LOGINFO("Entry : %s param:%s skipCount:%zu\n",
+            __FUNCTION__, tr181ParamName.c_str(), skipTuples.size());
         // Coverity fix: Initialize struct to zero to prevent uninitialized field usage
         // This ensures all 7 uint8_t fields start with defined values
         paramIndex_t paramIndex = {};
         int ret = 0;
-
-        LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),info.pqmode.c_str(),info.source.c_str(),info.format.c_str(),info.color.c_str(),info.component.c_str(),info.control.c_str() );
 
         bool sync = (action == "sync");
         bool reset = (action == "reset");
@@ -1291,6 +1320,17 @@ namespace Plugin {
                 for( int modeType : values.pqmodeValues ) {
                     paramIndex.pqmodeIndex = modeType;
                     for( int formatType : values.formatValues ) {
+                        bool shouldSkip = std::any_of(skipTuples.begin(), skipTuples.end(),
+                            [sourceType, modeType, formatType](const paramIndex_t& skipTuple) {
+                                return sourceType == skipTuple.sourceIndex &&
+                                       modeType == skipTuple.pqmodeIndex &&
+                                       formatType == skipTuple.formatIndex;
+                            });
+
+                        if (shouldSkip) {
+                            continue;
+                        }
+
                         paramIndex.formatIndex = formatType;
 
                         switch(pqParamIndex) {
@@ -1504,6 +1544,9 @@ namespace Plugin {
         paramJson["videoFormat"] = info.format;
         LOGINFO("Entry %s : pqmode : %s source : %s format : %s\n", __FUNCTION__, pqmode.c_str(), source.c_str(), format.c_str());
 
+        //PictureMode
+        m_pictureModeStatus = GetTVPictureModeCaps(&m_pictureModes, &m_numPictureModes, &m_pictureModeCaps);
+
         // Brightness
         m_brightnessStatus = GetBrightnessCaps(&m_maxBrightness, &m_brightnessCaps);
         LOGINFO("GetBrightnessCaps returned status: %d, max: %d", m_brightnessStatus, m_maxBrightness);
@@ -1626,8 +1669,6 @@ namespace Plugin {
         if (m_precisionDetailStatus == tvERROR_NONE) {
             updateAVoutputTVParamV2("sync", "PrecisionDetail", paramJson, PQ_PARAM_PRECISION_DETAIL, level);
         }
-        //PictureMode
-        m_pictureModeStatus = GetTVPictureModeCaps(&m_pictureModes, &m_numPictureModes, &m_pictureModeCaps);
 
         // LocalContrastEnhancement
         m_localContrastEnhancementStatus = GetLocalContrastEnhancementCaps(&m_maxLocalContrastEnhancement, &m_localContrastEnhancementCaps);
@@ -2431,6 +2472,8 @@ namespace Plugin {
                     LOGINFO("getCurrentPictureMode: HAL default mode = '%s'\n", picMode);
                     return 1;
                 }
+                LOGERR("getCurrentPictureMode: HAL returned default mode index %d, but conversion to string failed\n", defaultMode);
+                return 0;
             }
             LOGERR("getCurrentPictureMode: HAL default fallback failed (ret=%d)\n", halRet);
             return 0;
@@ -2648,7 +2691,10 @@ namespace Plugin {
             return tvERROR_GENERAL;
         }
 
-        GetCurrentVideoFormat(&currentFormat);
+        if (GetCurrentVideoFormat(&currentFormat) != tvERROR_NONE) {
+            LOGERR("GetCurrentVideoFormat() failed\n");
+            return tvERROR_GENERAL;
+        }
         if (currentFormat == VIDEO_FORMAT_NONE) {
             currentFormat = VIDEO_FORMAT_SDR;
         }
@@ -2703,13 +2749,13 @@ namespace Plugin {
             LOGERR("AspectRatio set failed: %s\n", getErrorString(ret).c_str());
         } else {
             if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
-                int retval = updateAVoutputTVParam("sync", "ZoomMode", inputInfo,
+                int retval = updateAVoutputTVParam("set", "ZoomMode", inputInfo,
                                                 PQ_PARAM_ASPECT_RATIO, mode);
                 if (retval != 0) {
-                    LOGERR("Failed to Save AutoBacklightMode to ssm_data\n");
+                    LOGERR("Failed to Save ZoomMode to ssm_data\n");
                 }
             } else {
-                updateAVoutputTVParamV2("sync", "ZoomMode", paramJson,
+                updateAVoutputTVParamV2("set", "ZoomMode", paramJson,
                                         PQ_PARAM_ASPECT_RATIO, static_cast<int>(mode));
             }
             LOGINFO("ZoomMode initialized from pq.db default, value: %d\n", static_cast<int>(mode));
@@ -2775,7 +2821,7 @@ namespace Plugin {
             // During early init, PictureMode may not be set in HAL yet.
             // Fall back to the HAL default for the selected source/format so
             // BacklightMode can still be seeded from pq.db.
-            LOGWARN("GetTVPictureMode() failed - using HAL default picture mode\n");
+            LOGWARN("No valid picture mode could be derived from input or current picture mode - using HAL default picture mode\n");
             tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
             if (GetDefaultPQMode(currentSource, currentFormat, &defaultIndex) != tvERROR_NONE) {
                 LOGERR("GetDefaultPQMode() also failed, cannot init BacklightMode\n");
@@ -2798,11 +2844,19 @@ namespace Plugin {
 
         switch (value) {
             case tvBacklightMode_MANUAL:
+            case 0:
+                blMode = tvBacklightMode_MANUAL;
+                break;
             case tvBacklightMode_AMBIENT:
+            case 1:
+                blMode = tvBacklightMode_AMBIENT;
+                break;
             case tvBacklightMode_ECO:
-                blMode = static_cast<tvBacklightMode_t>(value);
+            case 2:
+                blMode = tvBacklightMode_ECO;
                 break;
             default:
+                LOGWARN("Unexpected default BacklightMode code from pq.db: %d. Falling back to MANUAL\n", value);
                 blMode = tvBacklightMode_MANUAL;
                 break;
         }
