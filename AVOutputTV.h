@@ -378,6 +378,9 @@ class AVOutputTV : public AVOutputBase {
         /* Intialise the last set backlight mode at bootup */
         tvError_t initializeBacklightMode();
 
+		/* Intialise the last set aspect ratio at bootup */
+		tvError_t initializeAspectRatio();
+
 		std::string convertToString(std::vector<std::string> vec_strings);
 		void convertParamToLowerCase(std::string &source, std::string &pqmode, std::string &format);
 		int convertToValidInputParameter(const std::string& pqparam, capDetails_t& info);
