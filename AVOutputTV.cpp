@@ -4679,13 +4679,13 @@ namespace Plugin {
                 LOGERR("clearLocalParam failed for %s: %s", tr181Param.c_str(), getTR181ErrorString(err));
                 continue;
             }
-
+            tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
             tvError_t halRet = GetDefaultPQMode(ctx.videoSrcType, ctx.videoFormatType, &defaultIndex);
             if (halRet != tvERROR_NONE) {
                 LOGERR("GetDefaultPQMode failed for src=%d fmt=%d", ctx.videoSrcType, ctx.videoFormatType);
                 return false;
             }
-            modeStr = convertPictureIndexToStringV2(static_cast<int>(defaultIndex));
+            std::string modeStr = convertPictureIndexToStringV2(static_cast<int>(defaultIndex));
             if (modeStr.empty()) {
                 LOGERR("convertPictureIndexToStringV2 failed for index %d", defaultIndex);
                 return false;
@@ -4788,7 +4788,7 @@ namespace Plugin {
                     if (pqmodeindex < 0) {
                         LOGWARN("Invalid PictureMode mapping for src=%d fmt=%d defaultIndex=%d mode=%s; skipping SaveSourcePictureMode\n",
                                 sourceType, formatType, defaultIndex, defaultModeStr.c_str());
-                        continue;
+                        returnResponse(false);
                     }
                     SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
                 }
@@ -6249,13 +6249,10 @@ namespace Plugin {
             if (err == tr181Success) {
                 modeStr = param.value;
             } else {
-                LOGWARN("%s: getLocalParam failed for AutoBacklightMode, falling back to HAL\n", __FUNCTION__);
+                LOGERR("%s: getLocalParam failed for AutoBacklightMode, falling back to HAL\n", __FUNCTION__);
                 tvBacklightMode_t blMode = tvBacklightMode_MANUAL;
-                tvError_t halErr = GetCurrentBacklightMode(&blMode);
-                if (halErr != tvERROR_NONE) {
-                    LOGERR("%s: GetCurrentBacklightMode failed: %s\n", __FUNCTION__, getErrorString(halErr).c_str());
-                    returnResponse(false);
-                }
+                GetCurrentBacklightMode(&blMode);
+                auto it = backlightModeMap.find(static_cast<int>(blMode));
                 if (it == backlightModeMap.end()) {
                     returnResponse(false);
                 }
@@ -6298,7 +6295,7 @@ namespace Plugin {
             }
             else {
                 LOGINFO("clearLocalParam for %s Successful\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM);
-
+            }
             ret = setDefaultAutoBacklightMode();
             if (ret != tvERROR_NONE) {
                 LOGERR("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
