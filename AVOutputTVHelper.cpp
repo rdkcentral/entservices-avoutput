@@ -543,10 +543,8 @@ namespace Plugin {
         formatMatches = (paramInfo.format == "none") || formatMatches;
         sourceMatches = (paramInfo.source == "none") || sourceMatches;
 
-        // AspectRatio must follow the same capability rules as other parameters.
-        // Treating caller-supplied "none" as a match would bypass platform
-        // capability constraints for pqmode/format/source and could allow
-        // unsupported combinations to pass validation.
+        // Treat capability value "none" (from pq_capabilities.ini) as a wildcard (no platform constraint)
+        // for pqmode/format/source; otherwise enforce that the requested context is included in the capability set.
 
         //3.Compare Each pqmode/format/source InputInfo against CapabilityInfo
         if ( pqmodeMatches && formatMatches && sourceMatches ) {
