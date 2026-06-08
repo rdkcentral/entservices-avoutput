@@ -6251,8 +6251,11 @@ namespace Plugin {
             } else {
                 LOGWARN("%s: getLocalParam failed for AutoBacklightMode, falling back to HAL\n", __FUNCTION__);
                 tvBacklightMode_t blMode = tvBacklightMode_MANUAL;
-                GetCurrentBacklightMode(&blMode);
-                auto it = backlightModeMap.find(static_cast<int>(blMode));
+                tvError_t halErr = GetCurrentBacklightMode(&blMode);
+                if (halErr != tvERROR_NONE) {
+                    LOGERR("%s: GetCurrentBacklightMode failed: %s\n", __FUNCTION__, getErrorString(halErr).c_str());
+                    returnResponse(false);
+                }
                 if (it == backlightModeMap.end()) {
                     returnResponse(false);
                 }
