@@ -931,10 +931,6 @@ namespace Plugin {
                         ret = tvERROR_GENERAL;
                     }
                 }
-                else {
-                    updateAVoutputTVParamV2("set", "ZoomMode", paramJson,
-                                            PQ_PARAM_ASPECT_RATIO, static_cast<int>(mode));
-                }
                 LOGINFO("Aspect Ratio initialized successfully, value: %s\n", param.value);
             }
         }
@@ -2852,9 +2848,6 @@ namespace Plugin {
                 if (retval != 0) {
                     LOGERR("Failed to Save ZoomMode to ssm_data\n");
                 }
-            } else {
-                updateAVoutputTVParamV2("set", "ZoomMode", paramJson,
-                                        PQ_PARAM_ASPECT_RATIO, static_cast<int>(mode));
             }
             LOGINFO("ZoomMode initialized from pq.db default, value: %d\n", static_cast<int>(mode));
         }
@@ -2967,9 +2960,6 @@ namespace Plugin {
                 if (retval != 0) {
                     LOGERR("Failed to Save BacklightMode to ssm_data\n");
                 }
-            } else {
-                updateAVoutputTVParamV2("sync", "BacklightMode", paramJson,
-                                        PQ_PARAM_BACKLIGHT_MODE, static_cast<int>(blMode));
             }
             LOGINFO("AutoBacklightMode initialized from pq.db default, value: %d\n", blMode);
         }

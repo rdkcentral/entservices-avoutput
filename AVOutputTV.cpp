@@ -4680,27 +4680,16 @@ namespace Plugin {
                 continue;
             }
 
-            // Read saved TR-181 value; fall back to HAL default if not stored
-            TR181_ParamData_t param = {0};
-            err = getLocalParam(rfc_caller_id, tr181Param.c_str(), &param);
-            std::string modeStr;
-            if (err != tr181Success || strlen(param.value) == 0) {
-                LOGWARN("getLocalParam failed or empty for %s, falling back to HAL default", tr181Param.c_str());
-                tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
-                tvError_t halRet = GetDefaultPQMode(ctx.videoSrcType, ctx.videoFormatType, &defaultIndex);
-                if (halRet != tvERROR_NONE) {
-                    LOGERR("GetDefaultPQMode failed for src=%d fmt=%d", ctx.videoSrcType, ctx.videoFormatType);
-                    continue;
-                }
-                modeStr = convertPictureIndexToStringV2(static_cast<int>(defaultIndex));
-                if (modeStr.empty()) {
-                    LOGERR("convertPictureIndexToStringV2 failed for index %d", defaultIndex);
-                    continue;
-                }
-            } else {
-                modeStr = param.value;
+            tvError_t halRet = GetDefaultPQMode(ctx.videoSrcType, ctx.videoFormatType, &defaultIndex);
+            if (halRet != tvERROR_NONE) {
+                LOGERR("GetDefaultPQMode failed for src=%d fmt=%d", ctx.videoSrcType, ctx.videoFormatType);
+                return false;
             }
-
+            modeStr = convertPictureIndexToStringV2(static_cast<int>(defaultIndex));
+            if (modeStr.empty()) {
+                LOGERR("convertPictureIndexToStringV2 failed for index %d", defaultIndex);
+                return false;
+            }
             // Apply to hardware if current context matches
             if (ctx.videoSrcType == currentSrc && ctx.videoFormatType == currentFmt) {
 
@@ -4780,9 +4769,6 @@ namespace Plugin {
                     }
 
                     std::string defaultModeStr = convertPictureIndexToString(defaultIndex);
-                    if (defaultModeStr.empty()) {
-                        defaultModeStr = convertPictureIndexToStringV2(defaultIndex);
-                    }
                     if (defaultModeStr.empty()) {
                         LOGERR("convertPictureIndexToString failed for defaultIndex=%d (src=%d fmt=%d)\n", defaultIndex, sourceType, formatType);
                         returnResponse(false);
@@ -6296,15 +6282,9 @@ namespace Plugin {
         LOGINFO("Entry\n");
         if(m_backlightModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
-            capDetails_t inputInfo;
             tvError_t ret = tvERROR_NONE;
 
             if (isPlatformSupport("AutoBacklightMode") != 0) {
-                returnResponse(false);
-            }
-
-            if (parsingSetInputArgument(parameters, "AutoBacklightMode", inputInfo) != 0) {
-                LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
                 returnResponse(false);
             }
 
@@ -6316,52 +6296,12 @@ namespace Plugin {
             else {
                 LOGINFO("clearLocalParam for %s Successful\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM);
 
-                TR181_ParamData_t param;
-                memset(&param, 0, sizeof(param));
-
-                tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM,&param);
-                if ( err != tr181Success ) {
-                    LOGWARN("getLocalParam for %s Failed : %s, falling back to pq.db default\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
-                    ret = setDefaultAutoBacklightMode(inputInfo.pqmode, inputInfo.format, inputInfo.source);
-                    if (ret != tvERROR_NONE) {
-                        LOGWARN("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
-                    }
-                }
-                else {
-                    tvBacklightMode_t blMode = tvBacklightMode_NONE;
-
-                    if(!std::string(param.value).compare("none")) {
-                        blMode = tvBacklightMode_NONE;
-                    }
-                    else if (!std::string(param.value).compare("Manual")){
-                        blMode = tvBacklightMode_MANUAL;
-                    }
-                    else if (!std::string(param.value).compare("Ambient")){
-                        blMode = tvBacklightMode_AMBIENT;
-                    }
-                    else if (!std::string(param.value).compare("Eco")){
-                        blMode = tvBacklightMode_ECO;
-                    }
-                    else {
-                        blMode = tvBacklightMode_NONE;
-                    }
-                    ret = SetCurrentBacklightMode(blMode);
-                    if(ret != tvERROR_NONE) {
-                        LOGWARN("Autobacklight Mode set failed: %s\n",getErrorString(ret).c_str());
-                    }
-                    else {
-                        LOGINFO("Exit : Autobacklight Mode set successfully, value: %s\n", param.value);
-                    }
-                }
-            }
-            if(ret != tvERROR_NONE)
-            {
+            ret = setDefaultAutoBacklightMode();
+            if (ret != tvERROR_NONE) {
+                LOGERR("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
                 returnResponse(false);
             }
-            else
-            {
-                returnResponse(true);
-            }
+            returnResponse(true);
         }
         else
         {
