@@ -1,24 +1,5 @@
 # entservices-avoutput
-
-AVOutput Thunder plugin repository for RDK.
-
-## Overview
-
-This repository contains the AVOutput plugin implementation, build scripts, helper utilities, and test suites.
-
-## Repository Layout
-
-- `plugin/` - AVOutput plugin source, config, and plugin-specific docs.
-- `helpers/` - shared helper headers used by plugin code.
-- `Tests/` - L1 and L2 test suites.
-- `build_dependencies.sh` - local dependency/bootstrap script.
-- `cov_build.sh` - Coverity-oriented build script.
-
-## Documentation
-
-For plugin-specific details, refer to:
-
-- `plugin/README.md`
+repo which contains AVOutput Thunder plugin functionality
 
 ## Release MD5 Checksum Documentation
 
@@ -28,33 +9,25 @@ Use MD5 checksums for release artifact integrity validation.
 
 From the repository root, generate a source archive for a release tag:
 
-```bash
 TAG="<release-tag>"   # Example: 1.2.3
 ARTIFACT="entservices-avoutput-${TAG}.tar.gz"
 git archive --format=tar.gz --output "${ARTIFACT}" "${TAG}"
-```
 
 ### 2. Generate MD5 File
 
 Create a companion checksum file:
 
-```bash
 md5sum "${ARTIFACT}" > "${ARTIFACT}.md5"
-```
 
 ### 3. Verify MD5 Checksum
 
 Consumers can verify the downloaded artifact using:
 
-```bash
 md5sum -c "${ARTIFACT}.md5"
-```
 
 Expected output on success:
 
-```text
 entservices-avoutput-<release-tag>.tar.gz: OK
-```
 
 ### 4. Release Publishing Guidance
 

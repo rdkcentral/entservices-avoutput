@@ -1,0 +1,107 @@
+name: Release Reusable
+
+"on":
+  workflow_call:
+    inputs:
+      version:
+        description: Release version (major.minor.patch)
+        required: true
+        type: string
+      jira_ticket:
+        description: Jira ticket reference (optional)
+        required: false
+        type: string
+        default: ''
+    secrets:
+      rdke_github_token:
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate release version format
+        run: |
+          set -e
+          RELEASE_VERSION="${{ inputs.version }}"
+          JIRA_TICKET="${{ inputs.jira_ticket }}"
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version input: $RELEASE_VERSION. Expected format: major.minor.patch"
+            exit 1
+          fi
+
+          if [[ -n "$JIRA_TICKET" ]] && [[ ! "$JIRA_TICKET" =~ ^RDKEMW-[0-9]+$ ]]; then
+            echo "Invalid Jira ticket input: $JIRA_TICKET. Expected format: RDKEMW-1234"
+            exit 1
+          fi
+
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Git identity
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "187267378+rdkcm-rdke@users.noreply.github.com"
+
+      - name: Install git-flow and auto-changelog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-flow
+          npm install -g auto-changelog
+
+      - name: Run release flow
+        env:
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+          JIRA_TICKET: ${{ inputs.jira_ticket }}
+          AUTH_TOKEN: ${{ secrets.rdke_github_token }}
+        run: |
+          set -e
+          git clone "https://x-access-token:${AUTH_TOKEN}@github.com/${{ github.repository }}" project
+          cd project
+
+          git fetch --all --tags
+          git checkout main || git checkout -b main origin/main
+          git checkout develop || git checkout -b develop origin/develop
+
+          git config gitflow.branch.master main
+          git config gitflow.branch.develop develop
+          git config gitflow.prefix.feature feature/
+          git config gitflow.prefix.bugfix bugfix/
+          git config gitflow.prefix.release release/
+          git config gitflow.prefix.hotfix hotfix/
+          git config gitflow.prefix.support support/
+          git config gitflow.prefix.versiontag ''
+
+          if git rev-parse "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "Tag ${RELEASE_VERSION} already exists. Skipping release."
+            exit 0
+          fi
+
+          git flow release start "${RELEASE_VERSION}"
+          auto-changelog -v "${RELEASE_VERSION}"
+          git add CHANGELOG.md
+
+          if [[ -n "$JIRA_TICKET" ]]; then
+            git commit -m "${RELEASE_VERSION} release changelog updates (${JIRA_TICKET})"
+          else
+            git commit -m "${RELEASE_VERSION} release changelog updates"
+          fi
+
+          git flow release publish
+          git flow release finish -m "${RELEASE_VERSION} release" "${RELEASE_VERSION}"
+
+          git push origin main
+          git push origin --tags
+          git push origin develop
+
+      - name: Cleanup tag if workflow fails
+        if: failure()
+        run: |
+          cd project || exit 0
+          if [[ -n "$RELEASE_VERSION" ]]; then
+            git tag -d "$RELEASE_VERSION" || true
+            git push origin ":refs/tags/$RELEASE_VERSION" || true
+          fi
