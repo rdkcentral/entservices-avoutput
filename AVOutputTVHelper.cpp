@@ -866,11 +866,6 @@ namespace Plugin {
         inputInfo.source = "none";
         inputInfo.format = "none";
 
-        JsonObject paramJson;
-        paramJson["pictureMode"] = inputInfo.pqmode;
-        paramJson["videoSource"] = inputInfo.source;
-        paramJson["videoFormat"] = inputInfo.format;
-
         memset(&param, 0, sizeof(param));
 
         tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_ASPECTRATIO_RFC_PARAM, &param);
@@ -1926,25 +1921,45 @@ namespace Plugin {
                                             convertVideoFormatToString(formatType)+"."+"PictureModeString";
 
                         err = getLocalParam(rfc_caller_id, tr181_param_name.c_str(), &param);
+
                         int pqmodeindex = -1;
-                        if ( tr181Success == err ) {
-                            std::string local = param.value;
-                            pqmodeindex = (int)getPictureModeIndex(local);
-                        }
-                        else {
-                            LOGWARN("getLocalParam failed for %s, falling back to HAL default\n", tr181_param_name.c_str());
-                            tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
-                            tvError_t halRet = GetDefaultPQMode(sourceType, formatType, &defaultIndex);
-                            if (halRet == tvERROR_NONE) {
-                                pqmodeindex = (int)defaultIndex;
-                            } else {
-                                LOGWARN("GetDefaultPQMode failed for source=%d format=%d\n", sourceType, formatType);
-                                return -1;
+
+                        if (tr181Success == err) {
+                            const std::string& local = param.value;
+                            pqmodeindex = getPictureModeIndex(local);
+
+                            if (pqmodeindex >= 0) {
+                                // valid localstore value
+                                tvError_t tv_err = SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
+                                if (tv_err != tvERROR_NONE) {
+                                    LOGWARN("Failed to SaveSourcePictureMode (pqmode=%d)\n", pqmodeindex);
+                                    return -1;
+                                }
                             }
+
+                            LOGWARN("Invalid picture mode '%s' in localstore for %s — falling back to HAL default\n",
+                                    local.c_str(), tr181_param_name.c_str());
+                        } else {
+                            LOGWARN("getLocalParam failed for %s — falling back to HAL default\n",
+                                    tr181_param_name.c_str());
                         }
+
+                        // Fallback to HAL default
+                        tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
+                        tvError_t halRet = GetDefaultPQMode(sourceType, formatType, &defaultIndex);
+
+                        if (halRet != tvERROR_NONE || defaultIndex == PQ_MODE_INVALID) {
+                            LOGWARN("GetDefaultPQMode failed for source=%d format=%d\n",
+                                    sourceType, formatType);
+                            return -1;
+                        }
+
+                        // Save fallback value
+                        pqmodeindex = static_cast<int>(defaultIndex);
+
                         tvError_t tv_err = SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
                         if (tv_err != tvERROR_NONE) {
-                            LOGWARN("failed to SaveSourcePictureMode \n");
+                            LOGWARN("Failed to SaveSourcePictureMode (pqmode=%d)\n", pqmodeindex);
                             return -1;
                         }
                     }

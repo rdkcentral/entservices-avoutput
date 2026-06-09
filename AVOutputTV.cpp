@@ -4786,7 +4786,7 @@ namespace Plugin {
 
                     int pqmodeindex = (int)getPictureModeIndex(defaultModeStr.c_str());
                     if (pqmodeindex < 0) {
-                        LOGWARN("Invalid PictureMode mapping for src=%d fmt=%d defaultIndex=%d mode=%s; skipping SaveSourcePictureMode\n",
+                        LOGERR("Invalid PictureMode mapping for src=%d fmt=%d defaultIndex=%d mode=%s; skipping SaveSourcePictureMode\n",
                                 sourceType, formatType, defaultIndex, defaultModeStr.c_str());
                         returnResponse(false);
                     }
@@ -6251,9 +6251,14 @@ namespace Plugin {
             } else {
                 LOGERR("%s: getLocalParam failed for AutoBacklightMode, falling back to HAL\n", __FUNCTION__);
                 tvBacklightMode_t blMode = tvBacklightMode_MANUAL;
-                GetCurrentBacklightMode(&blMode);
+                tvError_t halRet = GetCurrentBacklightMode(&blMode);
+                if (halRet != tvERROR_NONE) {
+                    LOGERR("%s: GetCurrentBacklightMode failed: %s\n", __FUNCTION__, getErrorString(halRet).c_str());
+                    returnResponse(false);
+                }
                 auto it = backlightModeMap.find(static_cast<int>(blMode));
                 if (it == backlightModeMap.end()) {
+                    LOGERR("%s: Unknown HAL backlight mode %d\n", __FUNCTION__, static_cast<int>(blMode));
                     returnResponse(false);
                 }
                 modeStr = it->second;

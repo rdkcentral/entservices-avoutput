@@ -378,7 +378,7 @@ class AVOutputTV : public AVOutputBase {
         /* Intialise the last set backlight mode at bootup */
         tvError_t initializeBacklightMode();
 
-		/* Intialise the last set aspect ratio at bootup */
+		/* Initialize the last set aspect ratio at bootup */
 		tvError_t initializeAspectRatio();
 
 		std::string convertToString(std::vector<std::string> vec_strings);
