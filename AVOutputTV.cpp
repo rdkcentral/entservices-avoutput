@@ -4701,7 +4701,7 @@ namespace Plugin {
             }
 
             // Save to internal config
-            int pqmodeIndex = static_cast<int>(convertPictureStringToIndexV2(modeStr));
+            int pqmodeIndex = static_cast<int>(defaultIndex);
             SaveSourcePictureMode(ctx.videoSrcType, ctx.videoFormatType, pqmodeIndex);
             contextHandled = true;
         }
@@ -6295,12 +6295,11 @@ namespace Plugin {
 
             tr181ErrorCode_t err = clearLocalParam(rfc_caller_id,AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM);
             if ( err != tr181Success ) {
-                LOGWARN("clearLocalParam for %s Failed : %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
-                ret  = tvERROR_GENERAL;
+                LOGWARN("clearLocalParam for %s Failed : %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM,getTR181ErrorString(err));
+                returnResponse(false);
             }
-            else {
-                LOGINFO("clearLocalParam for %s Successful\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM);
-            }
+            LOGINFO("clearLocalParam for %s Successful\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM);
+
             ret = setDefaultAutoBacklightMode();
             if (ret != tvERROR_NONE) {
                 LOGERR("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());

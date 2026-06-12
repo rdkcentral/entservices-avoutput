@@ -1935,6 +1935,7 @@ namespace Plugin {
                                     LOGWARN("Failed to SaveSourcePictureMode (pqmode=%d)\n", pqmodeindex);
                                     return -1;
                                 }
+                                continue;  // Prevent fallback override
                             }
 
                             LOGWARN("Invalid picture mode '%s' in localstore for %s — falling back to HAL default\n",
