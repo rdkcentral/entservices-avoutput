@@ -2740,12 +2740,7 @@ namespace Plugin {
                 pqmodeIndex, currentSource, currentFormat);
             return tvERROR_GENERAL;
         }
-        if (value < 0 || value >= tvDisplayMode_MAX) {
-            LOGWARN("Unexpected AspectRatio value from pq.db: %d, falling back to TV AUTO\n", value);
-            mode = tvDisplayMode_AUTO;
-        } else {
-            mode = static_cast<tvDisplayMode_t>(value);
-        }
+        mode = (tvDisplayMode_t)value;
         m_videoZoomMode = mode;
         ret = setAspectRatioZoomSettings(mode);
 
