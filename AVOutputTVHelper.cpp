@@ -1927,10 +1927,10 @@ namespace Plugin {
                                 continue;  // Prevent fallback override
                             }
 
-                            LOGWARN("Invalid picture mode '%s' in localstore for %s — falling back to HAL default\n",
+                            LOGWARN("Invalid picture mode '%s' in localstore for %s - falling back to HAL default\n",
                                     local.c_str(), tr181_param_name.c_str());
                         } else {
-                            LOGWARN("getLocalParam failed for %s — falling back to HAL default\n",
+                            LOGWARN("getLocalParam failed for %s - falling back to HAL default\n",
                                     tr181_param_name.c_str());
                         }
 
@@ -2771,7 +2771,12 @@ namespace Plugin {
                 pqmodeIndex, currentSource, currentFormat);
             return tvERROR_GENERAL;
         }
-        mode = (tvDisplayMode_t)value;
+        if (value < 0 || value >= tvDisplayMode_MAX) {
+            LOGWARN("Unexpected AspectRatio value from pq.db: %d, falling back to TV AUTO\n", value);
+            mode = tvDisplayMode_AUTO;
+        } else {
+            mode = static_cast<tvDisplayMode_t>(value);
+        }
         m_videoZoomMode = mode;
         ret = setAspectRatioZoomSettings(mode);
 
