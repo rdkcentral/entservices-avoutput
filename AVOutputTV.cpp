@@ -2009,13 +2009,7 @@ namespace Plugin {
 
             if ( getParamIndexV2(paramName, inputInfo, indexInfo) == 0 )
             {
-                tvError_t defaultErr = GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&intVal);
-                if (defaultErr != tvERROR_NONE) {
-                    LOGERR("%s: GetDefaultPQParams failed for %s [format=%d, source=%d, mode=%d] PQIndex=%d err=%s\n",
-                        __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
-                        indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, getErrorString(defaultErr).c_str());
-                    return false;
-                }
+                GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqIndex,&intVal);
                 LOGINFO("%s: GetDefaultPQParams success for %s [format=%d, source=%d, mode=%d] PQIndex=%d → value=%d\n",
                     __FUNCTION__, paramName.c_str(), indexInfo.formatIndex,
                     indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, intVal);
