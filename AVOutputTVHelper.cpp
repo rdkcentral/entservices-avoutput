@@ -2317,19 +2317,6 @@ namespace Plugin {
             }
             GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqParamIndex,&value);
 
-            if (forParam.compare("ZoomMode") == 0) {
-                // GetDefaultPQParams returns raw values; convert them back to AVOutput zoom enums.
-                switch (value) {
-                    case 0:  value = tvDisplayMode_16x9;  break;
-                    case 4:  value = tvDisplayMode_4x3;   break;
-                    case 5:  value = tvDisplayMode_FULL;  break;
-                    case 6:
-                    case 7:  value = tvDisplayMode_DIRECT; break;
-                    case 10: value = tvDisplayMode_ZOOM;  break;
-                    case 11: value = tvDisplayMode_AUTO;  break;
-                    default: value = tvDisplayMode_AUTO;  break;
-                }
-            }
             LOGINFO("No localstore value for %s - HAL default: %d\n",key.c_str(),value);
             return 0;
         }
@@ -2788,26 +2775,17 @@ namespace Plugin {
                 pqmodeIndex, currentSource, currentFormat);
             return tvERROR_GENERAL;
         }
-
-        switch (value) {
-            case 0:  mode = tvDisplayMode_16x9; break;
-            case 4:  mode = tvDisplayMode_4x3;  break;
-            case 5:  mode = tvDisplayMode_FULL; break;
-            case 6:
-            case 7:  mode = tvDisplayMode_DIRECT; break;
-            case 10: mode = tvDisplayMode_ZOOM; break;
-            case 11: mode = tvDisplayMode_AUTO; break;
-            default: mode = tvDisplayMode_AUTO; break;
-        }
-
+        mode = (tvDisplayMode_t)value;
         m_videoZoomMode = mode;
         ret = setAspectRatioZoomSettings(mode);
 
         if (ret != tvERROR_NONE) {
             LOGERR("AspectRatio set failed: %s\n", getErrorString(ret).c_str());
         } else {
-            LOGINFO("ZoomMode initialized from pq.db default, value: %d\n",
-                    static_cast<int>(mode));
+            std::string aspectRatioString;
+            getDisplayModeStringFromEnum(static_cast<int>(mode), aspectRatioString);
+            LOGINFO("ZoomMode initialized from pq.db default, value: %d (%s)\n",
+                    static_cast<int>(mode), aspectRatioString.c_str());
         }
 
         return ret;
@@ -2873,7 +2851,10 @@ namespace Plugin {
         if (ret != tvERROR_NONE) {
             LOGERR("AutoBacklightMode set failed: %s\n", getErrorString(ret).c_str());
         } else {
-            LOGINFO("AutoBacklightMode initialized from pq.db default, value: %d\n", blMode);
+            std::string backlightModeString;
+            getBacklightModeStringFromEnum(static_cast<int>(blMode), backlightModeString);
+            LOGINFO("AutoBacklightMode initialized from pq.db default, value: %d (%s)\n",
+                    static_cast<int>(blMode), backlightModeString.c_str());
         }
 
         return ret;
