@@ -860,11 +860,6 @@ namespace Plugin {
         TR181_ParamData_t param;
         tvError_t ret = tvERROR_NONE;
         tvDisplayMode_t mode = tvDisplayMode_MAX;
-        capDetails_t inputInfo;
-
-        inputInfo.pqmode = "none";
-        inputInfo.source = "none";
-        inputInfo.format = "none";
 
         memset(&param, 0, sizeof(param));
 
@@ -880,7 +875,7 @@ namespace Plugin {
             else if (storedMode == "4:3" || storedMode == "TV 4X3 PILLARBOX") {
                 mode = tvDisplayMode_4x3;
             }
-            else if (storedMode == "Full") {
+            else if (storedMode == "Full" || storedMode == "TV FULL") {
                 mode = tvDisplayMode_FULL;
             }
             else if (storedMode == "Normal" || storedMode == "TV NORMAL") {
