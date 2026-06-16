@@ -1368,15 +1368,12 @@ namespace Plugin {
                 for( int modeType : values.pqmodeValues ) {
                     paramIndex.pqmodeIndex = modeType;
                     for( int formatType : values.formatValues ) {
-                        bool shouldSkip = false;
-                        for (const auto& skipTuple : skipTuples) {
-                            if (sourceType == skipTuple.sourceIndex &&
-                                modeType == skipTuple.pqmodeIndex &&
-                                formatType == skipTuple.formatIndex) {
-                                shouldSkip = true;
-                                break;
-                            }
-                        }
+                        bool shouldSkip = std::any_of(skipTuples.begin(), skipTuples.end(),
+                            [sourceType, modeType, formatType](const paramIndex_t& skipTuple) {
+                                return sourceType == skipTuple.sourceIndex &&
+                                       modeType == skipTuple.pqmodeIndex &&
+                                       formatType == skipTuple.formatIndex;
+                            });
 
                         if (shouldSkip) {
                             continue;
@@ -1910,46 +1907,18 @@ namespace Plugin {
                                             convertVideoFormatToString(formatType)+"."+"PictureModeString";
 
                         err = getLocalParam(rfc_caller_id, tr181_param_name.c_str(), &param);
+                        if ( tr181Success == err ) {
+                            std::string local = param.value;
+                            int pqmodeindex = (int)getPictureModeIndex(local);
 
-                        int pqmodeindex = -1;
-
-                        if (tr181Success == err) {
-                            const std::string& local = param.value;
-                            pqmodeindex = getPictureModeIndex(local);
-
-                            if (pqmodeindex >= 0) {
-                                // valid localstore value
-                                tvError_t tv_err = SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
-                                if (tv_err != tvERROR_NONE) {
-                                    LOGWARN("Failed to SaveSourcePictureMode (pqmode=%d)\n", pqmodeindex);
-                                    return -1;
-                                }
-                                continue;  // Prevent fallback override
+                            tvError_t tv_err = SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
+                            if (tv_err != tvERROR_NONE) {
+                                LOGWARN("failed to SaveSourcePictureMode \n");
+                                return -1;
                             }
-
-                            LOGWARN("Invalid picture mode '%s' in localstore for %s - falling back to HAL default\n",
-                                    local.c_str(), tr181_param_name.c_str());
-                        } else {
-                            LOGWARN("getLocalParam failed for %s - falling back to HAL default\n",
-                                    tr181_param_name.c_str());
                         }
-
-                        // Fallback to HAL default
-                        tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
-                        tvError_t halRet = GetDefaultPQMode(sourceType, formatType, &defaultIndex);
-
-                        if (halRet != tvERROR_NONE || defaultIndex == PQ_MODE_INVALID) {
-                            LOGWARN("GetDefaultPQMode failed for source=%d format=%d\n",
-                                    sourceType, formatType);
-                            return -1;
-                        }
-
-                        // Save fallback value
-                        pqmodeindex = static_cast<int>(defaultIndex);
-
-                        tvError_t tv_err = SaveSourcePictureMode(sourceType, formatType, pqmodeindex);
-                        if (tv_err != tvERROR_NONE) {
-                            LOGWARN("Failed to SaveSourcePictureMode (pqmode=%d)\n", pqmodeindex);
+                        else {
+                            LOGWARN("Failed to get the getLocalParam \n");
                             return -1;
                         }
                     }
@@ -2733,7 +2702,7 @@ namespace Plugin {
         return ret;
     }
 
-    tvError_t AVOutputTV::setDefaultAspectRatio(std::string /*pqmode*/, std::string /*format*/, std::string /*source*/)
+    tvError_t AVOutputTV::setDefaultAspectRatio(std::string pqmode, std::string format, std::string source)
     {
         tvDisplayMode_t mode = tvDisplayMode_MAX;
         tvError_t ret = tvERROR_NONE;
