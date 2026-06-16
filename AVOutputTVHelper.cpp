@@ -905,14 +905,14 @@ namespace Plugin {
                 LOGERR("AspectRatio set failed: %s\n", getErrorString(ret).c_str());
             }
             else {
-                int retval = updateAVoutputTVParam("set", "ZoomMode", inputInfo,
+                int retval = updateAVoutputTVParam("set", "AspectRatio", inputInfo,
                                                     PQ_PARAM_ASPECT_RATIO, static_cast<int>(mode));
                 if (retval != 0) {
                     LOGERR("Failed to Save DisplayMode to ssm_data\n");
                     ret = tvERROR_GENERAL;
+                } else {
+                    LOGINFO("Aspect Ratio initialized successfully, value: %s\n", param.value);
                 }
-                LOGINFO("Aspect Ratio initialized successfully, value: %s\n", param.value);
-            }
         }
         else
         {
@@ -973,7 +973,7 @@ namespace Plugin {
                         LOGINFO("Picture Mode initialized from HAL default: %s\n", defaultMode.c_str());
                     }
                 } else {
-                    LOGERR("convertPictureIndexToString failed for default index %d\n", defaultIndex);
+                    LOGERR("Failed to convert default picture mode index %d to string\n", defaultIndex);
                     ret = tvERROR_GENERAL;
                 }
             } else {
@@ -1382,12 +1382,15 @@ namespace Plugin {
                 for( int modeType : values.pqmodeValues ) {
                     paramIndex.pqmodeIndex = modeType;
                     for( int formatType : values.formatValues ) {
-                        bool shouldSkip = std::any_of(skipTuples.begin(), skipTuples.end(),
-                            [sourceType, modeType, formatType](const paramIndex_t& skipTuple) {
-                                return sourceType == skipTuple.sourceIndex &&
-                                       modeType == skipTuple.pqmodeIndex &&
-                                       formatType == skipTuple.formatIndex;
-                            });
+                        bool shouldSkip = false;
+                        for (const auto& skipTuple : skipTuples) {
+                            if (sourceType == skipTuple.sourceIndex &&
+                                modeType == skipTuple.pqmodeIndex &&
+                                formatType == skipTuple.formatIndex) {
+                                shouldSkip = true;
+                                break;
+                            }
+                        }
 
                         if (shouldSkip) {
                             continue;
@@ -2315,7 +2318,14 @@ namespace Plugin {
             if( sync ) {
                 return 1;
             }
-            GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqParamIndex,&value);
+tvError_t defaultErr = GetDefaultPQParams(indexInfo.pqmodeIndex,
+                                         (tvVideoSrcType_t)indexInfo.sourceIndex,
+                                         (tvVideoFormatType_t)indexInfo.formatIndex,
+                                         pqParamIndex, &value);
+if (defaultErr != tvERROR_NONE) {
+    LOGERR("GetDefaultPQParams failed for %s: %s\n", key.c_str(), getErrorString(defaultErr).c_str());
+    return -1;
+}
 
             LOGINFO("No localstore value for %s - HAL default: %d\n",key.c_str(),value);
             return 0;

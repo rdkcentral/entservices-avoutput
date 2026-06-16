@@ -4740,8 +4740,15 @@ namespace Plugin {
             // Fetch current context once, outside the per-source/format loop
             tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
             tvVideoFormatType_t currentFormat = VIDEO_FORMAT_NONE;
-            GetCurrentVideoSource(&currentSource);
-            GetCurrentVideoFormat(&currentFormat);
+
+            tvError_t srcRet = GetCurrentVideoSource(&currentSource);
+            tvError_t fmtRet = GetCurrentVideoFormat(&currentFormat);
+            if (srcRet != tvERROR_NONE || fmtRet != tvERROR_NONE) {
+                LOGERR("%s: Failed to get current video context (srcRet=%s fmtRet=%s)\n",
+                       __FUNCTION__, getErrorString(srcRet).c_str(), getErrorString(fmtRet).c_str());
+                returnResponse(false);
+            }
+
             if (currentFormat == VIDEO_FORMAT_NONE)
                 currentFormat = VIDEO_FORMAT_SDR;
 
@@ -6256,12 +6263,16 @@ namespace Plugin {
                     LOGERR("%s: GetCurrentBacklightMode failed: %s\n", __FUNCTION__, getErrorString(halRet).c_str());
                     returnResponse(false);
                 }
-                auto it = backlightModeMap.find(static_cast<int>(blMode));
-                if (it == backlightModeMap.end()) {
-                    LOGERR("%s: Unknown HAL backlight mode %d\n", __FUNCTION__, static_cast<int>(blMode));
-                    returnResponse(false);
+                if (blMode == tvBacklightMode_NONE) {
+                    modeStr = "none";
+                } else {
+                    auto it = backlightModeMap.find(static_cast<int>(blMode));
+                    if (it == backlightModeMap.end()) {
+                        LOGERR("%s: Unknown HAL backlight mode %d\n", __FUNCTION__, static_cast<int>(blMode));
+                        returnResponse(false);
+                    }
+                    modeStr = it->second;
                 }
-                modeStr = it->second;
                 LOGINFO("%s: HAL backlight mode = %s\n", __FUNCTION__, modeStr.c_str());
             }
             response["mode"] = modeStr;
