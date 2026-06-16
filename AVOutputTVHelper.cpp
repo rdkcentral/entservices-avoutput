@@ -2309,16 +2309,16 @@ namespace Plugin {
             if( sync ) {
                 return 1;
             }
-tvError_t defaultErr = GetDefaultPQParams(indexInfo.pqmodeIndex,
-                                         (tvVideoSrcType_t)indexInfo.sourceIndex,
-                                         (tvVideoFormatType_t)indexInfo.formatIndex,
-                                         pqParamIndex, &value);
-if (defaultErr != tvERROR_NONE) {
-    LOGERR("GetDefaultPQParams failed for %s: %s\n", key.c_str(), getErrorString(defaultErr).c_str());
-    return -1;
-}
+            tvError_t defaultErr = GetDefaultPQParams(indexInfo.pqmodeIndex,
+                                                    (tvVideoSrcType_t)indexInfo.sourceIndex,
+                                                    (tvVideoFormatType_t)indexInfo.formatIndex,
+                                                    pqParamIndex, &value);
+            if (defaultErr != tvERROR_NONE) {
+                LOGERR("GetDefaultPQParams failed for %s: %s\n", key.c_str(), getErrorString(defaultErr).c_str());
+                return -1;
+            }
 
-            LOGINFO("No localstore value for %s - pq.db default: %d\n", key.c_str(), value);
+            LOGINFO("No localstore value for %s - pq.db default: %d\n",key.c_str(),value);
             return 0;
         }
     }
