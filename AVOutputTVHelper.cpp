@@ -904,15 +904,6 @@ namespace Plugin {
             if (ret != tvERROR_NONE) {
                 LOGERR("AspectRatio set failed: %s\n", getErrorString(ret).c_str());
             }
-            else {
-                int retval = updateAVoutputTVParam("set", "AspectRatio", inputInfo,
-                                                    PQ_PARAM_ASPECT_RATIO, static_cast<int>(mode));
-                if (retval != 0) {
-                    LOGERR("Failed to Save DisplayMode to ssm_data\n");
-                    ret = tvERROR_GENERAL;
-                } else {
-                    LOGINFO("Aspect Ratio initialized successfully, value: %s\n", param.value);
-                }
         }
         else
         {
@@ -2327,7 +2318,7 @@ if (defaultErr != tvERROR_NONE) {
     return -1;
 }
 
-            LOGINFO("No localstore value for %s - HAL default: %d\n",key.c_str(),value);
+            LOGINFO("No localstore value for %s - pq.db default: %d\n", key.c_str(), value);
             return 0;
         }
     }
