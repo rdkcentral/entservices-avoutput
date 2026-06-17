@@ -19,6 +19,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project(entservices-avoutput)
 
+find_package(WPEFramework)
+
 if(RDK_SERVICE_L2_TEST)
    add_subdirectory(Tests/L2Tests)
 endif()
