@@ -1442,9 +1442,9 @@ namespace Plugin {
             capDetails_t inputInfo;
             tvError_t ret = tvERROR_NONE;
 
-            inputInfo.pqmode = "none";
-            inputInfo.source = "none";
-            inputInfo.format = "none";
+            inputInfo.pqmode = "";
+            inputInfo.source = "";
+            inputInfo.format = "";
 
             if (parsingSetInputArgument(parameters, "AspectRatio",inputInfo) != 0) {
                 LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
