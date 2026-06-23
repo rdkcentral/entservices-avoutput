@@ -1330,7 +1330,7 @@ namespace Plugin {
             }
             else {
                 //Save DisplayMode to localstore and ssm_data
-                int retval=updateAVoutputTVParam("set","AspectRatio",inputInfo,PQ_PARAM_ASPECT_RATIO,mode);
+                int retval=updateAVoutputTVParam("set","ZoomMode",inputInfo,PQ_PARAM_ASPECT_RATIO,mode);
 
                 if(retval != 0) {
                     LOGERR("Failed to Save DisplayMode to ssm_data\n");
@@ -1441,10 +1441,6 @@ namespace Plugin {
         {
             capDetails_t inputInfo;
             tvError_t ret = tvERROR_NONE;
-
-            inputInfo.pqmode = "";
-            inputInfo.source = "";
-            inputInfo.format = "";
 
             if (parsingSetInputArgument(parameters, "AspectRatio",inputInfo) != 0) {
                 LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
