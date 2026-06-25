@@ -19,6 +19,12 @@ cmake_minimum_required(VERSION 3.5)
 
 project(entservices-avoutput)
 
+if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
+    set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
+endif()
+
+option(PLUGIN_AVOUTPUT "Build AVOutput plugin" ON)
+
 if(PLUGIN_AVOUTPUT)
     add_subdirectory(plugin)
 endif()

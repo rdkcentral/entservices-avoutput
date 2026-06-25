@@ -15,11 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required(VERSION 3.5)
 
-Project(AVOUTPUT-PLUGINS)
+project(AVOUTPUT-PLUGINS)
 
-set(CMAKE_BUILD_TYPE "Debug")
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug")
+endif()
 
 set(PLUGIN_NAME AVOutput)
 
@@ -31,7 +33,7 @@ set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
 set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput plugin")
 
-find_package(WPEFramework)
+find_package(${NAMESPACE})
 find_package(${NAMESPACE}Plugins REQUIRED)
 
 set (CMAKE_CXX_STANDARD 11)
