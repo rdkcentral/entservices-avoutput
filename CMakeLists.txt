@@ -19,7 +19,14 @@ cmake_minimum_required(VERSION 3.5)
 
 project(entservices-avoutput)
 
+if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
+    set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
+endif()
+
 find_package(WPEFramework)
+find_package(${NAMESPACE}Plugins REQUIRED)
+
+option(PLUGIN_AVOUTPUT "Build AVOutput plugin" ON)
 
 if(RDK_SERVICE_L2_TEST)
    add_subdirectory(Tests/L2Tests)

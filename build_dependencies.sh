@@ -108,10 +108,10 @@ cmake --build build/entservices-apis --target install
 
 
 #############################
-# generating external headers for AVInput plugin
+# generating external headers for AVOutput plugin
 cd $GITHUB_WORKSPACE
 cd entservices-testframework/Tests
-echo "Creating mock headers for AVInput plugin dependencies"
+echo "Creating mock headers for AVOutput plugin dependencies"
 echo "======================================================================================"
 mkdir -p headers
 mkdir -p headers/rdk/ds
@@ -120,7 +120,7 @@ echo "dir created successfully"
 echo "======================================================================================"
 
 echo "======================================================================================"
-echo "Creating required DS headers for AVInput"
+echo "Creating required DS headers for AVOutput"
 cd headers
 touch rdk/ds/compositeIn.hpp
 touch rdk/ds/hdmiIn.hpp

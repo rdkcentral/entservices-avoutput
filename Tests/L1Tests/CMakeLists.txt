@@ -16,6 +16,11 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.8)
+
+if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
+    set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
+endif()
+
 set(PLUGIN_NAME L1TestsIO)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 

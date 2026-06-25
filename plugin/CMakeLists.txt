@@ -19,7 +19,9 @@ cmake_minimum_required (VERSION 3.5)
 
 Project(AVOUTPUT-PLUGINS)
 
-set(CMAKE_BUILD_TYPE "Debug")
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
+endif()
 
 set(PLUGIN_NAME AVOutput)
 
@@ -54,6 +56,10 @@ add_library(${MODULE_NAME} SHARED
         AVOutputTVHelper.cpp	
         AVOutput.cpp
         Module.cpp)
+target_compile_definitions(${MODULE_NAME}
+    PRIVATE
+        AVOUTPUT_TV=1
+        DEVICE_TYPE=AVOutputTV)
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         glib-2.0
