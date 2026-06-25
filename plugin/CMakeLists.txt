@@ -56,6 +56,11 @@ add_library(${MODULE_NAME} SHARED
         AVOutputTVHelper.cpp	
         AVOutput.cpp
         Module.cpp)
+target_compile_definitions(${MODULE_NAME}
+    PRIVATE
+        DEVICE_TYPE=AVOutputTV
+        AVOUTPUT_TV=1
+)
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         glib-2.0
