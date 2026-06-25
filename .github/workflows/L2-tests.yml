@@ -1,5 +1,8 @@
 name: L2-tests
 
+permissions:
+  contents: read
+
 on:
   workflow_call:
     inputs:
@@ -17,8 +20,8 @@ env:
   THUNDER_REF: "R4.4.1"
   INTERFACES_REF: "develop"
   TOOLCHAIN_FILE: ""
-  AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
-  AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
+  AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}
+  AUTOMATICS_PASSCODE: ${{ secrets.AUTOMATICS_PASSCODE }}
 
 jobs:
   L2-tests:
@@ -49,7 +52,7 @@ jobs:
            echo "Trigger Source: ${{ inputs.caller_source }}"
 
       - name: Set up CMake
-        uses: jwlawson/actions-setup-cmake@v1.13
+        uses: jwlawson/actions-setup-cmake@65b272e1213f99771fbba0c237e0b3312270e0c9
         with:
           cmake-version: '3.16.x'
 
@@ -661,12 +664,12 @@ jobs:
           /tmp/block/sdb/device
           /dev/disk/by-id
           /dev &&
-          if [ ! -f mknod /dev/sda c 240 0 ]; then mknod /dev/sda c 240 0; fi &&
-          if [ ! -f mknod /dev/sda1 c 240 0 ]; then mknod /dev/sda1 c 240 0; fi &&
-          if [ ! -f mknod /dev/sda2 c 240 0 ]; then mknod /dev/sda2 c 240 0; fi &&
-          if [ ! -f mknod /dev/sdb c 240 0 ]; then mknod /dev/sdb c 240 0; fi &&
-          if [ ! -f mknod /dev/sdb1 c 240 0 ]; then mknod /dev/sdb1 c 240 0; fi &&
-          if [ ! -f mknod /dev/sdb2 c 240 0 ]; then mknod /dev/sdb2 c 240 0; fi
+          if [ ! -e /dev/sda ]; then sudo mknod /dev/sda c 240 0; fi &&
+          if [ ! -e /dev/sda1 ]; then sudo mknod /dev/sda1 c 240 0; fi &&
+          if [ ! -e /dev/sda2 ]; then sudo mknod /dev/sda2 c 240 0; fi &&
+          if [ ! -e /dev/sdb ]; then sudo mknod /dev/sdb c 240 0; fi &&
+          if [ ! -e /dev/sdb1 ]; then sudo mknod /dev/sdb1 c 240 0; fi &&
+          if [ ! -e /dev/sdb2 ]; then sudo mknod /dev/sdb2 c 240 0; fi
           &&
           sudo touch
           /opt/standbyReason.txt
