@@ -1,4 +1,4 @@
-As part of rdkservices open source activity and logical grouping of services into various entservices-* repos, the below listed change to L1 and L2 Test are effective henceforth.
+As part of the rdkservices open source activity and logical grouping of services into various entservices-* repos, the changes to L1 and L2 tests below are effective henceforth.
 
 # Changes Done:
 Since the mock part is common across various plugins/repos and common for L1, L2 & etc, the gtest and gmock related stubs (including platform interface mocks) are moved to a new repo called "entservices-testframework" and L1 & L2 test files of each plugin moved to corresponding repos, you can find them inside Tests directory of each entservices-*.
@@ -11,7 +11,7 @@ a/ Build mocks => Create the TestMock library from the required mock-related stu
 b/ Build entservices-<repo-name> => Create the test .so from enabled test sources in the plugin repo.
 c/ Build entservices-testframework => Create the L1/L2 executable by linking the plugin test .so files.
 ~~~
-This ensures everything intact in repo level across multiple related plugins when there is a new change comes in.
+This helps ensure the related plugin repositories remain consistent when new changes are introduced.
 
 ##### Steps to run L1, L2, L2-OOP test locally #####
 ```
