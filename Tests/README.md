@@ -11,7 +11,7 @@ a/ Build mocks => To create TestMock Lib from all required mock relates stubs an
 b/ Build entservices-<repo-name> => To create Test Lib of .so type from all applicable test files which are enabled for plugin test.
 c/ Build entservices-testframework => To create L1/L2  executable by linking the plugins/test .so files.
 ```
-This ensures everything in-tact in repo level across multiple related plugins when there is a new change comes in.
+This ensures everything intact in repo level across multiple related plugins when there is a new change comes in.
 
 ##### Steps to run L1, L2, L2-OOP test locally #####
 ```
