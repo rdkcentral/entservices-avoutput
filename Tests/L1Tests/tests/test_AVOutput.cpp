@@ -158,7 +158,7 @@ class AVOutputTest : public ::testing::Test {
 
 // Basic test for AVOutput plugin
 TEST_F(AVOutputTest, BasicAVOutputTest) {
-    EXPECT_TRUE(true);
+    GTEST_SKIP() << "TODO: implement AVOutput L1 coverage (placeholder test currently provides no validation).";
 }
 
 #endif
