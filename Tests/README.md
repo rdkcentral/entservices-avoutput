@@ -2,7 +2,7 @@ As part of rdkservices open source activity and logical grouping of services int
 
 # Changes Done:
 Since the mock part is common across various plugins/repos and common for L1, L2 & etc, the gtest and gmock related stubs (including platform interface mocks) are moved to a new repo called "entservices-testframework" and L1 & L2 test files of each plugin moved to corresponding repos, you can find them inside Tests directory of each entservices-*.
-Hence, any modifications/additions related to mocks should be commited to entservices-testframework repo @ rdkcentral and any modifications/additions related to test case should be commited to Test directory of corresponding entservices repo.
+Hence, any modifications/additions related to mocks should be committed to entservices-testframework repo @ rdkcentral and any modifications/additions related to test cases should be committed to Tests directory of corresponding entservices repo.
 
 # Individual Repo Handling
 Each individual entservices-* repo was added with a .yml file to trigger L1, L2, L2-OOP test job in github workflow. This yml file triggers below mentioned build jobs in addition to regular build jobs (thunder, thunder tools & etc,).
