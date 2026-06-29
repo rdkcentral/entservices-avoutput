@@ -23,5 +23,5 @@ class AVOutputL2Test : public ::testing::Test {
 
 // Basic L2 test for AVOutput plugin
 TEST_F(AVOutputL2Test, BasicAVOutputL2Test) {
-    EXPECT_TRUE(true);
+    GTEST_SKIP() << "TODO: implement AVOutput L2 coverage (placeholder test currently provides no validation).";
 }
