@@ -17,13 +17,11 @@
 * limitations under the License.
 **/
 #include <gtest/gtest.h>
-#include <iostream>
 
 class AVOutputL2Test : public ::testing::Test {
 };
 
 // Basic L2 test for AVOutput plugin
 TEST_F(AVOutputL2Test, BasicAVOutputL2Test) {
-    std::cout << "AVOutput L2 test initialized" << std::endl;
     EXPECT_TRUE(true);
 }
