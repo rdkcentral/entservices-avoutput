@@ -68,7 +68,7 @@ cmake --build build/ThunderTools --target install
 ############################
 # Build Thunder
 echo "======================================================================================"
-echo "buliding thunder"
+echo "building thunder"
 
 cd Thunder
 patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
