@@ -19,7 +19,9 @@ cmake_minimum_required (VERSION 3.5)
 
 Project(AVOUTPUT-PLUGINS)
 
-set(CMAKE_BUILD_TYPE "Debug")
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
+endif()
 
 set(PLUGIN_NAME AVOutput)
 
