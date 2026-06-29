@@ -5,12 +5,12 @@ Since the mock part is common across various plugins/repos and common for L1, L2
 Hence, any modifications/additions related to mocks should be committed to entservices-testframework repo @ rdkcentral and any modifications/additions related to test cases should be committed to Tests directory of corresponding entservices repo.
 
 # Individual Repo Handling
-Each individual entservices-* repo was added with a .yml file to trigger L1, L2, L2-OOP test job in github workflow. This yml file triggers below mentioned build jobs in addition to regular build jobs (thunder, thunder tools & etc,).
-```
-a/ Build mocks => To create TestMock Lib from all required mock relates stubs and copy to install/usr/lib path.
-b/ Build entservices-<repo-name> => To create Test Lib of .so type from all applicable test files which are enabled for plugin test.
-c/ Build entservices-testframework => To create L1/L2  executable by linking the plugins/test .so files.
-```
+Each individual entservices-* repo includes a YAML file to trigger the L1, L2, and L2-OOP test jobs in GitHub Actions. This YAML file triggers the build jobs below in addition to the regular build jobs (Thunder, ThunderTools, etc.).
+~~~
+a/ Build mocks => Create the TestMock library from the required mock-related stubs and copy it to install/usr/lib.
+b/ Build entservices-<repo-name> => Create the test .so from enabled test sources in the plugin repo.
+c/ Build entservices-testframework => Create the L1/L2 executable by linking the plugin test .so files.
+~~~
 This ensures everything intact in repo level across multiple related plugins when there is a new change comes in.
 
 ##### Steps to run L1, L2, L2-OOP test locally #####
