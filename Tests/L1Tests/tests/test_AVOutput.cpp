@@ -152,7 +152,6 @@ TEST_F(AVOutputTest, RegisteredMethods)
 #else
 
 #include <gtest/gtest.h>
-#include <iostream>
 
 class AVOutputTest : public ::testing::Test {
 };
