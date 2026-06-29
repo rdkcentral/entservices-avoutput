@@ -15,13 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required (VERSION 3.5)
-
-Project(AVOUTPUT-PLUGINS)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
-endif()
+# Added via add_subdirectory() from the repository root.
+# Avoid calling project()/cmake_minimum_required() or forcing CMAKE_BUILD_TYPE here.
 
 set(PLUGIN_NAME AVOutput)
 
