@@ -93,7 +93,7 @@ cmake --build build/Thunder --target install
 ############################
 # Build entservices-apis
 echo "======================================================================================"
-echo "buliding entservices-apis"
+echo "building entservices-apis"
 cd entservices-apis
 rm -rf jsonrpc/DTV.json
 cd ..
