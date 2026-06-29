@@ -36,7 +36,7 @@ NOTE: By default test-trigger.yml will trigger all tests(L1, L2 and etc) paralle
 tf-trigger.yml file of testframework repo will get loaded into github action whenever there is a pull or push happens. This file in-turn triggers all individual repos L1, L2, L2-oop tests. testframework repo test can run only in github workflow.
 
 NOTE:
-If you face any secret token related error while run your yml, pls comment the below mentioned line
+If you face a secret token related error while running your workflow YAML, please comment out the line below:
 #token: ${{ secrets.RDKE_GITHUB_TOKEN }}
 
 # Execution usecases where manual change required before triggering the test:
