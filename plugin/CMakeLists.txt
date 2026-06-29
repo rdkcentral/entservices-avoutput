@@ -77,8 +77,6 @@ target_link_libraries(${MODULE_NAME}
     PRIVATE
         glib-2.0
         pthread
-        IARMBus
-        ds
 )
 endif()
 
