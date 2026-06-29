@@ -132,6 +132,7 @@ echo "Creating required IARM Bus headers"
 touch rdk/iarmbus/libIARM.h
 touch rdk/iarmbus/libIBus.h
 touch rdk/iarmbus/libIBusDaemon.h
+touch rdk/iarmbus/iarmUtil.h
 touch tr181api.h
 echo "files created successfully"
 echo "======================================================================================"
