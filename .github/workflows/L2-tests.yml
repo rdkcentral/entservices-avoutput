@@ -80,21 +80,21 @@ jobs:
             sudo ninja -C build install
 
       - name: Checkout Thunder
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/Thunder
           path: Thunder
           ref: ${{env.THUNDER_REF}}
 
       - name: Checkout ThunderTools
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/ThunderTools
           path: ThunderTools
           ref: R4.4.3
 
       - name: Checkout entservices-deviceanddisplay
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-deviceanddisplay
           path: entservices-deviceanddisplay
@@ -102,27 +102,27 @@ jobs:
 
       - name: Checkout entservices-avoutput
         if: ${{ inputs.caller_source == 'local' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: entservices-avoutput
 
       - name: Checkout entservices-avoutput-testframework
         if: ${{ inputs.caller_source == 'testframework' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-avoutput
           path: entservices-avoutput
           ref: develop
 
       - name: Checkout entservices-testframework
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-testframework
           path: entservices-testframework
           ref: 1.0.14
 
       - name: Checkout googletest
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: google/googletest
           path: googletest
@@ -176,7 +176,7 @@ jobs:
           cmake --install build/Thunder
 
       - name: Checkout entservices-apis
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-apis
           path: entservices-apis
@@ -375,7 +375,7 @@ jobs:
           cmake --install build/mocks
 
       - name: Checkout entservices-helpers
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-helpers
           path: entservices-helpers

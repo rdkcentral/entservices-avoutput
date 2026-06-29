@@ -111,7 +111,7 @@ jobs:
             sudo ninja -C build install
 
       - name: Checkout Thunder
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/Thunder
           path: Thunder
@@ -119,14 +119,14 @@ jobs:
 
       - name: Checkout ThunderTools
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/ThunderTools
           path: ThunderTools
           ref: R4.4.3
 
       - name: Checkout entservices-testframework
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-testframework
           path: entservices-testframework
@@ -134,20 +134,20 @@ jobs:
 
       - name: Checkout entservices-avoutput
         if: ${{ inputs.caller_source == 'local' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: entservices-avoutput
 
       - name: Checkout entservices-avoutput-testframework
         if: ${{ inputs.caller_source == 'testframework' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-avoutput
           path: entservices-avoutput
           ref: develop
 
       - name: Checkout googletest
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: google/googletest
           path: googletest
@@ -205,7 +205,7 @@ jobs:
           cmake --install build/Thunder
 
       - name: Checkout entservices-apis
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-apis
           path: entservices-apis
@@ -289,6 +289,7 @@ jobs:
           rdk/iarmbus/libIARM.h
           rdk/iarmbus/libIBus.h
           rdk/iarmbus/libIBusDaemon.h
+          rdk/iarmbus/iarmUtil.h
           rdk/halif/deepsleep-manager/deepSleepMgr.h
           rdk/iarmmgrs-hal/mfrMgr.h
           rdk/iarmmgrs-hal/sysMgr.h
@@ -338,7 +339,7 @@ jobs:
           cmake --install build/googletest
 
       - name: Checkout entservices-helpers
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rdkcentral/entservices-helpers
           path: entservices-helpers
