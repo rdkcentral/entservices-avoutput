@@ -108,10 +108,10 @@ cmake --build build/entservices-apis --target install
 
 
 #############################
-# generating external headers for AVInput plugin
+# generating external headers for AVOutput plugin
 cd $GITHUB_WORKSPACE
 cd entservices-testframework/Tests
-echo "Creating mock headers for AVInput plugin dependencies"
+echo "Creating mock headers for AVOutput plugin dependencies"
 echo "======================================================================================"
 mkdir -p headers
 mkdir -p headers/rdk/ds
@@ -120,21 +120,31 @@ echo "dir created successfully"
 echo "======================================================================================"
 
 echo "======================================================================================"
-echo "Creating required DS headers for AVInput"
+echo "Creating required DS headers for AVOutput"
 cd headers
-touch rdk/ds/compositeIn.hpp
-touch rdk/ds/hdmiIn.hpp
-touch rdk/ds/host.hpp
-touch rdk/ds/manager.hpp
-touch rdk/ds/exception.hpp
-touch rdk/ds/dsMgr.h
-touch rdk/ds/dsError.h
+
+for header in \
+    rdk/ds/compositeIn.hpp \
+    rdk/ds/hdmiIn.hpp \
+    rdk/ds/host.hpp \
+    rdk/ds/manager.hpp \
+    rdk/ds/exception.hpp \
+    rdk/ds/dsMgr.h \
+    rdk/ds/dsError.h; do
+    touch "$header"
+done
+
 echo "Creating required IARM Bus headers"
-touch rdk/iarmbus/libIARM.h
-touch rdk/iarmbus/libIBus.h
-touch rdk/iarmbus/libIBusDaemon.h
-touch rdk/iarmbus/iarmUtil.h
-touch tr181api.h
+
+for header in \
+    rdk/iarmbus/libIARM.h \
+    rdk/iarmbus/libIBus.h \
+    rdk/iarmbus/libIBusDaemon.h \
+    rdk/iarmbus/iarmUtil.h \
+    tr181api.h; do
+    touch "$header"
+done
+
 echo "files created successfully"
 echo "======================================================================================"
 
