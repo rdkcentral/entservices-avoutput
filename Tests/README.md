@@ -47,7 +47,7 @@ example:
 ref: topic/method_1  /* Checkout entservices-testframework job */
 uses: rdkcentral/entservices-deviceanddisplay/.github/workflows/L1-tests.yml@topic/method_1 /* tf-trigger.yml */
 
-b/ changes in both testframework repo and invidual repo:
+b/ changes in both testframework repo and individual repo:
 Changes mentioned in step (a) above + "Checkout entservices-deviceanddisplay-testframework" job in individual repo yml file, ref field to point your deviceanddisplay current working branch.
 example:
 ref: topic/method_1 /* Checkout entservices-testframework job */
