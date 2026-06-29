@@ -33,27 +33,27 @@ example: ./bin/act -W .github/workflows/tests-trigger.yml -s GITHUB_TOKEN=<your 
 NOTE: By default tests-trigger.yml triggers all tests (L1, L2, etc.) in parallel. If you want to trigger/verify only one test, remove the other trigger rules from tests-trigger.yml.
 ```
 # testframework Repo Handling
-tf-trigger.yml file of testframework repo will get loaded into github action whenever there is a pull or push happens. This file in-turn triggers all individual repos L1, L2, L2-oop tests. testframework repo test can run only in github workflow.
+The testframework repo `tf-trigger.yml` file is loaded in GitHub Actions whenever there is a pull request or push event. This file, in turn, triggers all individual repository L1, L2, and L2-OOP tests. testframework repo tests can run only in GitHub Actions workflows.
 
 NOTE:
 If you face a secret token related error while running your workflow YAML, please comment out the line below:
 #token: ${{ secrets.RDKE_GITHUB_TOKEN }}
 
-# Execution usecases where manual change required before triggering the test:
+# Execution use cases where manual changes are required before triggering tests:
 ```
 a/ changes in testframework repo only:
-Need to change ref pointer of "Checkout entservices-testframework" job in individual repo yml file, to point your current working branch of testframework and in tftrigger.yml of testframework repo need to change trigger branch name to your individual repo branch name instead of develop which is default.
+Need to change the ref pointer of the "Checkout entservices-testframework" job in the individual repo YAML file to your current working testframework branch. In `tf-trigger.yml` of the testframework repo, change the trigger branch name to your individual repo branch name instead of the default `develop`.
 example:
 ref: topic/method_1  /* Checkout entservices-testframework job */
 uses: rdkcentral/entservices-deviceanddisplay/.github/workflows/L1-tests.yml@topic/method_1 /* tf-trigger.yml */
 
 b/ changes in both testframework repo and individual repo:
-Changes mentioned in step (a) above + "Checkout entservices-deviceanddisplay-testframework" job in individual repo yml file, ref field to point your deviceanddisplay current working branch.
+Changes mentioned in step (a) above, plus updating the "Checkout entservices-deviceanddisplay-testframework" job in the individual repo YAML file so the `ref` field points to your current deviceanddisplay branch.
 example:
 ref: topic/method_1 /* Checkout entservices-testframework job */
 ref: topic/method_1 /* Checkout entservices-deviceanddisplay-testframework job */
 uses: rdkcentral/entservices-deviceanddisplay/.github/workflows/L1-tests.yml@topic/method_1 /* tf-trigger.yml */
 
 c/ changes in individual entservices-* repo only
-no changes required
+No changes required.
 ```
