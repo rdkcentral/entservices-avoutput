@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.8)
+# cmake_minimum_required(VERSION 3.8)
 set(PLUGIN_NAME L1TestsIO)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
@@ -68,9 +68,9 @@ macro(add_plugin_test_ex plugin_opt plugin_test_sources_str plugin_includes_str 
     if(${plugin_opt})
         message(STATUS "${plugin_opt}=ON")
 
-        string(REPLACE ";" ";" srclist "${plugin_test_sources_str}")
-        string(REPLACE ";" ";" inclist "${plugin_includes_str}")
-        string(REPLACE ";" ";" liblist "${plugin_libs_str}")
+        set(srclist "${plugin_test_sources_str}")
+        set(inclist "${plugin_includes_str}")
+        set(liblist "${plugin_libs_str}")
 
         foreach(item IN LISTS srclist)
             # Add each test source file
@@ -107,29 +107,38 @@ set (AVOUTPUT_LIBS ${NAMESPACE}AVOutput)
 
 add_plugin_test_ex(PLUGIN_AVOUTPUT tests/test_AVOutput.cpp "${AVOUTPUT_INC}" "${AVOUTPUT_LIBS}")
 
-add_library(${MODULE_NAME} SHARED ${TEST_SRC})
+if (NOT TEST_SRC)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/empty.cpp" "/* No L1 tests selected */\n")
+    list(APPEND TEST_SRC "${CMAKE_CURRENT_BINARY_DIR}/empty.cpp")
+endif()
 
-set_source_files_properties(
-        tests/test_AVOutput.cpp
-        PROPERTIES COMPILE_FLAGS "-fexceptions")
+if (TEST_SRC)
+    add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
-include_directories(${TEST_INC})
+    set_source_files_properties(
+            tests/test_AVOutput.cpp
+            PROPERTIES COMPILE_FLAGS "-fexceptions")
 
-target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
+    include_directories(${TEST_INC})
 
-target_link_libraries(${MODULE_NAME} ${TEST_LIB})
+    target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
-target_include_directories(${MODULE_NAME}
-        PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:include>
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/devicesettings
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/thunder
-        ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
-        )
+    target_link_libraries(${MODULE_NAME} ${TEST_LIB})
 
-install(TARGETS ${MODULE_NAME} DESTINATION lib)
-write_config(${PLUGIN_NAME})
+    target_include_directories(${MODULE_NAME}
+            PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+            $<INSTALL_INTERFACE:include>
+            ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks
+            ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/devicesettings
+            ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/thunder
+            ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
+            )
+
+    install(TARGETS ${MODULE_NAME} DESTINATION lib)
+    write_config(${PLUGIN_NAME})
+else()
+    message(STATUS "No L1 test sources enabled; skipping ${MODULE_NAME}")
+endif()
 
 
