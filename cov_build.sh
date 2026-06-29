@@ -25,7 +25,7 @@ ls -la ${GITHUB_WORKSPACE}
 ############################
 # Build entservices-avoutput
 echo "======================================================================================"
-echo "buliding entservices-avoutput"
+echo "building entservices-avoutput"
 
 cd ${GITHUB_WORKSPACE}
 cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-avoutput \
