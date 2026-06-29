@@ -59,14 +59,15 @@ if (L2_TEST_OOP_RPC)
 endif()
 
 target_include_directories(
-    ${MODULE_NAME} PRIVATE ./
-    ../../../entservices-helpers/helpers
-    ../../../entservices-testframework/Tests/mocks
-    ../../../entservices-testframework/Tests/mocks/thunder
-    ../../../entservices-testframework/Tests/mocks/devicesettings
-    ../../../entservices-testframework/Tests/mocks/MockPlugin
-    ../../../entservices-testframework/Tests/L2Tests/L2TestsPlugin
+    ${MODULE_NAME} PRIVATE
+    ./
+    ${CMAKE_SOURCE_DIR}/../entservices-helpers/helpers
+    ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks
+    ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/thunder
+    ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/devicesettings
+    ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/MockPlugin
+    ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/L2Tests/L2TestsPlugin
     ${CMAKE_INSTALL_PREFIX}/include
-    )
+)
 
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
