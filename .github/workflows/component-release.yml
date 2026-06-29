@@ -66,11 +66,10 @@ jobs:
           echo "git config completed"
           # Extract version from PR description
           PR_DESC="${PR_DESC:-}"
-          # Get top tag from CHANGELOG.md
-          TOP_TAG=$(grep -m 1 -oP '^#### \[\K[^\]]+' CHANGELOG.md)
+          # Get top tag from git tags (fallback to 0.0.0 if none exist yet)
+          TOP_TAG=$(git tag --sort=-v:refname | head -n 1)
           if [[ -z "$TOP_TAG" ]]; then
-            echo "No version found in CHANGELOG.md!"
-            exit 1
+            TOP_TAG="0.0.0"
           fi
           # Validate TOP_TAG format (semantic versioning: major.minor.patch)
           if [[ ! "$TOP_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
