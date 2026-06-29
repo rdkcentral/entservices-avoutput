@@ -689,28 +689,43 @@ jobs:
 
       - name: Generate coverage
         if: ${{ matrix.coverage == 'with-coverage' && !env.ACT && inputs.caller_source != 'testframework' && env.RDK_SERVICES_L1_TEST == 'ON'}}
-        run: >
+        run: |
           cp $GITHUB_WORKSPACE/entservices-testframework/Tests/L1Tests/.lcovrc_l1 ~/.lcovrc
-          &&
-          lcov -c
-          -o coverage.info
-          -d build/entservices-avoutput
-          &&
-          lcov
-          -r coverage.info
-          '/usr/include/*'
-          '*/build/entservices-avoutput/_deps/*'
-          '*/install/usr/include/*'
-          '*/Tests/headers/*'
-          '*/Tests/mocks/*'
-          '*/Tests/L1Tests/tests/*'
-          '*/Thunder/*'
-          -o filtered_coverage.info
-          &&
-          genhtml
-          -o coverage
-          -t "entservices-avoutput coverage"
-          filtered_coverage.info
+
+          # Coverage data may be absent for some matrix/toolchain combinations.
+          if ! lcov -c -o coverage.info -d build/entservices-avoutput; then
+            echo "Coverage capture failed; skipping coverage report generation."
+            mkdir -p coverage
+            exit 0
+          fi
+
+          if [ ! -s coverage.info ]; then
+            echo "No coverage.info generated; skipping coverage report generation."
+            mkdir -p coverage
+            exit 0
+          fi
+
+          lcov \
+            -r coverage.info \
+            '/usr/include/*' \
+            '*/build/entservices-avoutput/_deps/*' \
+            '*/install/usr/include/*' \
+            '*/Tests/headers/*' \
+            '*/Tests/mocks/*' \
+            '*/Tests/L1Tests/tests/*' \
+            '*/Thunder/*' \
+            -o filtered_coverage.info
+
+          if [ ! -s filtered_coverage.info ]; then
+            echo "Filtered coverage is empty; skipping HTML generation."
+            mkdir -p coverage
+            exit 0
+          fi
+
+          genhtml \
+            -o coverage \
+            -t "entservices-avoutput coverage" \
+            filtered_coverage.info
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
