@@ -128,6 +128,7 @@ touch rdk/ds/host.hpp
 touch rdk/ds/manager.hpp
 touch rdk/ds/exception.hpp
 touch rdk/ds/dsMgr.h
+touch rdk/ds/dsError.h
 echo "Creating required IARM Bus headers"
 touch rdk/iarmbus/libIARM.h
 touch rdk/iarmbus/libIBus.h
