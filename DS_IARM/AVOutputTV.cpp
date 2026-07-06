@@ -438,7 +438,7 @@ namespace Plugin {
         DeinitializeIARM();	
     }
 
-    void AVOutputTV::Initialize(PluginHost::IShell* service)
+    void AVOutputTV::InitPlugin(PluginHost::IShell* service)
     {
         LOGINFO("Entry\n");
        
@@ -513,7 +513,7 @@ namespace Plugin {
         LOGINFO("Exit\n" );
     }
 
-    void AVOutputTV::Deinitialize()
+    void AVOutputTV::DeinitPlugin()
     {
        LOGINFO("Entry\n");
 

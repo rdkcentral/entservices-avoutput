@@ -70,7 +70,7 @@ namespace Plugin {
         _service = service;
         _skipURL = static_cast<uint8_t>(service->WebPrefix().length());
 
-        DEVICE_TYPE::Initialize(_service);
+        DEVICE_TYPE::InitPlugin(_service);
 
         LOGINFO("Exit\n");
             return (service != nullptr ? _T("") : _T("No service."));
@@ -89,7 +89,7 @@ namespace Plugin {
 
         LOGINFO();
 
-	DEVICE_TYPE::Deinitialize();
+	DEVICE_TYPE::DeinitPlugin();
     }
 
 } //namespace WPEFramework

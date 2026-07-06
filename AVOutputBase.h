@@ -53,8 +53,8 @@ namespace Plugin {
         uint8_t _skipURL;
         //   IPlugin methods
         // -------------------------------------------------------------------------------------------------------
-        virtual void Initialize(PluginHost::IShell* service);
-        virtual void Deinitialize();
+        virtual void InitPlugin(PluginHost::IShell* service);
+        virtual void DeinitPlugin();
 	virtual void InitializeIARM();
         virtual void DeinitializeIARM();
    };

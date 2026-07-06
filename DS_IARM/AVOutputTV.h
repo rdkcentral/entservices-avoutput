@@ -706,8 +706,8 @@ class AVOutputTV : public AVOutputBase {
 		static void dsHdmiStatusEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 		static void dsHdmiEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 		
-		void Initialize(PluginHost::IShell* service);
-		void Deinitialize();
+		void InitPlugin(PluginHost::IShell* service);
+		void DeinitPlugin();
 		void InitializeIARM();
 		void DeinitializeIARM();
 };

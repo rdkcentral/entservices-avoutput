@@ -732,8 +732,8 @@ class AVOutputTV : public AVOutputBase, public DeviceSettingsClientHelper {
 		// DSHdmiInNotification::OnHDMIInEventStatus / OnHDMIInVideoModeUpdate above
 		// dsHdmiEventHandler removed (was never defined; took IARM_EventId_t which is unavailable here)
 		
-		void Initialize();
-		void Deinitialize();
+		void InitPlugin(PluginHost::IShell* service);
+		void DeinitPlugin();
 		void InitializeIARM();
 		void DeinitializeIARM();
 
