@@ -33,6 +33,7 @@ set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput 
 
 find_package(WPEFramework)
 find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(${NAMESPACE}Helpers REQUIRED)
 
 set (CMAKE_CXX_STANDARD 11)
 
@@ -99,8 +100,7 @@ set_target_properties(${MODULE_NAME} PROPERTIES
     CXX_STANDARD 11
     CXX_STANDARD_REQUIRED YES)
 
-# DS_SOURCE_DIR so the compiler finds AVOutputTV.h from the right subdirectory
-# DS_SOURCE_DIR so the compiler finds AVOutputTV.h from the right subdirectory
+# DS_SOURCE_DIR: finds AVOutputTV.h from the right subdirectory (DS_IARM/ or DS_COMRPC/)
 target_include_directories(${MODULE_NAME} PRIVATE ${DS_SOURCE_DIR})
 # Root dir so Module.h and other root headers are found when included
 # transitively from DS_IARM/AVOutputTV.h or DS_COMRPC/AVOutputTV.h
@@ -113,7 +113,6 @@ target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/he
 if (AVOUTPUT_TV)
     if (DS_COMRPC)
         # COM-RPC path: entservices-helpers provides DeviceSettingsClientHelper.h
-        find_package(${NAMESPACE}Helpers REQUIRED)
         target_link_libraries(${MODULE_NAME}
             PRIVATE
                 ${NAMESPACE}Plugins::${NAMESPACE}Plugins
