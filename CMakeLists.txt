@@ -100,7 +100,11 @@ set_target_properties(${MODULE_NAME} PROPERTIES
     CXX_STANDARD_REQUIRED YES)
 
 # DS_SOURCE_DIR so the compiler finds AVOutputTV.h from the right subdirectory
+# DS_SOURCE_DIR so the compiler finds AVOutputTV.h from the right subdirectory
 target_include_directories(${MODULE_NAME} PRIVATE ${DS_SOURCE_DIR})
+# Root dir so Module.h and other root headers are found when included
+# transitively from DS_IARM/AVOutputTV.h or DS_COMRPC/AVOutputTV.h
+target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/helpers)
 
 # ---------------------------------------------------------------------------
