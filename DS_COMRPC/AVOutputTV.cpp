@@ -199,13 +199,13 @@ namespace Plugin {
     }
 
 	//Event (COM-RPC: replaces dsHdmiStatusEventHandler IARM callback)
-    void AVOutputTV::DSHdmiInNotification::OnHDMIInEventStatus(const int port, const bool isPresented)
+    void AVOutputTV::DSHdmiInNotification::OnHDMIInEventStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort activePort, const bool isPresented)
     {
         if(!AVOutputTV::instance) {
 	    return;
 	}
 
-        int hdmi_in_port = port;
+        int hdmi_in_port = static_cast<int>(activePort);
         bool hdmi_in_status = isPresented;
         LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS  event	port: %d, started: %d", hdmi_in_port,hdmi_in_status);
 	    if (!hdmi_in_status) {
@@ -224,19 +224,18 @@ namespace Plugin {
     }
 	
     // COM-RPC: replaces dsHdmiVideoModeEventHandler IARM callback
-    void AVOutputTV::DSHdmiInNotification::OnHDMIInVideoModeUpdate(const int port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& resolution)
+    void AVOutputTV::DSHdmiInNotification::OnHDMIInVideoModeUpdate(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution)
     {
         if(!AVOutputTV::instance) {
 	    return;
 	}
 
-	    int hdmi_in_port = port;
-	    AVOutputTV::instance->m_currentHdmiInResoluton = static_cast<int>(resolution.pixelResolution);
-	    LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE	event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port, static_cast<int>(resolution.pixelResolution), resolution.interlaced, static_cast<int>(resolution.frameRate));
+	    int hdmi_in_port = static_cast<int>(port);
+	    AVOutputTV::instance->m_currentHdmiInResoluton = static_cast<int>(videoPortResolution.pixelResolution);
+	    LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE	event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
 	    if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
                 tvError_t ret = tvERROR_NONE;
-		if (AVOutputTV::instance->m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsVideoPort::DS_VIDEO_PIXELRES_3840X2160) ||
-				 (static_cast<int>(Exchange::IDeviceSettingsVideoPort::DS_VIDEO_PIXELRES_MAX) == AVOutputTV::instance->m_currentHdmiInResoluton)) {
+		if (static_cast<uint32_t>(AVOutputTV::instance->m_currentHdmiInResoluton) < static_cast<uint32_t>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_RESOLUTION_2160P24)) {
 		    LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", AVOutputTV::instance->m_videoZoomMode);
 		    ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
 		}
@@ -431,7 +430,7 @@ namespace Plugin {
         DeviceSettingsClientHelper::Close();
     }
 
-    void AVOutputTV::Initialize()
+    void AVOutputTV::Initialize(PluginHost::IShell* service)
     {
         LOGINFO("Entry\n");
        
@@ -444,7 +443,7 @@ namespace Plugin {
 
         // COM-RPC: open link to entservices-devicesettings; current HDMI-In mode
         // is fetched in OnDeviceSettingsActivated() once the link is established
-        DeviceSettingsClientHelper::Open(_service);
+        DeviceSettingsClientHelper::Open(service);
         LOGWARN("AVOutputPlugins: AVOutput Initialize m_currentHdmiInResoluton:%d m_mod:%d", m_currentHdmiInResoluton, m_videoZoomMode);
 
         ret = TvInit();

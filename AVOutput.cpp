@@ -47,6 +47,7 @@ namespace Plugin {
     AVOutput::AVOutput()
     {
         LOGINFO("CTOR\n");
+        _service = nullptr;
     }
 
     AVOutput::~AVOutput()
@@ -65,10 +66,11 @@ namespace Plugin {
             return (std::string("Not supported"));
         }
 
-	ASSERT(service != nullptr);
+	    ASSERT(service != nullptr);
+        _service = service;
         _skipURL = static_cast<uint8_t>(service->WebPrefix().length());
 
-        DEVICE_TYPE::Initialize();
+        DEVICE_TYPE::Initialize(_service);
 
         LOGINFO("Exit\n");
             return (service != nullptr ? _T("") : _T("No service."));

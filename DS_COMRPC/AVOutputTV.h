@@ -206,17 +206,18 @@ class AVOutputTV : public AVOutputBase, public DeviceSettingsClientHelper {
             explicit DSHdmiInNotification(AVOutputTV& parent) : _parent(parent) {}
             ~DSHdmiInNotification() override = default;
 
-            // Called when HDMI-In port connected/disconnected or presentation state changes
-            void OnHDMIInEventStatus(const int port, const bool isPresented) override;
-            // Called when HDMI-In video mode (resolution) changes
-            void OnHDMIInVideoModeUpdate(const int port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& resolution) override;
+            // Called when HDMI-In presentation state changes (maps to dsHdmiStatusEventHandler)
+            void OnHDMIInEventStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort activePort, const bool isPresented) override;
+            // Called when HDMI-In video mode (resolution) changes (maps to dsHdmiVideoModeEventHandler)
+            void OnHDMIInVideoModeUpdate(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution) override;
 
-            // Unused IDeviceSettingsHDMIIn::INotification overrides
-            void OnHDMIInHotPlug(const int port, const bool isConnected) override {}
-            void OnHDMIInSignalChange(const int port, const int signalStatus) override {}
-            void OnHDMIInInputStatusChange(const int port, const bool isPresented) override {}
-            void OnHDMIInAVLatencyChange(const int audioLatency, const int videoLatency) override {}
-            void OnHDMIInCECOpenIdSetEvent(const int id) override {}
+            // Remaining IDeviceSettingsHDMIIn::INotification overrides (unused, empty)
+            void OnHDMIInEventHotPlug(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const bool isConnected) override {}
+            void OnHDMIInEventSignalStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIInSignalStatus signalStatus) override {}
+            void OnHDMIInAllmStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const bool allmStatus) override {}
+            void OnHDMIInAVIContentType(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIInAviContentType aviContentType) override {}
+            void OnHDMIInAVLatency(const int32_t audioDelay, const int32_t videoDelay) override {}
+            void OnHDMIInVRRStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIInVRRType vrrType) override {}
 
             BEGIN_INTERFACE_MAP(DSHdmiInNotification)
                 INTERFACE_ENTRY(Exchange::IDeviceSettingsHDMIIn::INotification)

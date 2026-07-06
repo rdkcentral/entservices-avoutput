@@ -438,7 +438,7 @@ namespace Plugin {
         DeinitializeIARM();	
     }
 
-    void AVOutputTV::Initialize()
+    void AVOutputTV::Initialize(PluginHost::IShell* service)
     {
         LOGINFO("Entry\n");
        

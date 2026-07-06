@@ -36,7 +36,7 @@ namespace Plugin {
     {
     }
 
-    void AVOutputBase::Initialize()
+    void AVOutputBase::Initialize(PluginHost::IShell* service)
     {
 	LOGINFO("AVOutputBase Initialize\n");
         

@@ -33,7 +33,6 @@ set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput 
 
 find_package(WPEFramework)
 find_package(${NAMESPACE}Plugins REQUIRED)
-find_package(${NAMESPACE}Helpers REQUIRED)
 
 set (CMAKE_CXX_STANDARD 11)
 
@@ -68,11 +67,14 @@ set(PLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN "org.rdk.DeviceSettings"
 
 # ---------------------------------------------------------------------------
 # Source directory selection (only relevant for AVOUTPUT_TV)
-# DS_COMRPC/: AVOutputTV.cpp + AVOutputTVHelper.cpp (COM-RPC, no libds)
-# DS_IARM/:   AVOutputTV.cpp only (libds/IARM); AVOutputTVHelper.cpp from root
+# DS_COMRPC/: AVOutputTV.cpp only (COM-RPC, no libds)
+# DS_IARM/:   AVOutputTV.cpp only (libds/IARM)
+# Root AVOutputTVHelper.cpp handles both paths via #ifndef DS_COMRPC compile-time macros
 # ---------------------------------------------------------------------------
 if (DS_COMRPC)
     message(STATUS "AVOutput: DS_COMRPC=ON -- building AVOutputTV from DS_COMRPC/ (callsign=${PLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN})")
+    # entservices-helpers must be in the sysroot (add to recipe DEPENDS)
+    find_package(${NAMESPACE}Helpers REQUIRED)
     set(DS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/DS_COMRPC)
     add_definitions(-DDS_COMRPC)
     add_definitions(-DPLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN="${PLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN}")
