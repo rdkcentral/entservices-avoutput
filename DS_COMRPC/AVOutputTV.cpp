@@ -232,20 +232,21 @@ namespace Plugin {
 
 	    int hdmi_in_port = static_cast<int>(port);
 	    AVOutputTV::instance->m_currentHdmiInResoluton = static_cast<int>(videoPortResolution.pixelResolution);
-	    LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE	event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
+	    LOGWARN("AVOutputPlugins: Received HDMI_IN_VIDEO_MODE_UPDATE event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
 	    if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
-                tvError_t ret = tvERROR_NONE;
-		if (static_cast<uint32_t>(AVOutputTV::instance->m_currentHdmiInResoluton) < static_cast<uint32_t>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_RESOLUTION_2160P24)) {
-		    LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", AVOutputTV::instance->m_videoZoomMode);
-		    ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
-		}
-	        else {
-		    LOGWARN("AVOutputPlugins: Setting auto zoom mode for 4K and above");
-		    ret = SetAspectRatio(tvDisplayMode_AUTO);
-	        }
-		if (ret != tvERROR_NONE) {
-		    LOGWARN("SetAspectRatio set Failed");
-		}
+            tvError_t ret = tvERROR_NONE;
+            // COMRPC_TODO: We need to ensure whether DS_HDMIIN_RESOLUTION_2160P24 correct or not.
+            if (static_cast<uint32_t>(AVOutputTV::instance->m_currentHdmiInResoluton) < static_cast<uint32_t>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_RESOLUTION_2160P24)) {
+                LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", AVOutputTV::instance->m_videoZoomMode);
+                ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
+            }
+            else {
+                LOGWARN("AVOutputPlugins: Setting auto zoom mode for 4K and above");
+                ret = SetAspectRatio(tvDisplayMode_AUTO);
+            }
+            if (ret != tvERROR_NONE) {
+                LOGWARN("SetAspectRatio set Failed");
+            }
 	    } 
 	    else {
 	        LOGWARN("AVOutputPlugins: %s: HdmiInput is not started yet. m_isDisabledHdmiIn4KZoom: %d", __FUNCTION__, AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
@@ -6397,11 +6398,18 @@ namespace Plugin {
         auto* hdmiIn = AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
         if (hdmiIn != nullptr) {
             Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution res{};
-            if (hdmiIn->GetHDMIVideoMode(res) == Core::ERROR_NONE) {
+            Core::hresult comResult = hdmiIn->GetHDMIVideoMode(res);
+            if (comResult == Core::ERROR_NONE) {
                 m_currentHdmiInResoluton = static_cast<int>(res.pixelResolution);
+            }
+            else {
+                LOGERR("Failed to get HDMI video mode, error: %d", static_cast<int>(comResult));
             }
             hdmiIn->Register(&_DSHdmiInNotification);
             hdmiIn->Release();
+        }
+        else {
+            LOGERR("Failed to acquire IDeviceSettingsHDMIIn interface");
         }
 #endif
     }
@@ -6413,6 +6421,9 @@ namespace Plugin {
         if (hdmiIn != nullptr) {
             hdmiIn->Unregister(&_DSHdmiInNotification);
             hdmiIn->Release();
+        }
+        else {
+            LOGERR("Failed to acquire IDeviceSettingsHDMIIn interface");
         }
 #endif
     }
