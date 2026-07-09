@@ -235,8 +235,9 @@ namespace Plugin {
 	    LOGWARN("AVOutputPlugins: Received HDMI_IN_VIDEO_MODE_UPDATE event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
 	    if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
             tvError_t ret = tvERROR_NONE;
-            // COMRPC_TODO: We need to ensure whether DS_HDMIIN_RESOLUTION_2160P24 correct or not.
-            if (static_cast<uint32_t>(AVOutputTV::instance->m_currentHdmiInResoluton) < static_cast<uint32_t>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_RESOLUTION_2160P24)) {
+            // Mirror DS_IARM: below 4K (< dsVIDEO_PIXELRES_3840x2160) or MAX → apply zoom mode
+            if (AVOutputTV::instance->m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_3840X2160) ||
+                AVOutputTV::instance->m_currentHdmiInResoluton == static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_MAX)) {
                 LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", AVOutputTV::instance->m_videoZoomMode);
                 ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
             }
@@ -254,7 +255,7 @@ namespace Plugin {
     }
 
     AVOutputTV::AVOutputTV(): _DSHdmiInNotification(*this)
-                            , m_currentHdmiInResoluton (0)
+                            , m_currentHdmiInResoluton (static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_1920X1080))
                             , m_videoZoomMode (tvDisplayMode_NORMAL)
                             , m_isDisabledHdmiIn4KZoom (false)
 	                    , rfc_caller_id()

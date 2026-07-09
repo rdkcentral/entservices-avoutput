@@ -585,7 +585,7 @@ class AVOutputTV : public AVOutputBase, public DeviceSettingsClientHelper {
 
 
 	public:
-		int m_currentHdmiInResoluton;  // COM-RPC: int (holds cast of HDMIInTVResolution bitmask)
+		int m_currentHdmiInResoluton;  // COM-RPC: int (holds cast of HDMIInVideoResolution pixel-dimension enum)
 		int m_videoZoomMode;
 		bool m_isDisabledHdmiIn4KZoom;
 		char rfc_caller_id[RFC_BUFF_MAX];
