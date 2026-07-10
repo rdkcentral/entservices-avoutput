@@ -6402,6 +6402,7 @@ namespace Plugin {
             Core::hresult comResult = hdmiIn->GetHDMIVideoMode(res);
             if (comResult == Core::ERROR_NONE) {
                 m_currentHdmiInResoluton = static_cast<int>(res.pixelResolution);
+                LOGINFO("Current HDMI video mode: %d", m_currentHdmiInResoluton);
             }
             else {
                 LOGERR("Failed to get HDMI video mode, error: %d", static_cast<int>(comResult));
