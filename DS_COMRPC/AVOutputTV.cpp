@@ -29,7 +29,6 @@
 static bool filmMakerMode= false;
 static bool m_isDalsEnabled = false;
 
-namespace DSHelper = WPEFramework::Plugin::DeviceSettingsClientHelper;
 namespace WPEFramework {
 namespace Plugin {
 

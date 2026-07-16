@@ -194,7 +194,7 @@ static const std::unordered_map<std::string, int> zoomModeMap = {
 	{"TV FULL", tvDisplayMode_FULL}};
 
 //class AVOutputTV : public PluginHost::IPlugin, public PluginHost::JSONRPC {
-class AVOutputTV : public AVOutputBase, public DeviceSettingsClientHelper {
+class AVOutputTV : public AVOutputBase, public DSHelper {
     private:
 		AVOutputTV(const AVOutputTV&) = delete;
 		AVOutputTV& operator=(const AVOutputTV&) = delete;
@@ -737,7 +737,7 @@ class AVOutputTV : public AVOutputBase, public DeviceSettingsClientHelper {
 		void InitializeIARM();
 		void DeinitializeIARM();
 
-        // COM-RPC: DeviceSettingsClientHelper callbacks
+        // COM-RPC: DSHelper callbacks
         void OnDeviceSettingsActivated() override;
         void OnDeviceSettingsDeactivated() override;
 };
