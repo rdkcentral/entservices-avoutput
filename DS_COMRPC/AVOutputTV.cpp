@@ -29,6 +29,7 @@
 static bool filmMakerMode= false;
 static bool m_isDalsEnabled = false;
 
+namespace DSHelper = WPEFramework::Plugin::DeviceSettingsClientHelper;
 namespace WPEFramework {
 namespace Plugin {
 
@@ -429,7 +430,7 @@ namespace Plugin {
             workerThread.join();
         }
         DeinitializeIARM();
-        DeviceSettingsClientHelper::Close();
+        DSHelper::Close();
     }
 
     void AVOutputTV::InitPlugin(PluginHost::IShell* service)
@@ -445,7 +446,7 @@ namespace Plugin {
 
         // COM-RPC: open link to entservices-devicesettings; current HDMI-In mode
         // is fetched in OnDeviceSettingsActivated() once the link is established
-        DeviceSettingsClientHelper::Open(service);
+        DSHelper::Open(service);
         LOGWARN("AVOutputPlugins: AVOutput Initialize m_currentHdmiInResoluton:%d m_mod:%d", m_currentHdmiInResoluton, m_videoZoomMode);
 
         ret = TvInit();
@@ -6396,7 +6397,7 @@ namespace Plugin {
     void AVOutputTV::OnDeviceSettingsActivated()
     {
 #if !defined(HDMIIN_4K_ZOOM)
-        auto* hdmiIn = AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+        auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
         if (hdmiIn != nullptr) {
             Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution res{};
             Core::hresult comResult = hdmiIn->GetHDMIVideoMode(res);
@@ -6419,7 +6420,7 @@ namespace Plugin {
     void AVOutputTV::OnDeviceSettingsDeactivated()
     {
 #if !defined(HDMIIN_4K_ZOOM)
-        auto* hdmiIn = AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+        auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
         if (hdmiIn != nullptr) {
             hdmiIn->Unregister(&_DSHdmiInNotification);
             hdmiIn->Release();
