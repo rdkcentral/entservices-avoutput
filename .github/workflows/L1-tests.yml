@@ -368,7 +368,7 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/RBus.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Telemetry.h
           --coverage
-          -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
+          -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,unlink
           -DENABLE_TELEMETRY_LOGGING
           -DUSE_IARMBUS
