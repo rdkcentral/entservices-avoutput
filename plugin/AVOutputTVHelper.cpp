@@ -3758,8 +3758,6 @@ namespace Plugin {
                             if (getLocalparam(tr181ParamName, paramIndex, value, pqIndex, isSync) == 0) {
                                 level = value;
                             } else {
-                                LOGWARN("%s: Skipping sync for color: %s, component: %s",
-                                        __FUNCTION__, colorStr.c_str(), componentStr.c_str());
                                 continue;
                             }
                         }
