@@ -121,7 +121,7 @@ target_include_directories(${MODULE_NAME} PRIVATE ${DS_INCLUDE_DIRS})
 target_link_libraries(${MODULE_NAME} PRIVATE ds)
 endif()
 
-target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${DS_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 target_link_libraries(${MODULE_NAME} 
     PRIVATE
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
