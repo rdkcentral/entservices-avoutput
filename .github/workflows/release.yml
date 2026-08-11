@@ -1,0 +1,85 @@
+name: Release
+
+"on":
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.1.0)'
+        required: true
+        type: string
+      jira_ticket:
+        description: 'Jira ticket reference (e.g. RDKEMW-1234)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authorize release trigger (CODEOWNERS only)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RDKCM_RDKE }}
+          script: |
+            const actor = context.actor;
+            let codeowners = '';
+
+            for (const path of ['.github/CODEOWNERS', 'CODEOWNERS']) {
+              try {
+                const response = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path,
+                });
+                codeowners = Buffer.from(response.data.content, 'base64').toString('utf-8');
+                break;
+              } catch (_) {}
+            }
+
+            if (!codeowners) {
+              core.setFailed('CODEOWNERS file not found. Cannot verify permissions.');
+              return;
+            }
+
+            if (new RegExp(`@${actor}\\b`, 'i').test(codeowners)) {
+              core.info(`@${actor} is directly listed in CODEOWNERS. Proceeding with release.`);
+              return;
+            }
+
+            const teamMatches = [...codeowners.matchAll(/@([\w.-]+)\/([\w.-]+)/g)];
+            if (teamMatches.length === 0) {
+              core.setFailed(`@${actor} is not listed in CODEOWNERS and no teams were found. Not authorised.`);
+              return;
+            }
+
+            for (const [, org, teamSlug] of teamMatches) {
+              try {
+                const { data: membership } = await github.rest.teams.getMembershipForUserInOrg({
+                  org,
+                  team_slug: teamSlug,
+                  username: actor,
+                });
+                if (membership.state === 'active') {
+                  core.info(`@${actor} is an active member of @${org}/${teamSlug}. Proceeding with release.`);
+                  return;
+                }
+              } catch (_) {
+                // Not a member of this team; continue checking remaining teams.
+              }
+            }
+
+            core.setFailed(`@${actor} is not a member of any CODEOWNERS team and is not authorised to run this workflow.`);
+
+  release:
+    needs: authorize
+    uses: ./.github/workflows/release-reusable.yml
+    with:
+      version: ${{ inputs.version }}
+      jira_ticket: ${{ inputs.jira_ticket }}
+    secrets:
+      rdke_github_token: ${{ secrets.RDKCM_RDKE }}

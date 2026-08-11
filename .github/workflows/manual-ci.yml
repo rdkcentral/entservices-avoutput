@@ -1,0 +1,32 @@
+# Manually trigger L1 and/or L2 tests
+
+name: Manual workflow
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Type of test : [L1, L2, All]'
+        default: 'All'
+        required: true
+        type: string
+
+jobs:
+  trigger-L1:
+    if: ${{ inputs.name == 'L1' || inputs.name == 'All' }}
+    uses: ./.github/workflows/L1-tests.yml
+    with:
+      caller_source: local
+    secrets:
+      RDKCM_RDKE: ${{ secrets.RDKCM_RDKE }}
+
+  trigger-L2:
+    if: ${{ inputs.name == 'L2' || inputs.name == 'All' }}
+    uses: ./.github/workflows/L2-tests.yml
+    with:
+      caller_source: local
+    secrets:
+      RDKCM_RDKE: ${{ secrets.RDKCM_RDKE }}
