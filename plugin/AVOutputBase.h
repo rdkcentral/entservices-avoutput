@@ -25,7 +25,6 @@
 #include "libIBusDaemon.h"
 #include "libIBus.h"
 #include "iarmUtil.h"
-#include "dsMgr.h"
 #include <iostream>
 
 #include <pthread.h>
