@@ -15,83 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required(VERSION 3.5)
 
-Project(AVOUTPUT-PLUGINS)
-
-set(CMAKE_BUILD_TYPE "Debug")
-
-set(PLUGIN_NAME AVOutput)
+project(entservices-avoutput)
 
 if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
     set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
 endif()
 
-set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
-
-set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput plugin")
-
-find_package(WPEFramework)
+find_package(${NAMESPACE})
 find_package(${NAMESPACE}Plugins REQUIRED)
 
-set (CMAKE_CXX_STANDARD 11)
-
-find_path (STAGING_INCDIR glib-2.0)
-include_directories(${STAGING_INCDIR})
-include_directories(${STAGING_INCDIR}/glib-2.0)
-include_directories(${STAGING_INCDIR}/../lib/glib-2.0/include)
-include_directories(${STAGING_INCDIR}/rdk/iarmbus)
-include_directories(${STAGING_INCDIR}/rdk/iarmmgrs-hal)
-include_directories(${STAGING_INCDIR}/rdk/tv-hal)
-include_directories(${STAGING_INCDIR}/rdk/ds-hal)
-include_directories(${STAGING_INCDIR}/rdk/ds-rpc)
-include_directories(${STAGING_INCDIR}/rdk/ds)
-
-if (AVOUTPUT_TV)
-add_library(${MODULE_NAME} SHARED
-	AVOutputBase.cpp
-	AVOutputTV.cpp
-        AVOutputTVHelper.cpp	
-        AVOutput.cpp
-        Module.cpp)
-target_link_libraries(${MODULE_NAME}
-    PRIVATE
-        glib-2.0
-        pthread
-        IARMBus
-        tvsettings-hal
-        tr181api
-        ds
-)
-else()
-add_library(${MODULE_NAME} SHARED
-	AVOutputBase.cpp
-	AVOutputSTB.cpp
-        AVOutput.cpp
-        Module.cpp)
-target_link_libraries(${MODULE_NAME}
-    PRIVATE
-        glib-2.0
-        pthread
-        IARMBus
-        ds
-)
+if(RDK_SERVICE_L2_TEST)
+   add_subdirectory(Tests/L2Tests)
 endif()
 
-set_target_properties(${MODULE_NAME} PROPERTIES
-        CXX_STANDARD 11
-        CXX_STANDARD_REQUIRED YES)
+if(RDK_SERVICES_L1_TEST)
+    add_subdirectory(Tests/L1Tests)
+endif()
 
-find_package(DS)
+if(PLUGIN_AVOUTPUT)
+    add_subdirectory(plugin)
+endif()
 
-target_include_directories(${MODULE_NAME} PRIVATE ${DS_INCLUDE_DIRS})
-target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/helpers)
-target_link_libraries(${MODULE_NAME} 
-    PRIVATE
-        ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
-
-
-install(TARGETS ${MODULE_NAME} 
-    DESTINATION lib/wpeframework/plugins)
-
-write_config(${PLUGIN_NAME})
