@@ -40,15 +40,10 @@
 #include "tvError.h"
 #include "tr181api.h"
 #include "AVOutputBase.h"
-#include "libIARM.h"
-#include "libIBusDaemon.h"
-#include "libIBus.h"
-#include "iarmUtil.h"
+// COM-RPC: libIARM.h / libIBusDaemon.h / libIBus.h / iarmUtil.h / dsError.h / dsMgr.h / hdmiIn.hpp removed
 #include "UtilsLogging.h"
 #include "UtilsJsonRpc.h"
-#include "dsError.h"
-#include "dsMgr.h"
-#include "hdmiIn.hpp"
+#include "DeviceSettingsInterface.h"
 #include <numeric>
 
 //Macro
@@ -199,10 +194,42 @@ static const std::unordered_map<std::string, int> zoomModeMap = {
 	{"TV FULL", tvDisplayMode_FULL}};
 
 //class AVOutputTV : public PluginHost::IPlugin, public PluginHost::JSONRPC {
-class AVOutputTV : public AVOutputBase {
+class AVOutputTV : public AVOutputBase, public DSHelper {
     private:
 		AVOutputTV(const AVOutputTV&) = delete;
 		AVOutputTV& operator=(const AVOutputTV&) = delete;
+
+        // COM-RPC: notification sink for HDMI-In events (replaces dsHdmiStatusEventHandler /
+        // dsHdmiVideoModeEventHandler IARM callbacks)
+        class DSHdmiInNotification : public Exchange::IDeviceSettingsHDMIIn::INotification {
+        public:
+            explicit DSHdmiInNotification(AVOutputTV& parent) : _parent(parent) {}
+            ~DSHdmiInNotification() override = default;
+
+            // Called when HDMI-In presentation state changes (maps to dsHdmiStatusEventHandler)
+            void OnHDMIInEventStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort activePort, const bool isPresented) override;
+            // Called when HDMI-In video mode (resolution) changes (maps to dsHdmiVideoModeEventHandler)
+            void OnHDMIInVideoModeUpdate(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution) override;
+
+            // Remaining IDeviceSettingsHDMIIn::INotification overrides (unused, empty)
+            void OnHDMIInEventHotPlug(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const bool isConnected) override {}
+            void OnHDMIInEventSignalStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIInSignalStatus signalStatus) override {}
+            void OnHDMIInAllmStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const bool allmStatus) override {}
+            void OnHDMIInAVIContentType(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIInAviContentType aviContentType) override {}
+            void OnHDMIInAVLatency(const int32_t audioDelay, const int32_t videoDelay) override {}
+            void OnHDMIInVRRStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIInVRRType vrrType) override {}
+
+            BEGIN_INTERFACE_MAP(DSHdmiInNotification)
+                INTERFACE_ENTRY(Exchange::IDeviceSettingsHDMIIn::INotification)
+            END_INTERFACE_MAP
+
+        private:
+            AVOutputTV& _parent;
+        };
+
+        // COM-RPC: must be declared BEFORE plain POD members to satisfy -Werror=reorder
+        Core::Sink<DSHdmiInNotification> _DSHdmiInNotification;
+
     public:
 		/*Get API's*/
 		DECLARE_JSON_RPC_METHOD(getBacklight)
@@ -558,7 +585,7 @@ class AVOutputTV : public AVOutputBase {
 
 
 	public:
-		int m_currentHdmiInResoluton;
+		int m_currentHdmiInResoluton;  // COM-RPC: int (holds cast of HDMIInVideoResolution pixel-dimension enum)
 		int m_videoZoomMode;
 		bool m_isDisabledHdmiIn4KZoom;
 		char rfc_caller_id[RFC_BUFF_MAX];
@@ -701,15 +728,18 @@ class AVOutputTV : public AVOutputBase {
 		void NotifyFilmMakerModeChange(tvContentType_t mode);
 		void NotifyVideoResolutionChange(tvResolutionParam_t resolution);
 		void NotifyVideoFrameRateChange(tvVideoFrameRate_t frameRate);
-		//override API
-		static void dsHdmiVideoModeEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
-		static void dsHdmiStatusEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
-		static void dsHdmiEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
+		// COM-RPC: dsHdmiStatusEventHandler / dsHdmiVideoModeEventHandler replaced by
+		// DSHdmiInNotification::OnHDMIInEventStatus / OnHDMIInVideoModeUpdate above
+		// dsHdmiEventHandler removed (was never defined; took IARM_EventId_t which is unavailable here)
 		
-		void Initialize();
-		void Deinitialize();
+		void InitPlugin(PluginHost::IShell* service);
+		void DeinitPlugin();
 		void InitializeIARM();
 		void DeinitializeIARM();
+
+        // COM-RPC: DSHelper callbacks
+        void OnDeviceSettingsActivated() override;
+        void OnDeviceSettingsDeactivated() override;
 };
 
 

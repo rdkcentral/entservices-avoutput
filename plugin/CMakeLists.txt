@@ -43,10 +43,46 @@ include_directories(${STAGING_INCDIR}/rdk/ds-hal)
 include_directories(${STAGING_INCDIR}/rdk/ds-rpc)
 include_directories(${STAGING_INCDIR}/rdk/ds)
 
+# -----------------------------------------------------------------------
+# DS_COMRPC: build AVOutputTV against the DeviceSettings Thunder plugin
+#            via COM-RPC (sources in DS_COMRPC/, no libds / IARM dependency)
+#            Only applies when AVOUTPUT_TV=ON.
+# DS_IARM:   build against libds / IARM directly (sources in DS_IARM/).
+#
+# Select at configure time:
+#   cmake -DDS_COMRPC=ON    (default: OFF -> DS_IARM is used)
+# In Yocto:
+#   EXTRA_OECMAKE += "-DDS_COMRPC=ON"
+# -----------------------------------------------------------------------
+option(DS_COMRPC
+    "Build AVOutput TV using the DeviceSettings COM-RPC plugin (DS_COMRPC/).  OFF = build using libds/IARM (DS_IARM/)."
+    OFF)
+
+set(PLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN "org.rdk.DeviceSettings"
+    CACHE STRING "Callsign of the DeviceSettings plugin (used by DS_COMRPC build)")
+
+# ---------------------------------------------------------------------------
+# Source directory selection (only relevant for AVOUTPUT_TV)
+# DS_COMRPC/: AVOutputTV.cpp only (COM-RPC, no libds)
+# DS_IARM/:   AVOutputTV.cpp only (libds/IARM)
+# Root AVOutputTVHelper.cpp handles both paths via #ifndef DS_COMRPC compile-time macros
+# ---------------------------------------------------------------------------
+if (DS_COMRPC)
+    message(STATUS "AVOutput: DS_COMRPC=ON -- building AVOutputTV from DS_COMRPC/ (callsign=${PLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN})")
+    # entservices-helpers must be in the sysroot (add to recipe DEPENDS)
+    find_package(${NAMESPACE}Helpers REQUIRED)
+    set(DS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/DS_COMRPC)
+    add_definitions(-DDS_COMRPC)
+    add_definitions(-DPLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN="${PLUGIN_AVOUTPUT_DEVICESETTINGS_CALLSIGN}")
+else()
+    message(STATUS "AVOutput: DS_COMRPC=OFF -- building AVOutputTV from DS_IARM/ (libds / IARM)")
+    set(DS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/DS_IARM)
+endif()
+
 if (AVOUTPUT_TV)
 add_library(${MODULE_NAME} SHARED
 	AVOutputBase.cpp
-	AVOutputTV.cpp
+	${DS_SOURCE_DIR}/AVOutputTV.cpp
         AVOutputTVHelper.cpp	
         AVOutput.cpp
         Module.cpp)
@@ -57,12 +93,11 @@ target_compile_definitions(${MODULE_NAME}
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         glib-2.0
+        ${NAMESPACE}::${NAMESPACE}Helpers
         pthread
         IARMBus
         tvsettings-hal
-        tr181api
-        ds
-)
+        tr181api)
 else()
 add_library(${MODULE_NAME} SHARED
 	AVOutputBase.cpp
@@ -80,10 +115,13 @@ set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
+if (NOT DS_COMRPC)
 find_package(DS)
-
 target_include_directories(${MODULE_NAME} PRIVATE ${DS_INCLUDE_DIRS})
-target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+target_link_libraries(${MODULE_NAME} PRIVATE ds)
+endif()
+
+target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${DS_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 target_link_libraries(${MODULE_NAME} 
     PRIVATE
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins)

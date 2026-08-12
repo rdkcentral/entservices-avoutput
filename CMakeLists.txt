@@ -37,4 +37,3 @@ endif()
 if(PLUGIN_AVOUTPUT)
     add_subdirectory(plugin)
 endif()
-

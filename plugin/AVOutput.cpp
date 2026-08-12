@@ -65,10 +65,10 @@ namespace Plugin {
             return (std::string("Not supported"));
         }
 
-	ASSERT(service != nullptr);
+	    ASSERT(service != nullptr);
         _skipURL = static_cast<uint8_t>(service->WebPrefix().length());
 
-        DEVICE_TYPE::Initialize();
+        DEVICE_TYPE::InitPlugin(service);
 
         LOGINFO("Exit\n");
             return (service != nullptr ? _T("") : _T("No service."));
@@ -87,7 +87,7 @@ namespace Plugin {
 
         LOGINFO();
 
-	DEVICE_TYPE::Deinitialize();
+	DEVICE_TYPE::DeinitPlugin();
     }
 
 } //namespace WPEFramework
