@@ -3822,16 +3822,7 @@ namespace Plugin {
     uint32_t AVOutputTV::getSDRGamma(const JsonObject& parameters, JsonObject& response)
     {
         std::string outMode;
-
-        // Make a copy of parameters and inject videoFormat = "SDR"
-        JsonObject updatedParams;
-        JsonObject::Iterator it = parameters.Variants();
-        while (it.Next()) {
-            updatedParams[it.Label()] = it.Current();
-        }
-        updatedParams["videoFormat"] = "SDR";
-
-        if (getEnumPQParamString(updatedParams, "SDRGamma",
+        if (getEnumPQParamString(parameters, "SDRGamma",
                 PQ_PARAM_SDR_GAMMA, sdrGammaReverseMap, outMode)) {
             response["sdrGamma"] = outMode;
             returnResponse(true);
