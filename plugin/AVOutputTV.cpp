@@ -262,15 +262,23 @@ namespace Plugin {
         }
     }
 
-    AVOutputTV::AVOutputTV(): m_currentHdmiInResoluton (dsVIDEO_PIXELRES_1920x1080)
+    AVOutputTV::AVOutputTV()
+        : AVOutputTV(false)
+    {
+    }
+
+    AVOutputTV::AVOutputTV(bool testMode): m_testMode(testMode)
+                            , m_currentHdmiInResoluton (dsVIDEO_PIXELRES_1920x1080)
                             , m_videoZoomMode (tvDisplayMode_NORMAL)
                             , m_isDisabledHdmiIn4KZoom (false)
-	                    , rfc_caller_id()
+                    , rfc_caller_id{}
     {
         LOGINFO("CTOR\n");
         AVOutputTV::instance = this;
 
-        InitializeIARM();
+        if (!m_testMode) {
+            InitializeIARM();
+        }
 
         registerMethod("getBacklight", &AVOutputTV::getBacklight, this);
         registerMethod("setBacklight", &AVOutputTV::setBacklight, this);
@@ -418,7 +426,9 @@ namespace Plugin {
         registerMethod("getBacklightDimmingLevelCaps", &AVOutputTV::getBacklightDimmingLevelCaps, this); 
 
         // Start worker thread for non-blocking updates
-        workerThread = std::thread(&AVOutputTV::paramUpdateWorker, this);
+        if (!m_testMode) {
+            workerThread = std::thread(&AVOutputTV::paramUpdateWorker, this);
+        }
 
         LOGINFO("Exit\n");
     }
@@ -435,7 +445,12 @@ namespace Plugin {
         if (workerThread.joinable()) {
             workerThread.join();
         }
-        DeinitializeIARM();	
+        if (!m_testMode) {
+            DeinitializeIARM();
+        }
+        if (AVOutputTV::instance == this) {
+            AVOutputTV::instance = nullptr;
+        }
     }
 
     void AVOutputTV::Initialize()

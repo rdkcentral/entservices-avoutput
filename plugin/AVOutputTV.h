@@ -548,6 +548,7 @@ class AVOutputTV : public AVOutputBase {
 		std::condition_variable queueCondition;
 		std::thread workerThread;
 		std::atomic<bool> shouldStopWorker{false};
+		bool m_testMode = false;
 		// Worker thread function
 		void paramUpdateWorker();
 		//dispatcher
@@ -715,6 +716,7 @@ class AVOutputTV : public AVOutputBase {
 		void generateStorageIdentifierCMSV2(std::string &key, std::string forParam, paramIndex_t info);
 		
 		AVOutputTV();
+		explicit AVOutputTV(bool testMode);
 		~AVOutputTV();
 
 		static AVOutputTV *instance;

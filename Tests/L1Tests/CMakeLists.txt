@@ -114,6 +114,10 @@ endif()
 if (TEST_SRC)
     add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
+    if (AVOUTPUT_TV)
+        target_compile_definitions(${MODULE_NAME} PRIVATE AVOUTPUT_TV=1)
+    endif()
+
     set_source_files_properties(
             tests/test_AVOutput.cpp
             PROPERTIES COMPILE_FLAGS "-fexceptions")
@@ -122,13 +126,16 @@ if (TEST_SRC)
 
     target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
-    target_link_libraries(${MODULE_NAME} ${TEST_LIB})
+target_link_libraries(${MODULE_NAME} PUBLIC ${TEST_LIB})
 
-    target_include_directories(${MODULE_NAME}
+    set_target_properties(${MODULE_NAME} PROPERTIES
+            LINK_FLAGS "-Wl,--no-as-needed")
+
+    target_include_directories(${MODULE_NAME} BEFORE
             PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
             $<INSTALL_INTERFACE:include>
-            ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks
+            $<$<BOOL:${TV_HAL_INCLUDE_DIR}>:${TV_HAL_INCLUDE_DIR}>
             ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/devicesettings
             ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/thunder
             ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins

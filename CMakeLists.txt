@@ -26,15 +26,15 @@ endif()
 find_package(${NAMESPACE})
 find_package(${NAMESPACE}Plugins REQUIRED)
 
+if(PLUGIN_AVOUTPUT)
+    add_subdirectory(plugin)
+endif()
+
 if(RDK_SERVICE_L2_TEST)
    add_subdirectory(Tests/L2Tests)
 endif()
 
 if(RDK_SERVICES_L1_TEST)
     add_subdirectory(Tests/L1Tests)
-endif()
-
-if(PLUGIN_AVOUTPUT)
-    add_subdirectory(plugin)
 endif()
 

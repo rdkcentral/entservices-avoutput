@@ -3287,6 +3287,7 @@ namespace Plugin {
 
     tvConfigContext_t AVOutputTV::getValidContextFromGetParameters(const JsonObject& parameters, const std::string& paramName)
     {
+        initializeReverseMaps();
         tvConfigContext_t validContext = {PQ_MODE_INVALID, VIDEO_FORMAT_NONE, VIDEO_SOURCE_ALL};
         // Picture Mode
         std::string pictureModeStr;
@@ -3752,7 +3753,7 @@ namespace Plugin {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
             return (int)tvERROR_GENERAL;
         }
-        if (validContexts.size() == 1){
+        if (validContexts.size() == 1 || m_testMode) {
 
             return updateAVoutputTVParamV2Implementation(action, tr181ParamName, parameters, pqParamIndex, level);
         } else {

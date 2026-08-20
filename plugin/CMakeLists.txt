@@ -44,36 +44,60 @@ include_directories(${STAGING_INCDIR}/rdk/ds-rpc)
 include_directories(${STAGING_INCDIR}/rdk/ds)
 
 if (AVOUTPUT_TV)
-add_library(${MODULE_NAME} SHARED
-	AVOutputBase.cpp
-	AVOutputTV.cpp
-        AVOutputTVHelper.cpp	
+    if (TV_HAL_INCLUDE_DIR)
+        include_directories(BEFORE ${TV_HAL_INCLUDE_DIR})
+    endif()
+    find_package(Boost REQUIRED COMPONENTS filesystem)
+    if (NOT RDK_SERVICES_L1_TEST)
+        find_library(IARMBUS_LIB NAMES IARMBus PATHS ${CMAKE_PREFIX_PATH} /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu PATH_SUFFIXES lib lib64)
+        find_library(TVSETTINGS_HAL_LIB NAMES tvsettings-hal PATHS ${CMAKE_PREFIX_PATH} /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu PATH_SUFFIXES lib lib64)
+        find_library(TR181API_LIB NAMES tr181api PATHS ${CMAKE_PREFIX_PATH} /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu PATH_SUFFIXES lib lib64)
+        find_library(DS_LIB NAMES ds PATHS ${CMAKE_PREFIX_PATH} /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu PATH_SUFFIXES lib lib64)
+        foreach(REQUIRED_TV_LIBRARY IARMBUS_LIB TVSETTINGS_HAL_LIB TR181API_LIB DS_LIB)
+            if (NOT ${REQUIRED_TV_LIBRARY})
+                message(FATAL_ERROR "Required TV library ${REQUIRED_TV_LIBRARY} was not found")
+            endif()
+        endforeach()
+    endif()
+endif()
+
+if (AVOUTPUT_TV)
+    add_library(${MODULE_NAME} SHARED
+        AVOutputBase.cpp
+        AVOutputTV.cpp
+        AVOutputTVHelper.cpp
         AVOutput.cpp
         Module.cpp)
-target_compile_definitions(${MODULE_NAME}
-    PRIVATE
-        AVOUTPUT_TV=1
-        DEVICE_TYPE=AVOutputTV)
-target_link_libraries(${MODULE_NAME}
-    PRIVATE
-        glib-2.0
-        pthread
-        IARMBus
-        tvsettings-hal
-        tr181api
-        ds
-)
+    if (RDK_SERVICES_L1_TEST)
+        target_sources(${MODULE_NAME} PRIVATE ../Tests/L1Tests/tvSettingsUnsupported.cpp)
+    endif()
+    target_compile_definitions(${MODULE_NAME}
+        PRIVATE
+            AVOUTPUT_TV=1
+            DEVICE_TYPE=AVOutputTV)
+    target_link_libraries(${MODULE_NAME}
+        PRIVATE
+            Boost::filesystem
+            glib-2.0
+            pthread
+    )
+    if (NOT RDK_SERVICES_L1_TEST)
+        target_link_libraries(${MODULE_NAME} PRIVATE ${IARMBUS_LIB})
+        target_link_libraries(${MODULE_NAME} PRIVATE ${TVSETTINGS_HAL_LIB})
+        target_link_libraries(${MODULE_NAME} PRIVATE ${TR181API_LIB})
+        target_link_libraries(${MODULE_NAME} PRIVATE ${DS_LIB})
+    endif()
 else()
-add_library(${MODULE_NAME} SHARED
-	AVOutputBase.cpp
-	AVOutputSTB.cpp
+    add_library(${MODULE_NAME} SHARED
+        AVOutputBase.cpp
+        AVOutputSTB.cpp
         AVOutput.cpp
         Module.cpp)
-target_link_libraries(${MODULE_NAME}
-    PRIVATE
-        glib-2.0
-        pthread
-)
+    target_link_libraries(${MODULE_NAME}
+        PRIVATE
+            glib-2.0
+            pthread
+    )
 endif()
 
 set_target_properties(${MODULE_NAME} PROPERTIES
