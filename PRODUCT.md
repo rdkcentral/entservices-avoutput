@@ -2,7 +2,7 @@
 
 ## Product Description
 
-AVOutput is a Thunder (WPEFramework) plugin for managing video output and picture-quality controls on RDK devices.
+AVOutput is a Thunder plugin for managing video output and picture-quality controls on RDK devices.
 It exposes a JSON-RPC interface for applications and operators to query output state, apply picture settings, and receive runtime video-format notifications.
 
 The implementation is device-profile aware and build-profile aware:
@@ -77,7 +77,7 @@ For deeper component and lifecycle details, see `ARCHITECTURE.md`.
 ## Platform and Dependency Profile
 
 ### Core Framework
-- WPEFramework / Thunder plugin framework
+- Thunder plugin framework
 - JSON-RPC dispatch through Thunder plugin APIs
 
 ### TV Build Dependencies

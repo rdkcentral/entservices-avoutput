@@ -37,7 +37,7 @@
 #include "hdmiIn.hpp"
 
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 //class AVOutputSTB : public PluginHost::IPlugin, public PluginHost::JSONRPC {
@@ -54,5 +54,5 @@ class AVOutputSTB : public AVOutputBase {
 };
 
 }//namespace Plugin
-}//namespace WPEFramework
+}//namespace Thunder
 #endif

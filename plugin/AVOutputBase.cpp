@@ -23,7 +23,7 @@
 
 const char* PLUGIN_IARM_BUS_NAME = "Thunder_Plugins";
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     AVOutputBase::AVOutputBase()
@@ -56,6 +56,6 @@ namespace Plugin {
         LOGINFO("AVOutputBase De-InitializeIARM \n");
     }
 
-} //namespace WPEFramework
+} //namespace Thunder
 
 } //namespace Plugin

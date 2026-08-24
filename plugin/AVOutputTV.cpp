@@ -29,7 +29,7 @@
 static bool filmMakerMode= false;
 static bool m_isDalsEnabled = false;
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     AVOutputTV* AVOutputTV::instance = nullptr;
@@ -6410,5 +6410,5 @@ namespace Plugin {
     }
 
 }//namespace Plugin
-}//namespace WPEFramework
+}//namespace Thunder
 //}

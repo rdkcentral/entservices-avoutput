@@ -21,7 +21,7 @@
 set(PLUGIN_NAME AVOutput)
 
 if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
-    set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
+    set(NAMESPACE "Thunder" CACHE STRING "Thunder namespace")
 endif()
 
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
@@ -90,6 +90,6 @@ target_link_libraries(${MODULE_NAME}
 
 
 install(TARGETS ${MODULE_NAME} 
-    DESTINATION lib/wpeframework/plugins)
+    DESTINATION lib/Thunder/plugins)
 
 write_config(${PLUGIN_NAME})

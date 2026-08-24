@@ -37,7 +37,7 @@
 #define DECLARE_JSON_RPC_METHOD(method) \
 	uint32_t method(const JsonObject& parameters, JsonObject& response);
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class AVOutputBase : public PluginHost::IPlugin, public PluginHost::JSONRPC {

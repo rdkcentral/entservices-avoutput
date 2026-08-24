@@ -26,7 +26,7 @@
 #define API_VERSION_NUMBER_MINOR 1
 #define API_VERSION_NUMBER_PATCH 0
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     static Plugin::Metadata<Plugin::AVOutput> metadata(
@@ -90,6 +90,6 @@ namespace Plugin {
 	DEVICE_TYPE::Deinitialize();
     }
 
-} //namespace WPEFramework
+} //namespace Thunder
 
 } //namespace Plugin

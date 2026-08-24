@@ -42,7 +42,7 @@
 #include "AVOutputTV.h"
 #endif
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class AVOutput : public DEVICE_TYPE {

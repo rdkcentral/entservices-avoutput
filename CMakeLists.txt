@@ -19,12 +19,11 @@ cmake_minimum_required(VERSION 3.5)
 
 project(entservices-avoutput)
 
-if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
-    set(NAMESPACE "WPEFramework" CACHE STRING "WPEFramework namespace")
-endif()
+set(NAMESPACE "Thunder")
 
-find_package(${NAMESPACE})
-find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(Thunder REQUIRED)
+
+find_package(ThunderPlugins REQUIRED)
 
 if(RDK_SERVICE_L2_TEST)
    add_subdirectory(Tests/L2Tests)

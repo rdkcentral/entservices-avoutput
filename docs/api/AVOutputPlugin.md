@@ -53,7 +53,7 @@ The table below lists configuration options of the plugin.
 | :-------- | :-------- | :-------- |
 | callsign | string | Plugin instance name (default: *org.rdk.AVOutput*) |
 | classname | string | Class name: *org.rdk.AVOutput* |
-| locator | string | Library name: *libWPEFrameworkAVOutput.so* |
+| locator | string | Library name: *libThunderAVOutput.so* |
 | autostart | boolean | Determines if the plugin shall be started automatically along with the framework |
 
 <a name="Methods"></a>

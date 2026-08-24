@@ -27,7 +27,7 @@ static std::map<std::string, int> supportedPictureModemap;
 static std::map<std::string, int> supportedFormatmap;
 static bool m_isDalsEnabled = false;
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     int AVOutputTV::getPictureModeIndex(const std::string& pqparam)
@@ -4052,4 +4052,4 @@ namespace Plugin {
     }
 
 } //namespace Plugin
-} //namespace WPEFramework
+} //namespace Thunder

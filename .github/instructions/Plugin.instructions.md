@@ -56,7 +56,7 @@ These metadata arrays are optional but recommended for readability and operation
 ### Example
 
 ```cpp
-namespace WPEFramework {
+namespace Thunder {
     namespace {
         static Plugin::Metadata<Plugin::AVOutput> metadata(
             API_VERSION_NUMBER_MAJOR,

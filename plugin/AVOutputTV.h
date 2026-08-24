@@ -123,7 +123,7 @@ public:
 	}
 };
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 typedef struct
@@ -714,5 +714,5 @@ class AVOutputTV : public AVOutputBase {
 
 
 }//namespace Plugin
-}//namespace WPEFramework
+}//namespace Thunder
 #endif
