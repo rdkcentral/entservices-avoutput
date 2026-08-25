@@ -441,7 +441,7 @@ namespace Plugin {
     void AVOutputTV::Initialize()
     {
         LOGINFO("Entry\n");
-       
+#if 0       
         tvError_t ret = tvERROR_NONE;
 
         TR181_ParamData_t param;
@@ -509,14 +509,14 @@ namespace Plugin {
         // As we have source to picture mode mapping, get current source and
         // setting those picture mode
         initializePictureMode();
-
+#endif
         LOGINFO("Exit\n" );
     }
 
     void AVOutputTV::Deinitialize()
     {
        LOGINFO("Entry\n");
-
+#if 0
        tvError_t ret = tvERROR_NONE;
        ret = TvTerm();
 
@@ -526,7 +526,7 @@ namespace Plugin {
        else {
            LOGINFO("Platform De-Init successful... \n");
        }
-
+#endif
        LOGINFO("Exit\n");
     }
 
