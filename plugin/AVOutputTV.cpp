@@ -34,6 +34,7 @@ namespace Plugin {
 
     AVOutputTV* AVOutputTV::instance = nullptr;
 
+	[[maybe_unused]]
     static void tvVideoFormatChangeHandler(tvVideoFormatType_t format, void *userData)
     {
         LOGINFO("tvVideoFormatChangeHandler format:%d \n",format);
@@ -42,7 +43,7 @@ namespace Plugin {
 	    obj->NotifyVideoFormatChange(format);
 	}
     }
-
+	[[maybe_unused]]
     static void tvFilmMakerModeChangeHandler(tvContentType_t mode, void *userData)
     {
         LOGINFO("tvFilmMakerModeChangeHandler content:%d \n",mode);
@@ -52,6 +53,7 @@ namespace Plugin {
 	}
     }
 
+	[[maybe_unused]]
     static void tvVideoResolutionChangeHandler(tvResolutionParam_t resolution, void *userData)
     {
         LOGINFO("tvVideoResolutionChangeHandler resolution:%d\n",resolution.resolutionValue);
@@ -61,6 +63,7 @@ namespace Plugin {
 	}
     }
 
+	[[maybe_unused]]
     static void tvVideoFrameRateChangeHandler(tvVideoFrameRate_t frameRate, void *userData)
     {
         LOGINFO("tvVideoFrameRateChangeHandler format:%d \n",frameRate);
