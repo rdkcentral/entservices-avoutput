@@ -6407,7 +6407,7 @@ namespace Plugin {
             else {
                 LOGERR("Failed to get HDMI video mode, error: %d", static_cast<int>(comResult));
             }
-            hdmiIn->Register(&_DSHdmiInNotification);
+            hdmiIn->Register("AVOutput", &_DSHdmiInNotification);
             hdmiIn->Release();
         }
         else {
