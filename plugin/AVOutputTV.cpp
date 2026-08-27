@@ -495,14 +495,15 @@ namespace Plugin {
         if(ret != tvERROR_NONE) {
             LOGWARN("RegisterVideoFrameRateChangeCB failed");
         }
-#if 0
+
 		locatePQSettingsFile();
 
         // Get Index from PQ capabailites
         if (getPqParamIndex() != 0) {
             LOGWARN("Failed to get the supported index from capability \n");
         }
-
+		
+#if 0
         syncAvoutputTVParamsToHAL("none","none","none");
 	
 
