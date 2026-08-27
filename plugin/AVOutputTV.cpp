@@ -471,7 +471,7 @@ namespace Plugin {
 	else {
             LOGINFO("Platform Init successful...\n");
         }
-#if 0
+
         tvVideoFormatCallbackData callbackData = {this,tvVideoFormatChangeHandler};
         ret = RegisterVideoFormatChangeCB(&callbackData);
         if(ret != tvERROR_NONE) {
@@ -495,8 +495,8 @@ namespace Plugin {
         if(ret != tvERROR_NONE) {
             LOGWARN("RegisterVideoFrameRateChangeCB failed");
         }
-
-        locatePQSettingsFile();
+#if 0
+		locatePQSettingsFile();
 
         // Get Index from PQ capabailites
         if (getPqParamIndex() != 0) {
