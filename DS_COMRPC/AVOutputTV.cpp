@@ -445,7 +445,7 @@ namespace Plugin {
 
         // COM-RPC: open link to entservices-devicesettings; current HDMI-In mode
         // is fetched in OnDeviceSettingsActivated() once the link is established
-        DSHelper::Open(service);
+        DSHelper::Open(service, "AVOutput");
         LOGWARN("AVOutputPlugins: AVOutput Initialize m_currentHdmiInResoluton:%d m_mod:%d", m_currentHdmiInResoluton, m_videoZoomMode);
 
         ret = TvInit();
