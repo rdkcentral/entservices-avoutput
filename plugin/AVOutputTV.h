@@ -470,7 +470,6 @@ class AVOutputTV : public AVOutputBase {
 		static std::unordered_map<std::string, tvPQModeIndex_t> pqModeReverseMap;
 		static std::unordered_map<std::string, tvVideoFormatType_t> videoFormatReverseMap;
 		static std::unordered_map<std::string, tvVideoSrcType_t> videoSrcReverseMap;
-		static bool reverseMapsInitialized;
 		static void initializeReverseMaps();
 		static const std::unordered_map<std::string, int> backlightModeReverseMap;
 

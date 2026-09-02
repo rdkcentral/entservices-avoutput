@@ -406,7 +406,6 @@ jobs:
           -DTHUNDER_VERSION_MAJOR=4
           -DTHUNDER_VERSION_MINOR=4
           -DRDK_SERVICES_L1_TEST
-          -DAVOUTPUT_TV=ON
           -I $GITHUB_WORKSPACE/rdk-halif-tvsettings/include
           -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers
           -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/rdk/ds

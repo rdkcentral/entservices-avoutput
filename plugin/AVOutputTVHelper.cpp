@@ -3175,21 +3175,20 @@ namespace Plugin {
     std::unordered_map<std::string, tvPQModeIndex_t> AVOutputTV::pqModeReverseMap;
     std::unordered_map<std::string, tvVideoFormatType_t> AVOutputTV::videoFormatReverseMap;
     std::unordered_map<std::string, tvVideoSrcType_t> AVOutputTV::videoSrcReverseMap;
-    bool AVOutputTV::reverseMapsInitialized = false;
 
     void AVOutputTV::initializeReverseMaps() {
-        if (reverseMapsInitialized) return;
-
-        for (const auto& entry : pqModeMap) {
-            pqModeReverseMap[entry.second] = static_cast<tvPQModeIndex_t>(entry.first);
-        }
-        for (const auto& entry : videoFormatMap) {
-            videoFormatReverseMap[entry.second] = static_cast<tvVideoFormatType_t>(entry.first);
-        }
-        for (const auto& entry : videoSrcMap) {
-            videoSrcReverseMap[entry.second] = static_cast<tvVideoSrcType_t>(entry.first);
-        }
-        reverseMapsInitialized = true;
+        static std::once_flag reverseMapsOnce;
+        std::call_once(reverseMapsOnce, [] {
+            for (const auto& entry : pqModeMap) {
+                pqModeReverseMap[entry.second] = static_cast<tvPQModeIndex_t>(entry.first);
+            }
+            for (const auto& entry : videoFormatMap) {
+                videoFormatReverseMap[entry.second] = static_cast<tvVideoFormatType_t>(entry.first);
+            }
+            for (const auto& entry : videoSrcMap) {
+                videoSrcReverseMap[entry.second] = static_cast<tvVideoSrcType_t>(entry.first);
+            }
+        });
     }
 
     const std::unordered_map<std::string, int> AVOutputTV::backlightModeReverseMap = []{
