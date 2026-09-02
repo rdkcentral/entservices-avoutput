@@ -52,8 +52,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-avoutput \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/iarmbus \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/thunder \
--I ${GITHUB_WORKSPACE}/install/usr/lib \
--I ${GITHUB_WORKSPACE}/install/usr/lib/wpeframework/plugins \
 -I /usr/include/libdrm \
 -L ${GITHUB_WORKSPACE}/install/usr/lib \
 -L ${GITHUB_WORKSPACE}/install/usr/lib/wpeframework/plugins \

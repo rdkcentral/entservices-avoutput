@@ -413,8 +413,6 @@ jobs:
           -I $GITHUB_WORKSPACE/entservices-testframework/Tests
           -I $GITHUB_WORKSPACE/install/usr/include
           -I $GITHUB_WORKSPACE/install/usr/include/WPEFramework
-          -I $GITHUB_WORKSPACE/install/usr/lib
-          -I $GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins
           -I /usr/include/libdrm
           -L $GITHUB_WORKSPACE/install/usr/lib
           -L $GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins
