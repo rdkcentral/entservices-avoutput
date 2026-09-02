@@ -444,7 +444,7 @@ namespace Plugin {
     void AVOutputTV::Initialize()
     {
         LOGINFO("Entry\n");
-      
+#if 0
         tvError_t ret = tvERROR_NONE;
 
         TR181_ParamData_t param;
@@ -503,7 +503,6 @@ namespace Plugin {
             LOGWARN("Failed to get the supported index from capability \n");
         }
 		
-#if 0
         syncAvoutputTVParamsToHAL("none","none","none");
 	
 
@@ -520,7 +519,7 @@ namespace Plugin {
     void AVOutputTV::Deinitialize()
     {
        LOGINFO("Entry\n");
-#if 1
+#if 0
        tvError_t ret = tvERROR_NONE;
        ret = TvTerm();
 
