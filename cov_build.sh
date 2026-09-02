@@ -31,6 +31,7 @@ cd ${GITHUB_WORKSPACE}
 cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-avoutput \
 -DUSE_THUNDER_R4=ON \
 -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+-DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr" \
 -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
 -DCMAKE_VERBOSE_MAKEFILE=ON \
 -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON \
@@ -40,16 +41,25 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-avoutput \
 -DCOMCAST_CONFIG=OFF \
 -DRDK_SERVICES_COVERITY=ON \
 -DRDK_SERVICES_L1_TEST=ON \
+-DAVOUTPUT_TV=ON \
 -DDS_FOUND=ON \
 -DEXCEPTIONS_ENABLE=ON \
 -DPLUGIN_AVOUTPUT=ON \
 -DCMAKE_CXX_FLAGS="\
+-I ${GITHUB_WORKSPACE}/rdk-halif-tvsettings/include \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/ds \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/iarmbus \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/thunder \
 -I /usr/include/libdrm \
+-L ${GITHUB_WORKSPACE}/install/usr/lib \
+-L ${GITHUB_WORKSPACE}/install/usr/lib/wpeframework/plugins \
+-Wl,-rpath,${GITHUB_WORKSPACE}/install/usr/lib \
+-Wl,-rpath,${GITHUB_WORKSPACE}/install/usr/lib/wpeframework/plugins \
+-include cstddef \
+-include ${GITHUB_WORKSPACE}/rdk-halif-tvsettings/include/tvTypes.h \
+-include ${GITHUB_WORKSPACE}/rdk-halif-tvsettings/include/tvSettings.h \
 -include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/devicesettings.h \
 -include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Iarm.h \
 -include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Rfc.h \
@@ -60,5 +70,12 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-avoutput \
 -DUSE_THUNDER_R4 -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4"
 
 cmake --build build/entservices-avoutput --target install
+
+echo "===== L1TestsIO dependencies ====="
+readelf -d install/usr/lib/libWPEFrameworkL1TestsIO.so | grep -E 'AVOutput|tvsettings' || true
+
+echo "===== AVOutput dependencies ====="
+readelf -d install/usr/lib/wpeframework/plugins/libWPEFrameworkAVOutput.so | grep -E 'AVOutput|tvsettings' || true
+
 echo "======================================================================================"
 exit 0

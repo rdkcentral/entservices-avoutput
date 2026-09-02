@@ -39,7 +39,9 @@ git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
 
 git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
-git clone --branch develop https://github.com/rdkcentral/entservices-apis.git
+git clone --branch 4.0.8 https://github.com/rdkcentral/entservices-apis.git
+git clone https://github.com/rdkcentral/rdk-halif-tvsettings.git
+git -C rdk-halif-tvsettings checkout cb280e388170edddc1b0635ecbecb46cf3928cd3
 
 cd ..
 git clone --branch develop https://github.com/rdkcentral/entservices-helpers.git
@@ -59,6 +61,7 @@ cd -
 cmake -G Ninja -S ThunderTools -B build/ThunderTools \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr" \
     -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
     -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
 
@@ -80,6 +83,7 @@ cd -
 cmake -G Ninja -S Thunder -B build/Thunder \
     -DMESSAGING=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr" \
     -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
     -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
     -DBUILD_TYPE=Debug \
@@ -101,6 +105,7 @@ cd ..
 cmake -G Ninja -S entservices-apis  -B build/entservices-apis \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr" \
     -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
 
 cmake --build build/entservices-apis --target install
@@ -134,6 +139,9 @@ for header in \
     touch "$header"
 done
 
+cp "$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/tr181api.h" tr181api.h
+cp "$GITHUB_WORKSPACE"/rdk-halif-tvsettings/include/*.h .
+
 echo "Creating required IARM Bus headers"
 
 for header in \
@@ -141,7 +149,7 @@ for header in \
     rdk/iarmbus/libIBus.h \
     rdk/iarmbus/libIBusDaemon.h \
     rdk/iarmbus/iarmUtil.h \
-    tr181api.h; do
+    rfcapi.h; do
     touch "$header"
 done
 
@@ -155,9 +163,10 @@ echo "building entservices-helpers"
 cmake -G Ninja -S ../entservices-helpers -B build/entservices-helpers \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr" \
     -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
     -DPLUGIN_HELPERS=ON \
-    "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks -I$GITHUB_WORKSPACE/entservices-testframework/Tests/headers -I$GITHUB_WORKSPACE/entservices-testframework/Tests/headers/rdk/iarmbus -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Iarm.h "
+    "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks -I$GITHUB_WORKSPACE/entservices-testframework/Tests/headers -I$GITHUB_WORKSPACE/entservices-testframework/Tests/headers/rdk/iarmbus -L$GITHUB_WORKSPACE/install/usr/lib -L$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins -Wl,-rpath,$GITHUB_WORKSPACE/install/usr/lib -Wl,-rpath,$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Iarm.h "
 cmake --build build/entservices-helpers --target install
 
 

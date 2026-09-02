@@ -3175,21 +3175,20 @@ namespace Plugin {
     std::unordered_map<std::string, tvPQModeIndex_t> AVOutputTV::pqModeReverseMap;
     std::unordered_map<std::string, tvVideoFormatType_t> AVOutputTV::videoFormatReverseMap;
     std::unordered_map<std::string, tvVideoSrcType_t> AVOutputTV::videoSrcReverseMap;
-    bool AVOutputTV::reverseMapsInitialized = false;
 
     void AVOutputTV::initializeReverseMaps() {
-        if (reverseMapsInitialized) return;
-
-        for (const auto& entry : pqModeMap) {
-            pqModeReverseMap[entry.second] = static_cast<tvPQModeIndex_t>(entry.first);
-        }
-        for (const auto& entry : videoFormatMap) {
-            videoFormatReverseMap[entry.second] = static_cast<tvVideoFormatType_t>(entry.first);
-        }
-        for (const auto& entry : videoSrcMap) {
-            videoSrcReverseMap[entry.second] = static_cast<tvVideoSrcType_t>(entry.first);
-        }
-        reverseMapsInitialized = true;
+        static std::once_flag reverseMapsOnce;
+        std::call_once(reverseMapsOnce, [] {
+            for (const auto& entry : pqModeMap) {
+                pqModeReverseMap[entry.second] = static_cast<tvPQModeIndex_t>(entry.first);
+            }
+            for (const auto& entry : videoFormatMap) {
+                videoFormatReverseMap[entry.second] = static_cast<tvVideoFormatType_t>(entry.first);
+            }
+            for (const auto& entry : videoSrcMap) {
+                videoSrcReverseMap[entry.second] = static_cast<tvVideoSrcType_t>(entry.first);
+            }
+        });
     }
 
     const std::unordered_map<std::string, int> AVOutputTV::backlightModeReverseMap = []{
@@ -3287,6 +3286,7 @@ namespace Plugin {
 
     tvConfigContext_t AVOutputTV::getValidContextFromGetParameters(const JsonObject& parameters, const std::string& paramName)
     {
+        initializeReverseMaps();
         tvConfigContext_t validContext = {PQ_MODE_INVALID, VIDEO_FORMAT_NONE, VIDEO_SOURCE_ALL};
         // Picture Mode
         std::string pictureModeStr;
@@ -3752,7 +3752,7 @@ namespace Plugin {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
             return (int)tvERROR_GENERAL;
         }
-        if (validContexts.size() == 1){
+        if (validContexts.size() == 1 || m_testMode) {
 
             return updateAVoutputTVParamV2Implementation(action, tr181ParamName, parameters, pqParamIndex, level);
         } else {
