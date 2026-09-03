@@ -9351,7 +9351,7 @@ Event notification when there is a change in the current video source.<br><br>Th
 | Name | Type | Description |
 | :-------- | :-------- | :-------- |
 | params | object |  |
-| params.currentVideoSource | string | Current video source. Possible values are the video sources returned by [getVideoSourceCaps](#getVideoSourceCaps). |
+| params.currentVideoSource | string | Current video source.<br><br>e.g. "HDMI1", "HDMI2", "HDMI3", "IP", "Tuner", "Composite1".<br><br>An empty string is returned when the source cannot be mapped.<br><br>For full list of supported video sources refer [getVideoSourceCaps](#getVideoSourceCaps) |
 
 ### Example
 
