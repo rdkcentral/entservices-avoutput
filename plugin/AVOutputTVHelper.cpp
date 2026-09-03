@@ -2814,7 +2814,7 @@ namespace Plugin {
         return ret;
     }
 
-    tvError_t AVOutputTV::setDefaultAspectRatio(std::string pqmode, std::string format, std::string source)
+    tvError_t AVOutputTV::setDefaultAspectRatio()
     {
         tvDisplayMode_t mode = tvDisplayMode_MAX;
         tvError_t ret = tvERROR_NONE;
@@ -2868,7 +2868,7 @@ namespace Plugin {
         return ret;
     }
 
-    tvError_t AVOutputTV::setDefaultAutoBacklightMode(std::string /*pqmode*/, std::string /*format*/, std::string /*source*/)
+    tvError_t AVOutputTV::setDefaultAutoBacklightMode()
     {
         tvBacklightMode_t blMode = tvBacklightMode_MANUAL;
         tvError_t ret = tvERROR_NONE;

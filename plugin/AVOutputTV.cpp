@@ -1458,7 +1458,7 @@ namespace Plugin {
                 ret  = tvERROR_GENERAL;
             }
             else {
-                ret = setDefaultAspectRatio(inputInfo.pqmode,inputInfo.format,inputInfo.source);
+                ret = setDefaultAspectRatio();
             }
             if(ret != tvERROR_NONE) {
                 returnResponse(false);
