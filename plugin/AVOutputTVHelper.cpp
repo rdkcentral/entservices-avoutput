@@ -3205,17 +3205,17 @@ namespace Plugin {
 
     std::string AVOutputTV::convertSourceIndexToStringV2(int source) {
         auto it = videoSrcMap.find(source);
-        return (it != videoSrcMap.end()) ? it->second : "None";
+        return (it != videoSrcMap.end()) ? it->second : "";
     }
 
     std::string AVOutputTV::convertVideoFormatToStringV2(int format) {
         auto it = videoFormatMap.find(format);
-        return (it != videoFormatMap.end()) ? it->second : "None";
+        return (it != videoFormatMap.end()) ? it->second : "";
     }
 
     std::string AVOutputTV::convertPictureIndexToStringV2(int pqmode) {
         auto it = pqModeMap.find(pqmode);
-        return (it != pqModeMap.end()) ? it->second : "None";
+        return (it != pqModeMap.end()) ? it->second : "";
     }
 
     tvPQModeIndex_t AVOutputTV::convertPictureStringToIndexV2(const std::string& modeStr) {
