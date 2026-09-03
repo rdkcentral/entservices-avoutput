@@ -1467,7 +1467,7 @@ namespace Plugin {
                 int retval=updateAVoutputTVParam("set","ZoomMode",inputInfo,PQ_PARAM_ASPECT_RATIO,m_videoZoomMode);
                 if(retval != 0) {
                     LOGERR("Failed to Save DisplayMode to ssm_data\n");
-                    ret = tvERROR_GENERAL;
+                    returnResponse(false);
                 }
                 LOGINFO("Exit : resetZoomMode Successful\n");
                 returnResponse(true);

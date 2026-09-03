@@ -2391,7 +2391,7 @@ namespace Plugin {
                                                     pqParamIndex, &value);
             if (defaultErr != tvERROR_NONE) {
                 LOGERR("GetDefaultPQParams failed for %s: %s\n", key.c_str(), getErrorString(defaultErr).c_str());
-                return -1;
+                return defaultErr;
             }
 
             LOGINFO("No localstore value for %s - pq.db default: %d\n",key.c_str(),value);
