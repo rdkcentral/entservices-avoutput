@@ -444,8 +444,8 @@ namespace Plugin {
     void AVOutputTV::Initialize()
     {
         LOGINFO("Entry\n");
-#if 0
-        tvError_t ret = tvERROR_NONE;
+
+		tvError_t ret = tvERROR_NONE;
 
         TR181_ParamData_t param;
         memset(&param, 0, sizeof(param));
@@ -472,6 +472,7 @@ namespace Plugin {
             LOGINFO("Platform Init successful...\n");
         }
 
+#if 0
         tvVideoFormatCallbackData callbackData = {this,tvVideoFormatChangeHandler};
         ret = RegisterVideoFormatChangeCB(&callbackData);
         if(ret != tvERROR_NONE) {
@@ -519,7 +520,7 @@ namespace Plugin {
     void AVOutputTV::Deinitialize()
     {
        LOGINFO("Entry\n");
-#if 0
+#if 1
        tvError_t ret = tvERROR_NONE;
        ret = TvTerm();
 
