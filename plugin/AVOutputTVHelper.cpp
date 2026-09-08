@@ -1740,8 +1740,9 @@ namespace Plugin {
         //AspectRatio
         m_aspectRatioStatus = GetAspectRatioCaps(&m_aspectRatio, &m_numAspectRatio, &m_aspectRatioCaps);
         if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
-            initializeAspectRatio();
-            updateAVoutputTVParam("set", "ZoomMode", info, PQ_PARAM_ASPECT_RATIO, m_videoZoomMode);
+            if (initializeAspectRatio() == tvERROR_NONE) {
+                updateAVoutputTVParam("set", "ZoomMode", info, PQ_PARAM_ASPECT_RATIO, m_videoZoomMode);
+            }
         } else {
             updateAVoutputTVParamV2("sync", "ZoomMode", paramJson, PQ_PARAM_ASPECT_RATIO, level);
 
