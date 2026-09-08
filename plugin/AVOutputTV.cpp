@@ -4697,12 +4697,12 @@ namespace Plugin {
             tvError_t halRet = GetDefaultPQMode(ctx.videoSrcType, ctx.videoFormatType, &defaultIndex);
             if (halRet != tvERROR_NONE) {
                 LOGERR("GetDefaultPQMode failed for src=%d fmt=%d", ctx.videoSrcType, ctx.videoFormatType);
-                return false;
+                continue;
             }
             std::string modeStr = convertPictureIndexToStringV2(static_cast<int>(defaultIndex));
             if (modeStr.empty()) {
                 LOGERR("convertPictureIndexToStringV2 failed for index %d", defaultIndex);
-                return false;
+                continue;
             }
             // Apply to hardware if current context matches
             if (ctx.videoSrcType == currentSrc && ctx.videoFormatType == currentFmt) {
