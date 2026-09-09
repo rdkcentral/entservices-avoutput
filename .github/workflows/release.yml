@@ -24,7 +24,7 @@ jobs:
       - name: Authorize release trigger (CODEOWNERS only)
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.RDKCM_RDKE }}
+          github-token: ${{ secrets.RDKCM_DEPLOY_KEY }}
           script: |
             const actor = context.actor;
             let codeowners = '';
@@ -82,4 +82,4 @@ jobs:
       version: ${{ inputs.version }}
       jira_ticket: ${{ inputs.jira_ticket }}
     secrets:
-      rdke_github_token: ${{ secrets.RDKCM_RDKE }}
+      rdke_github_token: ${{ secrets.RDKCM_DEPLOY_KEY }}
