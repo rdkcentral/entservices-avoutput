@@ -1,0 +1,28 @@
+name: Build Component in Native Environment
+
+on:
+  push:
+    branches: [ main, 'sprint/**', 'release/**', develop ]
+  pull_request:
+    branches: [ main, 'sprint/**', 'release/**', topic/RDK*, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-entservices-on-pr:
+    name: Build entservices-avoutput component in github rdkcentral
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/rdkcentral/docker-rdk-ci@sha256:7a18bf009b6e00c0ba12bc55cedaf5917b2fb5a5b92bfda7c9ae5b44cfe3df87
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: native build
+        run: |
+          sh -x build_dependencies.sh
+          sh -x cov_build.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.RDKCM_RDKE }}

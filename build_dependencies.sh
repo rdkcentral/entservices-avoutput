@@ -1,0 +1,167 @@
+#!/bin/bash
+#
+# If not stated otherwise in this file or this component's LICENSE
+# file the following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -x
+set -e
+##############################
+GITHUB_WORKSPACE="${PWD}"
+ls -la ${GITHUB_WORKSPACE}
+cd ${GITHUB_WORKSPACE}
+
+# # ############################# 
+#1. Install Dependencies and packages
+
+apt update
+apt install -y libcurl4-openssl-dev libsystemd-dev libboost-all-dev libunwind-dev libdrm-dev
+pip install jsonref
+
+###########################################
+# Clone the required repositories
+
+
+git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
+
+git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
+
+git clone --branch develop https://github.com/rdkcentral/entservices-apis.git
+
+cd ..
+git clone --branch develop https://github.com/rdkcentral/entservices-helpers.git
+cd "$GITHUB_WORKSPACE"
+
+git clone --branch 1.0.14 https://github.com/rdkcentral/entservices-testframework.git
+
+############################
+# Build Thunder-Tools
+echo "======================================================================================"
+echo "building thunderTools"
+cd ThunderTools
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
+cd -
+
+
+cmake -G Ninja -S ThunderTools -B build/ThunderTools \
+    -DEXCEPTIONS_ENABLE=ON \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
+
+cmake --build build/ThunderTools --target install
+
+
+############################
+# Build Thunder
+echo "======================================================================================"
+echo "building thunder"
+
+cd Thunder
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/error_code_R4_4.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/1004-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+cd -
+
+cmake -G Ninja -S Thunder -B build/Thunder \
+    -DMESSAGING=ON \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DBUILD_TYPE=Debug \
+    -DBINDING=127.0.0.1 \
+    -DPORT=55555 \
+    -DEXCEPTIONS_ENABLE=ON
+
+cmake --build build/Thunder --target install
+
+
+############################
+# Build entservices-apis
+echo "======================================================================================"
+echo "building entservices-apis"
+cd entservices-apis
+rm -rf jsonrpc/DTV.json
+cd ..
+
+cmake -G Ninja -S entservices-apis  -B build/entservices-apis \
+    -DEXCEPTIONS_ENABLE=ON \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
+
+cmake --build build/entservices-apis --target install
+
+
+
+#############################
+# generating external headers for AVOutput plugin
+cd $GITHUB_WORKSPACE
+cd entservices-testframework/Tests
+echo "Creating mock headers for AVOutput plugin dependencies"
+echo "======================================================================================"
+mkdir -p headers
+mkdir -p headers/rdk/ds
+mkdir -p headers/rdk/iarmbus
+echo "dir created successfully"
+echo "======================================================================================"
+
+echo "======================================================================================"
+echo "Creating required DS headers for AVOutput"
+cd headers
+
+for header in \
+    rdk/ds/compositeIn.hpp \
+    rdk/ds/hdmiIn.hpp \
+    rdk/ds/host.hpp \
+    rdk/ds/manager.hpp \
+    rdk/ds/exception.hpp \
+    rdk/ds/dsMgr.h \
+    rdk/ds/dsError.h; do
+    touch "$header"
+done
+
+echo "Creating required IARM Bus headers"
+
+for header in \
+    rdk/iarmbus/libIARM.h \
+    rdk/iarmbus/libIBus.h \
+    rdk/iarmbus/libIBusDaemon.h \
+    rdk/iarmbus/iarmUtil.h \
+    tr181api.h; do
+    touch "$header"
+done
+
+echo "files created successfully"
+echo "======================================================================================"
+
+cd $GITHUB_WORKSPACE
+# Build entservices-helpers
+echo "======================================================================================"
+echo "building entservices-helpers"
+cmake -G Ninja -S ../entservices-helpers -B build/entservices-helpers \
+    -DEXCEPTIONS_ENABLE=ON \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DPLUGIN_HELPERS=ON \
+    "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks -I$GITHUB_WORKSPACE/entservices-testframework/Tests/headers -I$GITHUB_WORKSPACE/entservices-testframework/Tests/headers/rdk/iarmbus -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Iarm.h "
+cmake --build build/entservices-helpers --target install
+
+
+############################
+cd ../../
+
+ls -la ${GITHUB_WORKSPACE}

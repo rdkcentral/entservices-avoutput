@@ -378,6 +378,9 @@ class AVOutputTV : public AVOutputBase {
         /* Intialise the last set backlight mode at bootup */
         tvError_t initializeBacklightMode();
 
+		/* Initialize the last set aspect ratio at bootup */
+		tvError_t initializeAspectRatio();
+
 		std::string convertToString(std::vector<std::string> vec_strings);
 		void convertParamToLowerCase(std::string &source, std::string &pqmode, std::string &format);
 		int convertToValidInputParameter(const std::string& pqparam, capDetails_t& info);
@@ -407,6 +410,7 @@ class AVOutputTV : public AVOutputBase {
 		uint32_t generateStorageIdentifier(std::string &key, std::string forParam,paramIndex_t info);
 		uint32_t generateStorageIdentifierCMS(std::string &key, std::string forParam, paramIndex_t info);
 		uint32_t generateStorageIdentifierWB(std::string &key, std::string forParam, paramIndex_t info);
+		uint32_t generateStorageIdentifierWBV2(std::string &key, std::string forParam, paramIndex_t info);
 		uint32_t generateStorageIdentifierDirty(std::string &key, std::string forParam,uint32_t contentFormat, int pqmode);
 
 		std::string getErrorString (tvError_t eReturn);
@@ -454,7 +458,8 @@ class AVOutputTV : public AVOutputBase {
 
 		void broadcastLowLatencyModeChangeEvent(bool lowLatencyMode);
 		tvError_t setAspectRatioZoomSettings(tvDisplayMode_t mode);
-		tvError_t setDefaultAspectRatio(std::string pqmode="none",std::string format="none",std::string source="none");
+		tvError_t setDefaultAspectRatio();
+		tvError_t setDefaultAutoBacklightMode();
 		template <typename T>
 		static int getEnumFromString(const std::unordered_map<std::string, int>& reverseMap, const std::string& key, T defaultVal) {
 			auto it = reverseMap.find(key);
@@ -539,6 +544,7 @@ class AVOutputTV : public AVOutputBase {
 		int syncAvoutputTVPQModeParamsToHALV2(std::string pqmode, std::string source, std::string format);
 		std::string getCMSNameFromEnum(tvDataComponentColor_t colorEnum);
         void syncCMSParamsV2();
+		void syncWBParamsV2();
 
 		// Thread pool for non-blocking parameter updates
 		std::queue<std::function<void()>> paramUpdateQueue;
@@ -679,6 +685,27 @@ class AVOutputTV : public AVOutputBase {
 		tvContextCaps_t* m_cmsCaps = nullptr;
 		tvError_t m_cmsStatus = tvERROR_NONE;
 
+		int m_minWBOffset = 0;
+		int m_maxWBOffset = 0;
+		int m_minWBGain = 0;
+		int m_maxWBGain = 0;
+		tvColorTemp_t*      m_wbColorTempArr = nullptr;
+		tvWBColor_t*        m_wbColorArr = nullptr;
+		tvWBControl_t*      m_wbControlArr = nullptr;
+		size_t m_numWBColorTemp = 0;
+		size_t m_numWBColor     = 0;
+		size_t m_numWBControl   = 0;
+		std::vector<std::string> m_wbColorList;
+		std::vector<std::string> m_wbControlList;
+		std::vector<std::string> m_wbColorTempList;
+		tvContextCaps_t* m_wbContextCaps = nullptr;
+		tvError_t m_wbStatus = tvERROR_NONE;
+		void populateWBStringListsFromCaps();
+		bool isWBParamSupported(const std::string& color,
+                                const std::string& control,
+                                const std::string& colorTemp);
+
+
 		bool setCMSParam(const JsonObject& parameters);
 
 		std::string convertPictureIndexToStringV2(int pqmode);
@@ -701,6 +728,8 @@ class AVOutputTV : public AVOutputBase {
 		void NotifyFilmMakerModeChange(tvContentType_t mode);
 		void NotifyVideoResolutionChange(tvResolutionParam_t resolution);
 		void NotifyVideoFrameRateChange(tvVideoFrameRate_t frameRate);
+		void NotifyVideoSourceChange(tvVideoSrcType_t source);
+
 		//override API
 		static void dsHdmiVideoModeEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 		static void dsHdmiStatusEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);

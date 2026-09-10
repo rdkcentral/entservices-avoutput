@@ -1,0 +1,34 @@
+name: check changelog updated
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main, 'release/**' ]
+    paths-ignore: ['docs/**', 'Tests/**', 'Tools/**', '.github/**']
+
+  pull_request:
+    branches: [ main, 'release/**' ]
+    paths-ignore: ['docs/**', 'Tests/**', 'Tools/**', '.github/**']
+
+
+jobs:
+  check-changelog:
+    runs-on: ubuntu-latest
+    name: Check if changelog was updated
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: rdkcentral/tj-actions_changed-files@a6d456f542692915c5289ea834fb89bc07c11208
+
+      - name: Run step when a CHANGELOG.md didn't change
+        uses: actions/github-script@v7
+        if: ${{ !contains(steps.changed-files.outputs.all_changed_files, 'CHANGELOG.md') }}
+        with:
+          script: |
+              core.setFailed('CHANGELOG.md should be modified')

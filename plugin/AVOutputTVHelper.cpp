@@ -845,8 +845,68 @@ namespace Plugin {
         }
         else
         {
-            LOGWARN("getLocalParam for %s Failed : %s\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
-            ret = tvERROR_GENERAL;
+            LOGWARN("getLocalParam for %s Failed : %s, falling back to pq.db default\n", AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM, getTR181ErrorString(err));
+            ret = setDefaultAutoBacklightMode();
+            if (ret != tvERROR_NONE) {
+                LOGWARN("setDefaultAutoBacklightMode failed: %s\n", getErrorString(ret).c_str());
+            }
+        }
+
+        return ret;
+    }
+
+    tvError_t AVOutputTV::initializeAspectRatio()
+    {
+        TR181_ParamData_t param;
+        tvError_t ret = tvERROR_NONE;
+        tvDisplayMode_t mode = tvDisplayMode_MAX;
+
+        memset(&param, 0, sizeof(param));
+
+        tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_ASPECTRATIO_RFC_PARAM, &param);
+        if (tr181Success == err)
+        {
+            LOGINFO("getLocalParam for %s is %s\n", AVOUTPUT_ASPECTRATIO_RFC_PARAM, param.value);
+
+            const std::string storedMode(param.value);
+            if (storedMode == "16:9" || storedMode == "TV 16X9 STRETCH") {
+                mode = tvDisplayMode_16x9;
+            }
+            else if (storedMode == "4:3" || storedMode == "TV 4X3 PILLARBOX") {
+                mode = tvDisplayMode_4x3;
+            }
+            else if (storedMode == "Full" || storedMode == "TV FULL") {
+                mode = tvDisplayMode_FULL;
+            }
+            else if (storedMode == "Normal" || storedMode == "TV NORMAL") {
+                mode = tvDisplayMode_NORMAL;
+            }
+            else if (storedMode == "TV AUTO") {
+                mode = tvDisplayMode_AUTO;
+            }
+            else if (storedMode == "TV DIRECT") {
+                mode = tvDisplayMode_DIRECT;
+            }
+            else if (storedMode == "TV ZOOM") {
+                mode = tvDisplayMode_ZOOM;
+            }
+            else {
+                mode = tvDisplayMode_AUTO;
+            }
+
+            m_videoZoomMode = mode;
+            ret = setAspectRatioZoomSettings(mode);
+            if (ret != tvERROR_NONE) {
+                LOGERR("AspectRatio set failed: %s\n", getErrorString(ret).c_str());
+            }
+        }
+        else
+        {
+            LOGWARN("getLocalParam for %s Failed : %s, falling back to pq.db default\n", AVOUTPUT_ASPECTRATIO_RFC_PARAM, getTR181ErrorString(err));
+            ret = setDefaultAspectRatio();
+            if (ret != tvERROR_NONE) {
+                LOGWARN("setDefaultAspectRatio failed: %s\n", getErrorString(ret).c_str());
+            }
         }
 
         return ret;
@@ -882,8 +942,30 @@ namespace Plugin {
             }
         }
         else {
-            ret = tvERROR_GENERAL;
-            LOGWARN("getLocalParam for %s Failed : %s\n", tr181_param_name.c_str(), getTR181ErrorString(err));
+            LOGWARN("getLocalParam for %s Failed : %s, falling back to HAL default\n", tr181_param_name.c_str(), getTR181ErrorString(err));
+            tvPQModeIndex_t defaultIndex = PQ_MODE_INVALID;
+            tvError_t halRet = GetDefaultPQMode(current_source, current_format, &defaultIndex);
+            if (halRet == tvERROR_NONE) {
+                std::string defaultMode;
+                if (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+                    defaultMode = convertPictureIndexToString(defaultIndex);
+                else
+                    defaultMode = convertPictureIndexToStringV2(defaultIndex);
+                if (!defaultMode.empty()) {
+                    ret = SetTVPictureMode(defaultMode.c_str());
+                    if (ret != tvERROR_NONE) {
+                        LOGWARN("Picture Mode set from HAL default failed: %s\n", getErrorString(ret).c_str());
+                    } else {
+                        LOGINFO("Picture Mode initialized from HAL default: %s\n", defaultMode.c_str());
+                    }
+                } else {
+                    LOGERR("Failed to convert default picture mode index %d to string\n", defaultIndex);
+                    ret = tvERROR_GENERAL;
+                }
+            } else {
+                LOGERR("GetDefaultPQMode failed for source=%d format=%d\n", current_source, current_format);
+                ret = tvERROR_GENERAL;
+            }
         }
 
         return ret;
@@ -1038,7 +1120,11 @@ namespace Plugin {
 
         // Generate storage key based on parameter type
         if (forParam.compare("WhiteBalance") == 0) {
-            generateStorageIdentifierWB(key, forParam, indexInfo);
+            if (m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+                generateStorageIdentifierWB(key, forParam, indexInfo);
+            } else {
+                generateStorageIdentifierWBV2(key, forParam, indexInfo);
+            }
         }
         else {
             generateStorageIdentifierV2(key, forParam, indexInfo);
@@ -1496,6 +1582,60 @@ namespace Plugin {
         }
     }
 
+    void AVOutputTV::populateWBStringListsFromCaps() {
+        m_wbColorList.clear();
+        m_wbControlList.clear();
+        m_wbColorTempList.clear();
+
+        if (m_wbColorArr && m_numWBColor > 0) {
+            for (size_t i = 0; i < m_numWBColor; ++i) {
+                m_wbColorList.push_back(getWBColorStringFromEnum(m_wbColorArr[i]));
+            }
+        }
+
+        if (m_wbControlArr && m_numWBControl > 0) {
+            for (size_t i = 0; i < m_numWBControl; ++i) {
+                m_wbControlList.push_back(getWBControlStringFromEnum(m_wbControlArr[i]));
+            }
+        }
+
+        if (m_wbColorTempArr && m_numWBColorTemp > 0) {
+            for (size_t i = 0; i < m_numWBColorTemp; ++i) {
+                std::string tempStr;
+                getColorTempStringFromEnum(static_cast<int>(m_wbColorTempArr[i]), tempStr);
+                m_wbColorTempList.push_back(tempStr);
+            }
+        }
+
+        LOGINFO("WhiteBalance Capabilities parsed: Colors=%zu, Controls=%zu, ColorTemps=%zu",
+            m_wbColorList.size(), m_wbControlList.size(), m_wbColorTempList.size());
+    }
+
+    void AVOutputTV::syncWBParamsV2()
+    {
+        JsonObject parameters;
+
+        // Default to "none" for all contexts to signal a global sync across all modes
+        parameters["pictureMode"] = "none";
+        parameters["videoSource"] = "none";
+        parameters["videoFormat"] = "none";
+
+        // Use "Global" to indicate sync for all colorTemps, controls, and colors
+        parameters["colorTemperature"] = "Global";
+        parameters["control"] = "Global";
+        parameters["color"] = "Global";
+
+        // Dummy PQ index; not used inside updateAVoutputTVParamV2() for bulk sync
+        tvPQParameterIndex_t dummyPQIndex = PQ_PARAM_WB_GAIN_RED;
+
+        int result = updateAVoutputTVParamV2("sync", "WhiteBalance", parameters, dummyPQIndex, 0);
+        if (result == 0) {
+            LOGINFO("%s: WhiteBalance sync completed successfully", __FUNCTION__);
+        } else {
+            LOGERR("%s: WhiteBalance sync encountered errors", __FUNCTION__);
+        }
+    }
+
     tvError_t AVOutputTV::syncAvoutputTVParamsToHAL(std::string pqmode, std::string source, std::string format)
     {
         int level = {0};
@@ -1600,7 +1740,9 @@ namespace Plugin {
         //AspectRatio
         m_aspectRatioStatus = GetAspectRatioCaps(&m_aspectRatio, &m_numAspectRatio, &m_aspectRatioCaps);
         if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
-            setDefaultAspectRatio();
+            if (initializeAspectRatio() == tvERROR_NONE) {
+                updateAVoutputTVParam("set", "ZoomMode", info, PQ_PARAM_ASPECT_RATIO, m_videoZoomMode);
+            }
         } else {
             updateAVoutputTVParamV2("sync", "ZoomMode", paramJson, PQ_PARAM_ASPECT_RATIO, level);
 
@@ -1697,7 +1839,26 @@ namespace Plugin {
             syncCMSParams();
         }
 
-            //syncWBParams();  Enable once Get2PointWBCaps is implemented
+        m_wbStatus = Get2PointWBCaps(
+                                    &m_minWBGain, &m_minWBOffset,
+                                    &m_maxWBGain, &m_maxWBOffset,
+                                    &m_wbColorArr,
+                                    &m_wbColorTempArr,
+                                    &m_wbControlArr,
+                                    &m_numWBColorTemp,
+                                    &m_numWBColor,
+                                    &m_numWBControl,
+                                    &m_wbContextCaps);
+        if (m_wbStatus == tvERROR_NONE) {
+            populateWBStringListsFromCaps();
+            syncWBParamsV2();
+        }
+
+        if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            syncWBParams();
+        }
+
         if(m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
             // HDRMode
@@ -1871,6 +2032,24 @@ namespace Plugin {
         return tvERROR_NONE;
     }
 
+    uint32_t AVOutputTV::generateStorageIdentifierWBV2(std::string &key, std::string forParam, paramIndex_t info)
+    {
+        key += std::string(AVOUTPUT_GENERIC_STRING_RFC_PARAM);
+        key += STRING_SOURCE + convertSourceIndexToStringV2(info.sourceIndex) + ".";
+        key += STRING_PICMODE + convertPictureIndexToStringV2(info.pqmodeIndex) + ".";
+        key += STRING_FORMAT + convertVideoFormatToStringV2(info.formatIndex) + ".";
+
+        std::string colorTempStr;
+        getColorTempStringFromEnum(info.colorTempIndex, colorTempStr);
+        key += std::string(STRING_COLORTEMPERATURE) + colorTempStr + ".";
+
+        key += STRING_COLOR + getWBColorStringFromEnum((tvWBColor_t)info.colorIndex) + ".";
+        key += STRING_CONTROL + getWBControlStringFromEnum((tvWBControl_t)info.controlIndex) + ".";
+        key += forParam;
+
+        return tvERROR_NONE;
+    }
+
     uint32_t AVOutputTV::generateStorageIdentifierDirty(std::string &key, std::string forParam,uint32_t contentFormat, int pqmode)
     {
         key+=std::string(AVOUTPUT_GENERIC_STRING_RFC_PARAM);
@@ -2016,7 +2195,11 @@ namespace Plugin {
             generateStorageIdentifierCMS(key, forParam, indexInfo);
         }
         else if (forParam.compare("WhiteBalance") == 0) {
-            generateStorageIdentifierWB(key, forParam, indexInfo);
+            if (m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
+                generateStorageIdentifierWB(key, forParam, indexInfo);
+            } else {
+                generateStorageIdentifierWBV2(key, forParam, indexInfo);
+            }
         }
         else if (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
             generateStorageIdentifier(key, forParam, indexInfo);
@@ -2191,8 +2374,21 @@ namespace Plugin {
             if( sync ) {
                 return 1;
             }
+            if (forParam.compare("WhiteBalance") == 0) {
+                if (m_wbStatus == tvERROR_NONE) {
+                    GetDefault2PointWB((tvVideoSrcType_t)indexInfo.sourceIndex,
+                                    indexInfo.pqmodeIndex,
+                                    (tvVideoFormatType_t)indexInfo.formatIndex,
+                                    static_cast<tvColorTemp_t>(indexInfo.colorTempIndex),
+                                    static_cast<tvWBColor_t>(indexInfo.colorIndex),
+                                    static_cast<tvWBControl_t>(indexInfo.controlIndex),
+                                    &value);
+                    return 0;
+                }
+            }
             GetDefaultPQParams(indexInfo.pqmodeIndex,(tvVideoSrcType_t)indexInfo.sourceIndex,(tvVideoFormatType_t)indexInfo.formatIndex,pqParamIndex,&value);
-            LOGINFO("Default value from DB : %s : %d \n",key.c_str(),value);
+
+            LOGINFO("No localstore value for %s - pq.db default: %d\n",key.c_str(),value);
             return 0;
         }
     }
@@ -2232,7 +2428,7 @@ namespace Plugin {
     
         if( ReadCapablitiesFromConf( param, stringInfo) != 0 )
         {
-            LOGERR( "%s: ReadCapablitiesFromConf Failed !!!\n",__FUNCTION__);
+            LOGERR( "%s: ReadCapablitiesFromConf Failed for param='%s'!!!\n",__FUNCTION__, param.c_str());
             return tvERROR_GENERAL;
         }
         else
@@ -2403,7 +2599,25 @@ namespace Plugin {
             return 1;
         }
         else {
-            LOGERR("getLocalParam failed %s\n",tr181_param_name.c_str());
+            LOGWARN("getLocalParam failed for %s, falling back to HAL default picture mode\n", tr181_param_name.c_str());
+            tvPQModeIndex_t defaultMode = PQ_MODE_INVALID;
+            tvError_t halRet = GetDefaultPQMode(currentSource, current_format, &defaultMode);
+            if (halRet == tvERROR_NONE) {
+                std::string defaultModeStr;
+                if (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+                    defaultModeStr = convertPictureIndexToString(defaultMode);
+                else
+                    defaultModeStr = convertPictureIndexToStringV2(defaultMode);
+                if (!defaultModeStr.empty()) {
+                    strncpy(picMode, defaultModeStr.c_str(), PIC_MODE_NAME_MAX - 1);
+                    picMode[PIC_MODE_NAME_MAX - 1] = '\0';
+                    LOGINFO("getCurrentPictureMode: HAL default mode = '%s'\n", picMode);
+                    return 1;
+                }
+                LOGERR("getCurrentPictureMode: HAL returned default mode index %d, but conversion to string failed\n", defaultMode);
+                return 0;
+            }
+            LOGERR("getCurrentPictureMode: HAL default fallback failed (ret=%d)\n", halRet);
             return 0;
         }
     }
@@ -2594,88 +2808,134 @@ namespace Plugin {
         return ret;
     }
 
-    tvError_t AVOutputTV::setDefaultAspectRatio(std::string pqmode,std::string  format,std::string source)
+    tvError_t AVOutputTV::setDefaultAspectRatio()
     {
         tvDisplayMode_t mode = tvDisplayMode_MAX;
-        TR181_ParamData_t param;
         tvError_t ret = tvERROR_NONE;
-        capDetails_t inputInfo;
-        
-        // Coverity fix: Use std::move() since parameters are passed by value and not reused
-        inputInfo.pqmode = std::move(pqmode);
-        inputInfo.source = std::move(source);
-        inputInfo.format = std::move(format);
 
-        JsonObject paramJson;
-        paramJson["pictureMode"] = inputInfo.pqmode;
-        paramJson["videoSource"] = inputInfo.source;
-        paramJson["videoFormat"] = inputInfo.format;
+        tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
+        tvVideoFormatType_t currentFormat = VIDEO_FORMAT_SDR;
+        tvPQModeIndex_t pqmodeIndex = PQ_MODE_INVALID;
+        int value = 0;
 
-        memset(&param, 0, sizeof(param));
-        tr181ErrorCode_t err = getLocalParam(rfc_caller_id, AVOUTPUT_ASPECTRATIO_RFC_PARAM, &param);
-        if ( tr181Success == err ) {
-            if(!std::string(param.value).compare("16:9")) {
-                mode = tvDisplayMode_16x9;
-            }
-            else if (!std::string(param.value).compare("4:3")) {
-                mode = tvDisplayMode_4x3;
-            }
-            else if (!std::string(param.value).compare("Full")) {
-                mode = tvDisplayMode_FULL;
-            }
-            else if (!std::string(param.value).compare("Normal")) {
-                mode = tvDisplayMode_NORMAL;
-            }
-            else if (!std::string(param.value).compare("TV AUTO")) {
-                mode = tvDisplayMode_AUTO;
-            }
-            else if (!std::string(param.value).compare("TV DIRECT")) {
-                mode = tvDisplayMode_DIRECT;
-            }
-            else if (!std::string(param.value).compare("TV NORMAL")) {
-                mode = tvDisplayMode_NORMAL;
-            }
-            else if (!std::string(param.value).compare("TV ZOOM")) {
-                mode = tvDisplayMode_ZOOM;
-            }
-            else if (!std::string(param.value).compare("TV 16X9 STRETCH")) {
-                mode = tvDisplayMode_16x9;
-            }
-            else if (!std::string(param.value).compare("TV 4X3 PILLARBOX")) {
-                mode = tvDisplayMode_4x3;
-            }
-            else {
-                mode = tvDisplayMode_AUTO;
-            }
-
-            m_videoZoomMode = mode;
-            tvError_t ret = setAspectRatioZoomSettings (mode);
-
-            if(ret != tvERROR_NONE) {
-                LOGERR("AspectRatio  set failed: %s\n",getErrorString(ret).c_str());
-            }
-            else {
-                if (m_aspectRatioStatus == tvERROR_OPERATION_NOT_SUPPORTED) {
-                    int retval=updateAVoutputTVParam("set","ZoomMode",inputInfo,PQ_PARAM_ASPECT_RATIO,mode);
-                    if(retval != 0) {
-                    LOGERR("Failed to Save DisplayMode to ssm_data\n");
-                    ret = tvERROR_GENERAL;
-                    }
-                    LOGINFO("Aspect Ratio initialized successfully, value: %s\n", param.value);
-                }
-                else {
-                    updateAVoutputTVParamV2("set", "ZoomMode", paramJson, PQ_PARAM_ASPECT_RATIO,mode);
-                }
-            }
-
+        if (GetCurrentVideoSource(&currentSource) != tvERROR_NONE) {
+            LOGERR("GetCurrentVideoSource() failed\n");
+            return tvERROR_GENERAL;
         }
-        else {
-            LOGERR("getLocalParam for %s Failed : %s\n", AVOUTPUT_ASPECTRATIO_RFC_PARAM, getTR181ErrorString(err));
-            ret = tvERROR_GENERAL;
+
+        if (GetCurrentVideoFormat(&currentFormat) != tvERROR_NONE) {
+            LOGERR("GetCurrentVideoFormat() failed\n");
+            return tvERROR_GENERAL;
         }
+
+        if (currentFormat == VIDEO_FORMAT_NONE) {
+            currentFormat = VIDEO_FORMAT_SDR;
+        }
+
+        //  Directly fetch default PQ mode
+        if (GetDefaultPQMode(currentSource, currentFormat, &pqmodeIndex) != tvERROR_NONE ||
+            pqmodeIndex == PQ_MODE_INVALID) {
+            LOGERR("GetDefaultPQMode() failed\n");
+            return tvERROR_GENERAL;
+        }
+
+        //  Fetch default Aspect Ratio
+        if (GetDefaultPQParams(pqmodeIndex, currentSource, currentFormat,
+                            PQ_PARAM_ASPECT_RATIO, &value) != tvERROR_NONE) {
+            LOGERR("GetDefaultPQParams failed for pqmode=%d source=%d format=%d\n",
+                pqmodeIndex, currentSource, currentFormat);
+            return tvERROR_GENERAL;
+        }
+	    if (value < 0 || value >= tvDisplayMode_MAX) {
+             LOGWARN("Unexpected AspectRatio default: %d, falling back to TV AUTO\n", value);
+             value = tvDisplayMode_AUTO;
+        }
+        mode = static_cast<tvDisplayMode_t>(value);
+        ret = setAspectRatioZoomSettings(mode);
+
+        if (ret != tvERROR_NONE) {
+            LOGERR("AspectRatio set failed: %s\n", getErrorString(ret).c_str());
+        } else {
+            std::string aspectRatioString;
+            getDisplayModeStringFromEnum(static_cast<int>(mode), aspectRatioString);
+            LOGINFO("ZoomMode initialized from pq.db default, value: %d (%s)\n",
+                    static_cast<int>(mode), aspectRatioString.c_str());
+        }
+
         return ret;
     }
 
+    tvError_t AVOutputTV::setDefaultAutoBacklightMode()
+    {
+        tvBacklightMode_t blMode = tvBacklightMode_MANUAL;
+        tvError_t ret = tvERROR_NONE;
+
+        tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
+        tvVideoFormatType_t currentFormat = VIDEO_FORMAT_SDR;
+        tvPQModeIndex_t pqmodeIndex = PQ_MODE_INVALID;
+        int value = 0;
+
+        if (GetCurrentVideoSource(&currentSource) != tvERROR_NONE) {
+            LOGERR("GetCurrentVideoSource() failed\n");
+            return tvERROR_GENERAL;
+        }
+
+        if (GetCurrentVideoFormat(&currentFormat) != tvERROR_NONE) {
+            LOGERR("GetCurrentVideoFormat() failed\n");
+            return tvERROR_GENERAL;
+        }
+
+        if (currentFormat == VIDEO_FORMAT_NONE) {
+            currentFormat = VIDEO_FORMAT_SDR;
+        }
+
+        // Directly fetch default PQ mode
+        if (GetDefaultPQMode(currentSource, currentFormat, &pqmodeIndex) != tvERROR_NONE ||
+            pqmodeIndex == PQ_MODE_INVALID) {
+            LOGERR("GetDefaultPQMode() failed\n");
+            return tvERROR_GENERAL;
+        }
+
+        // Fetch default BacklightMode
+        if (GetDefaultPQParams(pqmodeIndex, currentSource, currentFormat,
+                            PQ_PARAM_BACKLIGHT_MODE, &value) != tvERROR_NONE) {
+            LOGERR("GetDefaultPQParams failed for pqmode=%d source=%d format=%d\n",
+                pqmodeIndex, currentSource, currentFormat);
+            return tvERROR_GENERAL;
+        }
+
+        switch (value) {
+            case tvBacklightMode_NONE:
+                blMode = tvBacklightMode_NONE;
+                break;
+            case tvBacklightMode_MANUAL:
+                blMode = tvBacklightMode_MANUAL;
+                break;
+            case tvBacklightMode_AMBIENT:
+                blMode = tvBacklightMode_AMBIENT;
+                break;
+            case tvBacklightMode_ECO:
+                blMode = tvBacklightMode_ECO;
+                break;
+            default:
+                LOGWARN("Unexpected BacklightMode: %d, fallback to MANUAL\n", value);
+                blMode = tvBacklightMode_MANUAL;
+                break;
+        }
+
+        ret = SetCurrentBacklightMode(blMode);
+
+        if (ret != tvERROR_NONE) {
+            LOGERR("AutoBacklightMode set failed: %s\n", getErrorString(ret).c_str());
+        } else {
+            std::string backlightModeString;
+            getBacklightModeStringFromEnum(static_cast<int>(blMode), backlightModeString);
+            LOGINFO("AutoBacklightMode initialized from pq.db default, value: %d (%s)\n",
+                    static_cast<int>(blMode), backlightModeString.c_str());
+        }
+
+        return ret;
+    }
     int AVOutputTV::getCMSComponentEnumFromString(const std::string& component, tvComponentType_t& value)
     {
         int ret = 0;
@@ -3045,15 +3305,20 @@ namespace Plugin {
         {VIDEO_FORMAT_DV, "DV"},
         {VIDEO_FORMAT_HLG, "HLG"}
     };
-
     const std::unordered_map<int, std::string> AVOutputTV::videoSrcMap = {
+        {VIDEO_SOURCE_ANALOGUE,   "Analogue"},
         {VIDEO_SOURCE_COMPOSITE1, "Composite1"},
-        {VIDEO_SOURCE_HDMI1, "HDMI1"},
-        {VIDEO_SOURCE_HDMI2, "HDMI2"},
-        {VIDEO_SOURCE_HDMI3, "HDMI3"},
-        {VIDEO_SOURCE_HDMI4, "HDMI4"},
-        {VIDEO_SOURCE_IP, "IP"},
-        {VIDEO_SOURCE_TUNER, "Tuner"}
+        {VIDEO_SOURCE_COMPOSITE2, "Composite2"},
+        {VIDEO_SOURCE_YPBPR1,     "Component1"},
+        {VIDEO_SOURCE_YPBPR2,     "Component2"},
+        {VIDEO_SOURCE_HDMI1,      "HDMI1"},
+        {VIDEO_SOURCE_HDMI2,      "HDMI2"},
+        {VIDEO_SOURCE_HDMI3,      "HDMI3"},
+        {VIDEO_SOURCE_HDMI4,      "HDMI4"},
+        {VIDEO_SOURCE_VGA,        "VGA"},
+        {VIDEO_SOURCE_IP,         "IP"},
+        {VIDEO_SOURCE_TUNER,      "Tuner"},
+        {VIDEO_SOURCE_SVIDEO,     "SVideo"}
     };
     const std::unordered_map<int, std::string> AVOutputTV::backlightModeMap = {
         {tvBacklightMode_MANUAL, "Manual"},
@@ -3372,6 +3637,7 @@ namespace Plugin {
         else if (paramName == "MEMC") caps = m_MEMCCaps;
         else if (paramName == "BacklightMode") caps = m_backlightModeCaps;
         else if (paramName == "CMS") caps = m_cmsCaps;
+        else if (paramName == "WhiteBalance") caps = m_wbContextCaps;
         else if (paramName == "SDRGamma") caps = m_sdrGammaModeCaps;
         else if (paramName == "DimmingLevel") caps = m_dimmingLevelCaps;
         else {
@@ -3408,6 +3674,15 @@ namespace Plugin {
             formatIndex = VIDEO_FORMAT_SDR;
         }
         return convertVideoFormatToStringV2(formatIndex);
+    }
+
+    bool AVOutputTV::isWBParamSupported(const std::string& color,
+                                   const std::string& control,
+                                   const std::string& colorTemp)
+    {
+        return (std::find(m_wbColorList.begin(), m_wbColorList.end(), color) != m_wbColorList.end() &&
+                std::find(m_wbControlList.begin(), m_wbControlList.end(), control) != m_wbControlList.end() &&
+                std::find(m_wbColorTempList.begin(), m_wbColorTempList.end(), colorTemp) != m_wbColorTempList.end());
     }
 
     bool AVOutputTV::isSetRequiredForParam(const JsonObject& parameters, const std::string& paramName)
@@ -3779,6 +4054,120 @@ namespace Plugin {
             LOGINFO("Exit: %s, Return Value: %d", __FUNCTION__, ret);
             return (ret < 0) ? -1 : 0;
         }
+        else if (tr181ParamName == "WhiteBalance") {
+            std::string colorStr =
+                parameters.HasLabel("color") ? parameters["color"].String() : "";
+
+            std::string controlStr =
+                parameters.HasLabel("control") ? parameters["control"].String() : "";
+
+            std::string colorTempStr =
+                parameters.HasLabel("colorTemperature") ? parameters["colorTemperature"].String() : "";
+
+            std::vector<std::string> colors, controls, colorTemps;
+
+            if (colorStr.empty() || colorStr == "Global")
+                colors = m_wbColorList;
+            else
+                colors.push_back(colorStr);
+
+            if (controlStr.empty() || controlStr == "Global")
+                controls = m_wbControlList;
+            else
+                controls.push_back(controlStr);
+
+            if (colorTempStr.empty() || colorTempStr == "Global")
+                colorTemps = m_wbColorTempList;
+            else
+                colorTemps.push_back(colorTempStr);
+
+            for (const auto& ctx : validContexts) {
+                for (const auto& colorTempStr : colorTemps) {
+                    tvColorTemp_t colorTemp;
+                    if (getColorTempEnumFromString(colorTempStr, colorTemp) != 0) {
+                        LOGERR("%s: Invalid colorTemp %s", __FUNCTION__, colorTempStr.c_str());
+                        continue;
+                    }
+
+                    for (const auto& controlStr : controls) {
+                        tvWBControl_t control;
+                        if (getWBControlEnumFromString(controlStr, control) != 0) {
+                            LOGERR("%s: Invalid control %s", __FUNCTION__, controlStr.c_str());
+                            continue;
+                        }
+
+                        for (const auto& colorStr : colors) {
+                            if (!isWBParamSupported(colorStr, controlStr, colorTempStr)) {
+                                LOGERR("%s: WB params not supported by caps (%s/%s/%s)", __FUNCTION__,
+                                       colorTempStr.c_str(), colorStr.c_str(), controlStr.c_str());
+                                continue;
+                            }
+                            tvWBColor_t color;
+                            if (getWBColorEnumFromString(colorStr, color) != 0) {
+                                LOGERR("%s: Invalid color %s", __FUNCTION__, colorStr.c_str());
+                                continue;
+                            }
+                            paramIndex_t paramIndex {
+                                .sourceIndex     = static_cast<uint8_t>(ctx.videoSrcType),
+                                .pqmodeIndex     = static_cast<uint8_t>(ctx.pq_mode),
+                                .formatIndex     = static_cast<uint8_t>(ctx.videoFormatType),
+                                .colorIndex      = static_cast<uint8_t>(color),
+                                .componentIndex  = 0,
+                                .colorTempIndex  = static_cast<uint8_t>(colorTemp),
+                                .controlIndex    = static_cast<uint8_t>(control)
+                            };
+                            if (isReset) {
+                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, 0, false);
+                            }
+                            int persisted = 0;
+                            if (isSync || isReset) {
+                                if (getLocalparam(tr181ParamName, paramIndex, persisted, PQ_PARAM_WB_GAIN_RED/*dummy*/, isSync) == 0) {
+                                    level = persisted;
+                                } else {
+                                    LOGINFO("WB sync skip: no persisted value (%s/%s/%s)",
+                                                                    colorTempStr.c_str(),
+                                                                    colorStr.c_str(),
+                                                                    controlStr.c_str());
+                                    continue;
+                                }
+                            }
+
+                            // Validate value range
+                            if (controlStr == "Gain" && (level < m_minWBGain || level > m_maxWBGain)) {
+                                LOGWARN("%s: Gain value %d out of range for %s/%s", __FUNCTION__, level, colorStr.c_str(), controlStr.c_str());
+                                continue;
+                            }
+                            if (controlStr == "Offset" && (level < m_minWBOffset || level > m_maxWBOffset)) {
+                                LOGWARN("%s: Offset value %d out of range for %s/%s", __FUNCTION__, level, colorStr.c_str(), controlStr.c_str());
+                                continue;
+                            }
+
+                            // Save and apply
+                            ret |= Save2PointWB(static_cast<tvVideoSrcType_t>(paramIndex.sourceIndex),
+                                                paramIndex.pqmodeIndex,
+                                                static_cast<tvVideoFormatType_t>(paramIndex.formatIndex),
+                                                colorTemp, color, control, level);
+
+                            if (isSet) {
+                                LOGINFO("WB SET persist: src=%d pq=%d fmt=%d colorTemp=%s color=%s control=%s level=%d",
+                                        paramIndex.sourceIndex,
+                                        paramIndex.pqmodeIndex,
+                                        paramIndex.formatIndex,
+                                        colorTempStr.c_str(),
+                                        colorStr.c_str(),
+                                        controlStr.c_str(),
+                                        level);
+
+                                ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, level, true);
+                            }
+                        }
+                    }
+                }
+            }
+
+            LOGINFO("Exit: %s WhiteBalance handling done, ret=%d", __FUNCTION__, ret);
+            return (ret < 0) ? -1 : 0;
+        }
         for (const auto& ctx : validContexts)
         {
             paramIndex_t paramIndex {
@@ -3903,13 +4292,7 @@ namespace Plugin {
                 case PQ_PARAM_LDIM:
                 case PQ_PARAM_LOCALDIMMING_LEVEL:
 
-                case PQ_PARAM_WB_GAIN_RED:
-                case PQ_PARAM_WB_GAIN_GREEN:
-                case PQ_PARAM_WB_GAIN_BLUE:
-                case PQ_PARAM_WB_OFFSET_RED:
-                case PQ_PARAM_WB_OFFSET_GREEN:
-                case PQ_PARAM_WB_OFFSET_BLUE:
-                    // TODO: Add implementation
+
                     break;
 
                 default:
