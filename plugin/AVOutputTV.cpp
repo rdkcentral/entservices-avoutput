@@ -34,6 +34,7 @@ namespace Plugin {
 
     AVOutputTV* AVOutputTV::instance = nullptr;
 
+	[[maybe_unused]]
     static void tvVideoFormatChangeHandler(tvVideoFormatType_t format, void *userData)
     {
         LOGINFO("tvVideoFormatChangeHandler format:%d \n",format);
@@ -43,6 +44,7 @@ namespace Plugin {
 	}
     }
 
+	[[maybe_unused]]
     static void tvFilmMakerModeChangeHandler(tvContentType_t mode, void *userData)
     {
         LOGINFO("tvFilmMakerModeChangeHandler content:%d \n",mode);
@@ -52,6 +54,7 @@ namespace Plugin {
 	}
     }
 
+	[[maybe_unused]]
     static void tvVideoResolutionChangeHandler(tvResolutionParam_t resolution, void *userData)
     {
         LOGINFO("tvVideoResolutionChangeHandler resolution:%d\n",resolution.resolutionValue);
@@ -61,6 +64,7 @@ namespace Plugin {
 	}
     }
 
+	[[maybe_unused]]
     static void tvVideoFrameRateChangeHandler(tvVideoFrameRate_t frameRate, void *userData)
     {
         LOGINFO("tvVideoFrameRateChangeHandler format:%d \n",frameRate);
@@ -70,6 +74,7 @@ namespace Plugin {
 	}
     }
 
+	[[maybe_unused]]
     static void tvVideoSourceChangeHandler(tvVideoSrcType_t source, void *userData)
     {
         LOGINFO("tvVideoSourceChangeHandler source:%d \n", source);
@@ -478,6 +483,7 @@ namespace Plugin {
         }
         LOGWARN("AVOutputPlugins: AVOutput Initialize m_currentHdmiInResoluton:%d m_mod:%d", m_currentHdmiInResoluton, m_videoZoomMode);
 
+		LOGERR("#4066 %s %d Init called \n", __FUNCTION__,__LINE__);
         ret = TvInit();
        
         if(ret != tvERROR_NONE) {
@@ -486,7 +492,7 @@ namespace Plugin {
 	else {
             LOGINFO("Platform Init successful...\n");
         }
-
+#if 0
         tvVideoFormatCallbackData callbackData = {this,tvVideoFormatChangeHandler};
         ret = RegisterVideoFormatChangeCB(&callbackData);
         if(ret != tvERROR_NONE) {
@@ -533,14 +539,15 @@ namespace Plugin {
         // As we have source to picture mode mapping, get current source and
         // setting those picture mode
         initializePictureMode();
-
+#endif
         LOGINFO("Exit\n" );
     }
 
     void AVOutputTV::Deinitialize()
     {
        LOGINFO("Entry\n");
-
+	   LOGERR("#4066 %s %d Term called \n", __FUNCTION__,__LINE__);	
+#if 0
        tvError_t ret = tvERROR_NONE;
        ret = TvTerm();
 
@@ -550,7 +557,7 @@ namespace Plugin {
        else {
            LOGINFO("Platform De-Init successful... \n");
        }
-
+#endif
        LOGINFO("Exit\n");
     }
 
