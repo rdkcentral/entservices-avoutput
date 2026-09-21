@@ -216,47 +216,36 @@ namespace Plugin {
     }
 
 	//Event (COM-RPC: replaces dsHdmiStatusEventHandler IARM callback)
-    void AVOutputTV::DSHdmiInNotification::OnHDMIInEventStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort activePort, const bool isPresented)
+    void AVOutputTV::onHdmiInEventStatus(int activePort, bool isPresented)
     {
-        if(!AVOutputTV::instance) {
-	    return;
-	}
-
-        int hdmi_in_port = static_cast<int>(activePort);
-        bool hdmi_in_status = isPresented;
-            LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS  event	port: %d, started: %d", hdmi_in_port,hdmi_in_status);
-	    if (!hdmi_in_status) {
+        LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS  event	port: %d, started: %d", activePort, isPresented);
+	    if (!isPresented) {
 	        tvError_t ret = tvERROR_NONE;
-		AVOutputTV::instance->m_isDisabledHdmiIn4KZoom = false;
-	        LOGWARN("AVOutputPlugins: Hdmi streaming stopped here reapply the global zoom settings:%d here. m_isDisabledHdmiIn4KZoom: %d", AVOutputTV::instance->m_videoZoomMode, AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
-		ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
+		m_isDisabledHdmiIn4KZoom = false;
+	        LOGWARN("AVOutputPlugins: Hdmi streaming stopped here reapply the global zoom settings:%d here. m_isDisabledHdmiIn4KZoom: %d", m_videoZoomMode, m_isDisabledHdmiIn4KZoom);
+		ret = SetAspectRatio((tvDisplayMode_t)m_videoZoomMode);
 		if (ret != tvERROR_NONE) {
 		    LOGWARN("SetAspectRatio set Failed");
 		}
 	    }
 	    else {
-	        AVOutputTV::instance->m_isDisabledHdmiIn4KZoom = true;
-                LOGWARN("AVOutputPlugins: m_isDisabledHdmiIn4KZoom: %d", AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
+	        m_isDisabledHdmiIn4KZoom = true;
+                LOGWARN("AVOutputPlugins: m_isDisabledHdmiIn4KZoom: %d", m_isDisabledHdmiIn4KZoom);
 	}
     }
 	
     // COM-RPC: replaces dsHdmiVideoModeEventHandler IARM callback
-    void AVOutputTV::DSHdmiInNotification::OnHDMIInVideoModeUpdate(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution)
+    void AVOutputTV::onHdmiInVideoModeUpdate(int port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution)
     {
-        if(!AVOutputTV::instance) {
-	        return;
-	    }
-
-	    int hdmi_in_port = static_cast<int>(port);
-	    AVOutputTV::instance->m_currentHdmiInResoluton = static_cast<int>(videoPortResolution.pixelResolution);
-	    LOGWARN("AVOutputPlugins: Received HDMI_IN_VIDEO_MODE_UPDATE event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
-	    if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
+	    m_currentHdmiInResoluton = static_cast<int>(videoPortResolution.pixelResolution);
+	    LOGWARN("AVOutputPlugins: Received HDMI_IN_VIDEO_MODE_UPDATE event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
+	    if (m_isDisabledHdmiIn4KZoom) {
             tvError_t ret = tvERROR_NONE;
             // Mirror DS_IARM: below 4K (< dsVIDEO_PIXELRES_3840x2160) or MAX → apply zoom mode
-            if (AVOutputTV::instance->m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_3840X2160) ||
-                AVOutputTV::instance->m_currentHdmiInResoluton == static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_MAX)) {
-		        LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", AVOutputTV::instance->m_videoZoomMode);
-		        ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
+            if (m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_3840X2160) ||
+                m_currentHdmiInResoluton == static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_MAX)) {
+		        LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", m_videoZoomMode);
+		        ret = SetAspectRatio((tvDisplayMode_t)m_videoZoomMode);
 		    }
 	        else {
 		        LOGWARN("AVOutputPlugins: Setting auto zoom mode for 4K and above");
@@ -268,7 +257,7 @@ namespace Plugin {
             }
 	    }
 	    else {
-	        LOGWARN("AVOutputPlugins: %s: HdmiInput is not started yet. m_isDisabledHdmiIn4KZoom: %d", __FUNCTION__, AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
+	        LOGWARN("AVOutputPlugins: %s: HdmiInput is not started yet. m_isDisabledHdmiIn4KZoom: %d", __FUNCTION__, m_isDisabledHdmiIn4KZoom);
         }
     }
 

@@ -200,16 +200,21 @@ class AVOutputTV : public AVOutputBase, public DSHelper {
 		AVOutputTV& operator=(const AVOutputTV&) = delete;
 
         // COM-RPC: notification sink for HDMI-In events (replaces dsHdmiStatusEventHandler /
-        // dsHdmiVideoModeEventHandler IARM callbacks)
+        // dsHdmiVideoModeEventHandler IARM callbacks). Thin trampoline only - actual handling
+        // lives on AVOutputTV itself (onHdmiInEventStatus/onHdmiInVideoModeUpdate below).
         class DSHdmiInNotification : public Exchange::IDeviceSettingsHDMIIn::INotification {
         public:
             explicit DSHdmiInNotification(AVOutputTV& parent) : _parent(parent) {}
             ~DSHdmiInNotification() override = default;
 
             // Called when HDMI-In presentation state changes (maps to dsHdmiStatusEventHandler)
-            void OnHDMIInEventStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort activePort, const bool isPresented) override;
+            void OnHDMIInEventStatus(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort activePort, const bool isPresented) override {
+                _parent.onHdmiInEventStatus(static_cast<int>(activePort), isPresented);
+            }
             // Called when HDMI-In video mode (resolution) changes (maps to dsHdmiVideoModeEventHandler)
-            void OnHDMIInVideoModeUpdate(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution) override;
+            void OnHDMIInVideoModeUpdate(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution) override {
+                _parent.onHdmiInVideoModeUpdate(static_cast<int>(port), videoPortResolution);
+            }
 
             // Remaining IDeviceSettingsHDMIIn::INotification overrides (unused, empty)
             void OnHDMIInEventHotPlug(const Exchange::IDeviceSettingsHDMIIn::HDMIInPort port, const bool isConnected) override {}
@@ -754,8 +759,10 @@ class AVOutputTV : public AVOutputBase, public DSHelper {
 		void NotifyVideoSourceChange(tvVideoSrcType_t source);
 
 		// COM-RPC: dsHdmiStatusEventHandler / dsHdmiVideoModeEventHandler replaced by
-		// DSHdmiInNotification::OnHDMIInEventStatus / OnHDMIInVideoModeUpdate above
+		// onHdmiInEventStatus / onHdmiInVideoModeUpdate below (invoked from DSHdmiInNotification)
 		// dsHdmiEventHandler removed (was never defined; took IARM_EventId_t which is unavailable here)
+		void onHdmiInEventStatus(int activePort, bool isPresented);
+		void onHdmiInVideoModeUpdate(int port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution);
 		
 		void InitPlugin(PluginHost::IShell* service);
 		void DeinitPlugin();
