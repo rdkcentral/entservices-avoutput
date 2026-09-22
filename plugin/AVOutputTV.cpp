@@ -514,7 +514,7 @@ namespace Plugin {
         LOGINFO("Exit\n" );
     }
 
-    void AVOutputTV::Deinitialize()
+    void AVOutputTV::DeinitPlugin()
     {
        LOGINFO("Entry\n");
 
