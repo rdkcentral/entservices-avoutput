@@ -18,6 +18,7 @@
 */
 
 #include <string>
+#include <chrono>
 #include "AVOutputTV.h"
 #include "UtilsIarm.h"
 #include "rfcapi.h"
@@ -1468,6 +1469,12 @@ namespace Plugin {
                             case PQ_PARAM_CMS_LUMA_CYAN:               
                             case PQ_PARAM_CMS_LUMA_MAGENTA:
                             {
+                                // Aggregate per-tuple SaveCMS timings and emit a single summary record
+                                // instead of one synchronous LOGINFO (fprintf+fflush) per tuple.
+                                int64_t saveCmsTotalUs = 0;
+                                int64_t saveCmsMaxUs = 0;
+                                uint32_t saveCmsCalls = 0;
+
                                 for( int componentType : values.componentValues ) {
                                     paramIndex.componentIndex = componentType;
                                     for( int colorType : values.colorValues ) {
@@ -1488,13 +1495,27 @@ namespace Plugin {
 			                                }
                                             level=value;
                                         }
-                                        ret |= SaveCMS((tvVideoSrcType_t)paramIndex.sourceIndex, paramIndex.pqmodeIndex,(tvVideoFormatType_t)paramIndex.formatIndex,(tvComponentType_t)paramIndex.componentIndex,(tvDataComponentColor_t)paramIndex.colorIndex,level);
+                                        {
+                                            const auto halStart = std::chrono::steady_clock::now();
+                                            ret |= SaveCMS((tvVideoSrcType_t)paramIndex.sourceIndex, paramIndex.pqmodeIndex,(tvVideoFormatType_t)paramIndex.formatIndex,(tvComponentType_t)paramIndex.componentIndex,(tvDataComponentColor_t)paramIndex.colorIndex,level);
+                                            const int64_t halUs = std::chrono::duration_cast<std::chrono::microseconds>(
+                                                std::chrono::steady_clock::now() - halStart).count();
+                                            saveCmsTotalUs += halUs;
+                                            saveCmsCalls++;
+                                            if (halUs > saveCmsMaxUs) {
+                                                saveCmsMaxUs = halUs;
+                                            }
+                                        }
 
                                         if(set) {
                                             ret |= updateAVoutputTVParamToHAL(tr181ParamName,paramIndex,level,true);
                                         }
                                     }
                                 }
+
+                                LOGINFO("PROFILE CMS %s (legacy): saveCMSCalls=%u saveCMSTotal=%lldus saveCMSAvg=%lldus saveCMSMax=%lldus",
+                                    action.c_str(), saveCmsCalls, (long long)saveCmsTotalUs,
+                                    (long long)(saveCmsCalls ? saveCmsTotalUs / saveCmsCalls : 0), (long long)saveCmsMaxUs);
                                 break;
                             }
                             case PQ_PARAM_WB_GAIN_RED:
@@ -3906,6 +3927,8 @@ namespace Plugin {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
             return (int)tvERROR_GENERAL;
         }
+        LOGINFO("PROFILE %s %s: validContexts=%zu dispatch=%s", tr181ParamName.c_str(), action.c_str(),
+            validContexts.size(), (validContexts.size() == 1) ? "inline" : "queued");
         if (validContexts.size() == 1){
 
             return updateAVoutputTVParamV2Implementation(action, tr181ParamName, parameters, pqParamIndex, level);
@@ -3935,9 +3958,13 @@ namespace Plugin {
         const bool isReset = (action == "reset");
         const bool isSync = (action == "sync");
 
+        const auto ctxResolveStart = std::chrono::steady_clock::now();
         std::vector<tvConfigContext_t> validContexts = getValidContextsFromParameters(parameters, tr181ParamName);
         std::vector<std::string> colors, components;
 
+        LOGINFO("PROFILE %s %s: getValidContextsFromParameters took %lldus", tr181ParamName.c_str(), action.c_str(),
+            (long long)std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - ctxResolveStart).count());
         LOGINFO("%s: Number of validContexts = %zu", __FUNCTION__, validContexts.size());
 
         if (validContexts.empty()) {
@@ -3981,6 +4008,15 @@ namespace Plugin {
 
             if (components.size() == 1 && components[0] == "Global")
                 components = m_cmsComponentList;
+
+            const auto cmsLoopStart = std::chrono::steady_clock::now();
+            int64_t saveCmsTotalUs = 0;
+            int64_t saveCmsMaxUs = 0;
+            uint32_t saveCmsCalls = 0;
+
+            LOGINFO("PROFILE CMS %s: contexts=%zu colors=%zu components=%zu iterations=%zu",
+                action.c_str(), validContexts.size(), colors.size(), components.size(),
+                validContexts.size() * colors.size() * components.size());
 
             for (const auto& ctx : validContexts) {
                 for (const auto& colorStr : colors) {
@@ -4038,12 +4074,20 @@ namespace Plugin {
                                 continue;
                             }
                         }
+                        const auto halStart = std::chrono::steady_clock::now();
                         ret |= SaveCMS(static_cast<tvVideoSrcType_t>(paramIndex.sourceIndex),
                                     paramIndex.pqmodeIndex,
                                     static_cast<tvVideoFormatType_t>(paramIndex.formatIndex),
                                     static_cast<tvComponentType_t>(paramIndex.componentIndex),
                                     static_cast<tvDataComponentColor_t>(paramIndex.colorIndex),
                                     level);
+                        const int64_t halUs = std::chrono::duration_cast<std::chrono::microseconds>(
+                            std::chrono::steady_clock::now() - halStart).count();
+                        saveCmsTotalUs += halUs;
+                        saveCmsCalls++;
+                        if (halUs > saveCmsMaxUs) {
+                            saveCmsMaxUs = halUs;
+                        }
 
                         if (isSet) {
                             ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, level, true);
@@ -4051,6 +4095,12 @@ namespace Plugin {
                     }
                 }
             }
+            const int64_t cmsLoopUs = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - cmsLoopStart).count();
+            LOGINFO("PROFILE CMS %s: loopTotal=%lldus saveCMSCalls=%u saveCMSTotal=%lldus saveCMSAvg=%lldus saveCMSMax=%lldus pluginOverhead=%lldus",
+                action.c_str(), (long long)cmsLoopUs, saveCmsCalls, (long long)saveCmsTotalUs,
+                (long long)(saveCmsCalls ? saveCmsTotalUs / saveCmsCalls : 0), (long long)saveCmsMaxUs,
+                (long long)(cmsLoopUs - saveCmsTotalUs));
             LOGINFO("Exit: %s, Return Value: %d", __FUNCTION__, ret);
             return (ret < 0) ? -1 : 0;
         }

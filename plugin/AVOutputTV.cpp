@@ -18,6 +18,7 @@
 */
 
 #include <string>
+#include <chrono>
 #include "AVOutputTV.h"
 #include "UtilsIarm.h"
 #include "rfcapi.h"
@@ -5312,6 +5313,12 @@ namespace Plugin {
     uint32_t AVOutputTV::resetCMS(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
+        const auto resetCmsStart = std::chrono::steady_clock::now();
+        auto logResetCmsElapsed = [&resetCmsStart](const char* stage) {
+            LOGINFO("PROFILE CMS reset: %s elapsed=%lldus", stage,
+                (long long)std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - resetCmsStart).count());
+        };
         if(m_cmsStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
             capDetails_t inputInfo;
@@ -5407,6 +5414,7 @@ namespace Plugin {
             else  {
                 int cms = 0;
                 retVal= updateAVoutputTVParam("reset","CMS",inputInfo,PQ_PARAM_CMS_SATURATION_RED,cms);
+                logResetCmsElapsed("legacy updateAVoutputTVParam done");
                 if(retVal != 0 ) {
                     LOGERR("%s : Failed to Save CMS %s/%s to ssm_data\n",__FUNCTION__,inputInfo.component.c_str(),inputInfo.color.c_str() );
                     returnResponse(false);
@@ -5418,7 +5426,11 @@ namespace Plugin {
         {
             if (isSetRequiredForParam(parameters, "CMS")) {
                 LOGINFO("Proceed with SetCMSState \n");
+                const auto cmsStateStart = std::chrono::steady_clock::now();
                 tvError_t ret = SetCMSState(false);
+                LOGINFO("PROFILE CMS reset: SetCMSState(false) took %lldus",
+                    (long long)std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - cmsStateStart).count());
                 if(ret != tvERROR_NONE) {
                     LOGWARN("CMS disable failed\n");
                     returnResponse(false);
@@ -5426,6 +5438,7 @@ namespace Plugin {
             }
             int cms = 0;
             int retVal= updateAVoutputTVParamV2("reset","CMS",parameters,PQ_PARAM_CMS,cms);
+            logResetCmsElapsed("updateAVoutputTVParamV2 returned");
             if(retVal != 0 ) {
                 LOGERR("%s : Failed to Save CMS to ssm_data\n",__FUNCTION__);
                 returnResponse(false);
