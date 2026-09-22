@@ -28,6 +28,8 @@ set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
 set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput plugin")
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Helpers REQUIRED)
 
