@@ -1469,6 +1469,12 @@ namespace Plugin {
                             case PQ_PARAM_CMS_LUMA_CYAN:               
                             case PQ_PARAM_CMS_LUMA_MAGENTA:
                             {
+                                // Aggregate per-tuple SaveCMS timings and emit a single summary record
+                                // instead of one synchronous LOGINFO (fprintf+fflush) per tuple.
+                                int64_t saveCmsTotalUs = 0;
+                                int64_t saveCmsMaxUs = 0;
+                                uint32_t saveCmsCalls = 0;
+
                                 for( int componentType : values.componentValues ) {
                                     paramIndex.componentIndex = componentType;
                                     for( int colorType : values.colorValues ) {
@@ -1492,11 +1498,13 @@ namespace Plugin {
                                         {
                                             const auto halStart = std::chrono::steady_clock::now();
                                             ret |= SaveCMS((tvVideoSrcType_t)paramIndex.sourceIndex, paramIndex.pqmodeIndex,(tvVideoFormatType_t)paramIndex.formatIndex,(tvComponentType_t)paramIndex.componentIndex,(tvDataComponentColor_t)paramIndex.colorIndex,level);
-                                            LOGINFO("PROFILE CMS %s (legacy): SaveCMS src=%d pq=%d fmt=%d comp=%d color=%d took %lldus",
-                                                action.c_str(), paramIndex.sourceIndex, paramIndex.pqmodeIndex, paramIndex.formatIndex,
-                                                paramIndex.componentIndex, paramIndex.colorIndex,
-                                                (long long)std::chrono::duration_cast<std::chrono::microseconds>(
-                                                    std::chrono::steady_clock::now() - halStart).count());
+                                            const int64_t halUs = std::chrono::duration_cast<std::chrono::microseconds>(
+                                                std::chrono::steady_clock::now() - halStart).count();
+                                            saveCmsTotalUs += halUs;
+                                            saveCmsCalls++;
+                                            if (halUs > saveCmsMaxUs) {
+                                                saveCmsMaxUs = halUs;
+                                            }
                                         }
 
                                         if(set) {
@@ -1504,6 +1512,10 @@ namespace Plugin {
                                         }
                                     }
                                 }
+
+                                LOGINFO("PROFILE CMS %s (legacy): saveCMSCalls=%u saveCMSTotal=%lldus saveCMSAvg=%lldus saveCMSMax=%lldus",
+                                    action.c_str(), saveCmsCalls, (long long)saveCmsTotalUs,
+                                    (long long)(saveCmsCalls ? saveCmsTotalUs / saveCmsCalls : 0), (long long)saveCmsMaxUs);
                                 break;
                             }
                             case PQ_PARAM_WB_GAIN_RED:
