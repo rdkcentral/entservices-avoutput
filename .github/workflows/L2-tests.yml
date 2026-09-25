@@ -219,6 +219,7 @@ jobs:
           rdk/iarmmgrs-hal/sysMgr.h
           rdk/iarmbus/iarmUtil.h
           rdk/halif/deepsleep-manager/deepSleepMgr.h
+          systemservices/secure_wrapper.h
           rfcapi.h
           rbus.h
           tr181api.h
@@ -377,6 +378,9 @@ jobs:
           -I $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks
           -I $GITHUB_WORKSPACE/entservices-helpers/helpers
           -I $GITHUB_WORKSPACE/install/usr/include
+          -I /usr/include/gstreamer-1.0
+          -I /usr/include/glib-2.0
+          -I /usr/lib/x86_64-linux-gnu/glib-2.0/include
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Iarm.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Rfc.h
           -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/RBus.h
@@ -520,7 +524,6 @@ jobs:
           -DEXCEPTIONS_ENABLE=ON
           -fprofile-arcs
           -ftest-coverage
-          -DUSE_THUNDER_R4=ON
           -DTHUNDER_VERSION=4
           -DTHUNDER_VERSION_MAJOR=4
           -DTHUNDER_VERSION_MINOR=4
