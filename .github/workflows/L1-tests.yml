@@ -224,9 +224,6 @@ jobs:
           rdk/halif/deepsleep-manager/deepSleepMgr.h
           rfcapi.h
           rbus.h
-          dsRpc.h
-          dsDisplay.h
-          list.hpp
           telemetry_busmessage_sender.h
           tr181api.h
           tvError.h
