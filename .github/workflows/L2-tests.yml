@@ -229,9 +229,6 @@ jobs:
           tvSettings.h
           tvSettingsExtODM.h
           tvSettingsODM.h
-          list.hpp
-          dsDisplay.h
-          dsRpc.h
           telemetry_busmessage_sender.h
 
       - name: Set clang toolchain
