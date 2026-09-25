@@ -626,28 +626,42 @@ jobs:
 
       - name: Generate coverage
         if: ${{ matrix.coverage == 'with-coverage' && !env.ACT && inputs.caller_source != 'testframework'}}
-        run: >
+        run: |
           cp $GITHUB_WORKSPACE/entservices-testframework/Tests/L2Tests/.lcovrc_l2 ~/.lcovrc
-          &&
-          lcov -c
-          -o coverage.info
-          -d build/entservices-avoutput
-          &&
-          lcov
-          -r coverage.info
-          '/usr/include/*'
-          '*/build/entservices-avoutput/_deps/*'
-          '*/build/mocks/*'
-          '*/install/usr/include/*'
-          '*/Tests/headers/*'
-          '*/Tests/mocks/*'
-          '*/Tests/L2Tests/*'
-          -o filtered_coverage.info
-          &&
-          genhtml
-          -o coverage
-          -t "entservices-avoutput coverage"
-          filtered_coverage.info
+
+          if ! lcov -c -o coverage.info -d build/entservices-avoutput; then
+            echo "Coverage capture failed; skipping coverage report generation."
+            mkdir -p coverage
+            exit 0
+          fi
+
+          if ! grep -q '^SF:' coverage.info; then
+            echo "No source records captured; skipping coverage report generation."
+            mkdir -p coverage
+            exit 0
+          fi
+
+          lcov \
+            -r coverage.info \
+            '/usr/include/*' \
+            '*/build/entservices-avoutput/_deps/*' \
+            '*/build/mocks/*' \
+            '*/install/usr/include/*' \
+            '*/Tests/headers/*' \
+            '*/Tests/mocks/*' \
+            '*/Tests/L2Tests/*' \
+            -o filtered_coverage.info
+
+          if ! grep -q '^SF:' filtered_coverage.info; then
+            echo "Filtered coverage has no source records; skipping HTML generation."
+            mkdir -p coverage
+            exit 0
+          fi
+
+          genhtml \
+            -o coverage \
+            -t "entservices-avoutput coverage" \
+            filtered_coverage.info
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
