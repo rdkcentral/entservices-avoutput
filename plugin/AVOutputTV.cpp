@@ -270,8 +270,6 @@ namespace Plugin {
         LOGINFO("CTOR\n");
         AVOutputTV::instance = this;
 
-        InitializeIARM();
-
         registerMethod("getBacklight", &AVOutputTV::getBacklight, this);
         registerMethod("setBacklight", &AVOutputTV::setBacklight, this);
         registerMethod("resetBacklight", &AVOutputTV::resetBacklight, this);
@@ -444,7 +442,6 @@ namespace Plugin {
         if (workerThread.joinable()) {
             workerThread.join();
         }
-        DeinitializeIARM();	
         DSHelper::Close();
     }
 
@@ -6733,18 +6730,6 @@ namespace Plugin {
         }
 
         returnResponse(true);
-    }
-
-    void AVOutputTV::InitializeIARM()
-    {
-        AVOutputBase::InitializeIARM();
-        // COM-RPC: HDMI-In event registration moved to OnDeviceSettingsActivated()
-    }
-
-    void AVOutputTV::DeinitializeIARM()
-    {
-        AVOutputBase::DeinitializeIARM();
-        // COM-RPC: HDMI-In event deregistration moved to OnDeviceSettingsDeactivated()
     }
 
     void AVOutputTV::OnDeviceSettingsActivated()
