@@ -770,8 +770,6 @@ class AVOutputTV : public AVOutputBase, public DSHelper {
 		
 		void InitPlugin(PluginHost::IShell* service);
 		void DeinitPlugin();
-		void InitializeIARM();
-		void DeinitializeIARM();
 
         // COM-RPC: DSHelper callbacks
         void OnDeviceSettingsActivated() override;
