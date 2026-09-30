@@ -215,80 +215,60 @@ namespace Plugin {
         sendNotify("onVideoSourceChanged", response);
     }
 
-
-	//Event
-    void AVOutputTV::dsHdmiStatusEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
+	//Event (COM-RPC: replaces dsHdmiStatusEventHandler IARM callback)
+    void AVOutputTV::onHdmiInEventStatus(int activePort, bool isPresented)
     {
-        if(!AVOutputTV::instance) {
-	    return;
-	}
-
-	if (IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS == eventId) {
-            IARM_Bus_DSMgr_EventData_t *eventData = (IARM_Bus_DSMgr_EventData_t *)data;
-            int hdmi_in_port = eventData->data.hdmi_in_status.port;
-            bool hdmi_in_status = eventData->data.hdmi_in_status.isPresented;
-            LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS  event	port: %d, started: %d", hdmi_in_port,hdmi_in_status);
-	    if (!hdmi_in_status) {
+        LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS  event	port: %d, started: %d", activePort, isPresented);
+	    if (!isPresented) {
 	        tvError_t ret = tvERROR_NONE;
-		AVOutputTV::instance->m_isDisabledHdmiIn4KZoom = false;
-	        LOGWARN("AVOutputPlugins: Hdmi streaming stopped here reapply the global zoom settings:%d here. m_isDisabledHdmiIn4KZoom: %d", AVOutputTV::instance->m_videoZoomMode, AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
-		ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
+		m_isDisabledHdmiIn4KZoom = false;
+	        LOGWARN("AVOutputPlugins: Hdmi streaming stopped here reapply the global zoom settings:%d here. m_isDisabledHdmiIn4KZoom: %d", m_videoZoomMode, m_isDisabledHdmiIn4KZoom);
+		ret = SetAspectRatio((tvDisplayMode_t)m_videoZoomMode);
 		if (ret != tvERROR_NONE) {
 		    LOGWARN("SetAspectRatio set Failed");
 		}
 	    }
 	    else {
-	        AVOutputTV::instance->m_isDisabledHdmiIn4KZoom = true;
-                LOGWARN("AVOutputPlugins: m_isDisabledHdmiIn4KZoom: %d", AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
-            }
+	        m_isDisabledHdmiIn4KZoom = true;
+                LOGWARN("AVOutputPlugins: m_isDisabledHdmiIn4KZoom: %d", m_isDisabledHdmiIn4KZoom);
 	}
     }
 	
-    void AVOutputTV::dsHdmiVideoModeEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
+    // COM-RPC: replaces dsHdmiVideoModeEventHandler IARM callback
+    void AVOutputTV::onHdmiInVideoModeUpdate(int port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution)
     {
-        if(!AVOutputTV::instance) {
-	    return;
-	}
-
-	if (IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE == eventId) {
-	    IARM_Bus_DSMgr_EventData_t *eventData = (IARM_Bus_DSMgr_EventData_t *)data;
-	    int hdmi_in_port = eventData->data.hdmi_in_video_mode.port;
-	    dsVideoPortResolution_t resolution;
-	    AVOutputTV::instance->m_currentHdmiInResoluton = eventData->data.hdmi_in_video_mode.resolution.pixelResolution;
-	    resolution.pixelResolution =  eventData->data.hdmi_in_video_mode.resolution.pixelResolution;
-	    resolution.interlaced =  eventData->data.hdmi_in_video_mode.resolution.interlaced;
-	    resolution.frameRate =  eventData->data.hdmi_in_video_mode.resolution.frameRate;
-	    LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE	event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port,resolution.pixelResolution, resolution.interlaced, resolution.frameRate);
-	    if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
-                tvError_t ret = tvERROR_NONE;
-		if (AVOutputTV::instance->m_currentHdmiInResoluton<dsVIDEO_PIXELRES_3840x2160 ||
-				 (dsVIDEO_PIXELRES_MAX == AVOutputTV::instance->m_currentHdmiInResoluton)) {
-		    LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", AVOutputTV::instance->m_videoZoomMode);
-		    ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
-		}
+	    m_currentHdmiInResoluton = static_cast<int>(videoPortResolution.pixelResolution);
+	    LOGWARN("AVOutputPlugins: Received HDMI_IN_VIDEO_MODE_UPDATE event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
+	    if (m_isDisabledHdmiIn4KZoom) {
+            tvError_t ret = tvERROR_NONE;
+            // Mirror DS_IARM: below 4K (< dsVIDEO_PIXELRES_3840x2160) or MAX → apply zoom mode
+            if (m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_3840X2160) ||
+                m_currentHdmiInResoluton == static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_MAX)) {
+		        LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", m_videoZoomMode);
+		        ret = SetAspectRatio((tvDisplayMode_t)m_videoZoomMode);
+		    }
 	        else {
-		    LOGWARN("AVOutputPlugins: Setting auto zoom mode for 4K and above");
-		    ret = SetAspectRatio(tvDisplayMode_AUTO);
+		        LOGWARN("AVOutputPlugins: Setting auto zoom mode for 4K and above");
+		        ret = SetAspectRatio(tvDisplayMode_AUTO);
 	        }
-		if (ret != tvERROR_NONE) {
-		    LOGWARN("SetAspectRatio set Failed");
-		}
-	    } 
-	    else {
-	        LOGWARN("AVOutputPlugins: %s: HdmiInput is not started yet. m_isDisabledHdmiIn4KZoom: %d", __FUNCTION__, AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
+
+            if (ret != tvERROR_NONE) {
+                LOGWARN("SetAspectRatio set Failed");
+            }
 	    }
+	    else {
+	        LOGWARN("AVOutputPlugins: %s: HdmiInput is not started yet. m_isDisabledHdmiIn4KZoom: %d", __FUNCTION__, m_isDisabledHdmiIn4KZoom);
         }
     }
 
-    AVOutputTV::AVOutputTV(): m_currentHdmiInResoluton (dsVIDEO_PIXELRES_1920x1080)
+    AVOutputTV::AVOutputTV(): _DSHdmiInNotification(*this)
+                            , m_currentHdmiInResoluton (static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_1920X1080))
                             , m_videoZoomMode (tvDisplayMode_NORMAL)
                             , m_isDisabledHdmiIn4KZoom (false)
 	                    , rfc_caller_id()
     {
         LOGINFO("CTOR\n");
         AVOutputTV::instance = this;
-
-        InitializeIARM();
 
         registerMethod("getBacklight", &AVOutputTV::getBacklight, this);
         registerMethod("setBacklight", &AVOutputTV::setBacklight, this);
@@ -453,10 +433,10 @@ namespace Plugin {
         if (workerThread.joinable()) {
             workerThread.join();
         }
-        DeinitializeIARM();	
+        DSHelper::Close();
     }
 
-    void AVOutputTV::Initialize()
+    void AVOutputTV::InitPlugin(PluginHost::IShell* service)
     {
         LOGINFO("Entry\n");
        
@@ -467,15 +447,9 @@ namespace Plugin {
         
         getDynamicAutoLatencyConfig();
 
-        try {
-            dsVideoPortResolution_t vidResolution;
-            device::HdmiInput::getInstance().getCurrentVideoModeObj(vidResolution);
-            m_currentHdmiInResoluton = vidResolution.pixelResolution;
-        } 
-	catch (...)
-	{
-            LOGWARN("AVOutputPlugins: getCurrentVideoModeObj failed");
-        }
+        // COM-RPC: open link to entservices-devicesettings; current HDMI-In mode
+        // is fetched in OnDeviceSettingsActivated() once the link is established
+        DSHelper::Open(service, "AVOutput");
         LOGWARN("AVOutputPlugins: AVOutput Initialize m_currentHdmiInResoluton:%d m_mod:%d", m_currentHdmiInResoluton, m_videoZoomMode);
 
         ret = TvInit();
@@ -537,7 +511,7 @@ namespace Plugin {
         LOGINFO("Exit\n" );
     }
 
-    void AVOutputTV::Deinitialize()
+    void AVOutputTV::DeinitPlugin()
     {
        LOGINFO("Entry\n");
 
@@ -6606,27 +6580,39 @@ namespace Plugin {
         returnResponse(true);
     }
 
-    void AVOutputTV::InitializeIARM()
+    void AVOutputTV::OnDeviceSettingsActivated()
     {
-        AVOutputBase::InitializeIARM();
-#if !defined (HDMIIN_4K_ZOOM)
-        if (Utils::IARM::init()) {
-            IARM_Result_t res;
-            IARM_CHECK( IARM_Bus_RegisterEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS, dsHdmiStatusEventHandler) );
-            IARM_CHECK( IARM_Bus_RegisterEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE, dsHdmiVideoModeEventHandler) );
+#if !defined(HDMIIN_4K_ZOOM)
+        auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+        if (hdmiIn != nullptr) {
+            Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution res{};
+            Core::hresult comResult = hdmiIn->GetHDMIVideoMode(res);
+            if (comResult == Core::ERROR_NONE) {
+                m_currentHdmiInResoluton = static_cast<int>(res.pixelResolution);
+                LOGINFO("Current HDMI video mode: %d", m_currentHdmiInResoluton);
+            }
+            else {
+                LOGERR("Failed to get HDMI video mode, error: %d", static_cast<int>(comResult));
+            }
+            hdmiIn->Register("AVOutput", &_DSHdmiInNotification);
+            hdmiIn->Release();
+        }
+        else {
+            LOGERR("Failed to acquire IDeviceSettingsHDMIIn interface");
         }
 #endif
     }
 
-    void AVOutputTV::DeinitializeIARM()
+    void AVOutputTV::OnDeviceSettingsDeactivated()
     {
-        AVOutputBase::DeinitializeIARM();
-#if !defined (HDMIIN_4K_ZOOM)
-        if (Utils::IARM::isConnected())
-        {
-            IARM_Result_t res;
-            IARM_CHECK( IARM_Bus_RemoveEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS, dsHdmiStatusEventHandler) );
-            IARM_CHECK( IARM_Bus_RemoveEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE, dsHdmiVideoModeEventHandler) );
+#if !defined(HDMIIN_4K_ZOOM)
+        auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+        if (hdmiIn != nullptr) {
+            hdmiIn->Unregister(&_DSHdmiInNotification);
+            hdmiIn->Release();
+        }
+        else {
+            LOGERR("Failed to acquire IDeviceSettingsHDMIIn interface");
         }
 #endif
     }
