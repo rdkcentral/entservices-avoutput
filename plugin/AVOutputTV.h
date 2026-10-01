@@ -55,9 +55,7 @@
 #define RFC_BUFF_MAX 100
 #define BACKLIGHT_RAW_VALUE_MAX    (255)
 #define AVOUTPUT_RFC_CALLERID        "AVOutput"
-#define AVOUTPUT_RFC_CALLERID_OVERRIDE        "../../opt/panel/AVOutput"
-#define AVOUTPUT_OVERRIDE_PATH       "/opt/panel/AVOutput.ini"
-#define AVOUTPUT_CONVERTERBOARD_PANELID     "0_0_00"
+#define AVOUTPUT_TR181_LOCALSTORE_PATH "/opt/persistent/tr181localstore.ini"
 #define AVOUTPUT_GENERIC_STRING_RFC_PARAM    "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput."
 #define AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput.AutoBacklightMode"
 #define AVOUTPUT_DOLBYVISIONMODE_RFC_PARAM      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput.DolbyVisionMode"
@@ -370,8 +368,6 @@ class AVOutputTV : public AVOutputBase {
 		int validateWBParameter(std::string param,std::string control,int inputValue);
 		int validateCMSParameter(std::string component,int inputValue);
 
-                /* AVoutput ini file default entries */
-		void locatePQSettingsFile(void);
 		/* Intialise the last set picture mode at bootup */
 		tvError_t initializePictureMode();		
 		
@@ -421,7 +417,6 @@ class AVOutputTV : public AVOutputBase {
 		
 		tvDataComponentColor_t getComponentColorEnum(std::string colorName);
 		tvError_t getParamsCaps(const std::string& param, capVectors_t &vecInfo);
-		int GetPanelID(char *panelid);
 		int ReadCapablitiesFromConf(std::string param, capDetails_t& info);
 
 		void getDimmingModeStringFromEnum(int value, std::string &toStore);
