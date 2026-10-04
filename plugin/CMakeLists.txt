@@ -20,8 +20,10 @@
 
 set(PLUGIN_NAME AVOutput)
 
+# This should never triggered after the initial find_package(Thunder/WPEFramework) call in the root CMakeLists.txt
 if(NOT DEFINED NAMESPACE OR NAMESPACE STREQUAL "")
     set(NAMESPACE "Thunder" CACHE STRING "Thunder namespace")
+    message(AUTHOR_WARNING "NAMESPACE not defined, but this should be always specified by find_package(Thunder/WPEFramework). Defaulting to 'Thunder'.")
 endif()
 
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
@@ -90,6 +92,6 @@ target_link_libraries(${MODULE_NAME}
 
 
 install(TARGETS ${MODULE_NAME} 
-    DESTINATION lib/Thunder/plugins)
+    DESTINATION lib/${NAMESPACE}/plugins)
 
 write_config(${PLUGIN_NAME})

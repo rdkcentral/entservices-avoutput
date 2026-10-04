@@ -15,15 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.15)
 
 project(entservices-avoutput)
 
-set(NAMESPACE "Thunder")
+find_package(Thunder QUIET)
 
-find_package(Thunder REQUIRED)
+if(NOT Thunder_FOUND)
+    find_package(WPEFramework QUIET)
+    if(NOT WPEFramework_FOUND)
+        message(FATAL_ERROR "Neither Thunder nor WPEFramework found in sysroot")
+    endif()
+    add_compile_definitions(Thunder=WPEFramework)
+endif()
 
-find_package(ThunderPlugins REQUIRED)
+find_package(${NAMESPACE}Plugins REQUIRED)
 
 if(RDK_SERVICE_L2_TEST)
    add_subdirectory(Tests/L2Tests)
