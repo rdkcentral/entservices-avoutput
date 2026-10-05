@@ -394,46 +394,55 @@ namespace Plugin {
         registerMethod("getCMSCapsV2", &AVOutputTV::getCMSCapsV2, this);
         registerMethod("get2PointWBCapsV2", &AVOutputTV::get2PointWBCapsV2, this);
         registerMethod("getSDRGammaCaps", &AVOutputTV::getSDRGammaCaps, this);
+        registerMethod("getSDRGammaCapsV2", &AVOutputTV::getSDRGammaCapsV2, this);
         registerMethod("getSDRGamma", &AVOutputTV::getSDRGamma, this);
         registerMethod("setSDRGamma", &AVOutputTV::setSDRGamma, this);
         registerMethod("resetSDRGamma", &AVOutputTV::resetSDRGamma, this);
 
         registerMethod("getPrecisionDetailCaps", &AVOutputTV::getPrecisionDetailCaps, this);
+        registerMethod("getPrecisionDetailCapsV2", &AVOutputTV::getPrecisionDetailCapsV2, this);
         registerMethod("getPrecisionDetail", &AVOutputTV::getPrecisionDetail, this);
         registerMethod("setPrecisionDetail", &AVOutputTV::setPrecisionDetail, this);
         registerMethod("resetPrecisionDetail", &AVOutputTV::resetPrecisionDetail, this);
 
         registerMethod("getLocalContrastEnhancementCaps", &AVOutputTV::getLocalContrastEnhancementCaps, this);
+        registerMethod("getLocalContrastEnhancementCapsV2", &AVOutputTV::getLocalContrastEnhancementCapsV2, this);
         registerMethod("getLocalContrastEnhancement", &AVOutputTV::getLocalContrastEnhancement, this);
         registerMethod("setLocalContrastEnhancement", &AVOutputTV::setLocalContrastEnhancement, this);
         registerMethod("resetLocalContrastEnhancement", &AVOutputTV::resetLocalContrastEnhancement, this);
 
         registerMethod("getMPEGNoiseReductionCaps", &AVOutputTV::getMPEGNoiseReductionCaps, this);
+        registerMethod("getMPEGNoiseReductionCapsV2", &AVOutputTV::getMPEGNoiseReductionCapsV2, this);
         registerMethod("getMPEGNoiseReduction", &AVOutputTV::getMPEGNoiseReduction, this);
         registerMethod("setMPEGNoiseReduction", &AVOutputTV::setMPEGNoiseReduction, this);
         registerMethod("resetMPEGNoiseReduction", &AVOutputTV::resetMPEGNoiseReduction, this);
 
         registerMethod("getDigitalNoiseReductionCaps", &AVOutputTV::getDigitalNoiseReductionCaps, this);
+        registerMethod("getDigitalNoiseReductionCapsV2", &AVOutputTV::getDigitalNoiseReductionCapsV2, this);
         registerMethod("getDigitalNoiseReduction", &AVOutputTV::getDigitalNoiseReduction, this);
         registerMethod("setDigitalNoiseReduction", &AVOutputTV::setDigitalNoiseReduction, this);
         registerMethod("resetDigitalNoiseReduction", &AVOutputTV::resetDigitalNoiseReduction, this);
 
         registerMethod("getMEMCCaps", &AVOutputTV::getMEMCCaps, this);
+        registerMethod("getMEMCCapsV2", &AVOutputTV::getMEMCCapsV2, this);
         registerMethod("getMEMC", &AVOutputTV::getMEMC, this);
         registerMethod("setMEMC", &AVOutputTV::setMEMC, this);
         registerMethod("resetMEMC", &AVOutputTV::resetMEMC, this);
 
         registerMethod("getAISuperResolutionCaps", &AVOutputTV::getAISuperResolutionCaps, this);
+        registerMethod("getAISuperResolutionCapsV2", &AVOutputTV::getAISuperResolutionCapsV2, this);
         registerMethod("getAISuperResolution", &AVOutputTV::getAISuperResolution, this);
         registerMethod("setAISuperResolution", &AVOutputTV::setAISuperResolution, this);
         registerMethod("resetAISuperResolution", &AVOutputTV::resetAISuperResolution, this);
 
         registerMethod("getMultiPointWBCaps", &AVOutputTV::getMultiPointWBCaps, this);
+        registerMethod("getMultiPointWBCapsV2", &AVOutputTV::getMultiPointWBCapsV2, this);
 
         registerMethod("getBacklightDimmingLevel", &AVOutputTV::getBacklightDimmingLevel, this);
         registerMethod("setBacklightDimmingLevel", &AVOutputTV::setBacklightDimmingLevel, this);
         registerMethod("resetBacklightDimmingLevel", &AVOutputTV::resetBacklightDimmingLevel, this);
         registerMethod("getBacklightDimmingLevelCaps", &AVOutputTV::getBacklightDimmingLevelCaps, this); 
+        registerMethod("getBacklightDimmingLevelCapsV2", &AVOutputTV::getBacklightDimmingLevelCapsV2, this);
 
         // Start worker thread for non-blocking updates
         workerThread = std::thread(&AVOutputTV::paramUpdateWorker, this);
@@ -935,42 +944,62 @@ namespace Plugin {
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getPrecisionDetailCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getPrecisionDetailCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_precision) {
         return GetPrecisionDetailCaps(max_precision, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getLocalContrastEnhancementCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getPrecisionDetailCaps(const JsonObject& parameters, JsonObject& response) {
+        return getPrecisionDetailCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getLocalContrastEnhancementCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetLocalContrastEnhancementCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getMPEGNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getLocalContrastEnhancementCaps(const JsonObject& parameters, JsonObject& response) {
+        return getLocalContrastEnhancementCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMPEGNoiseReductionCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetMPEGNoiseReductionCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getDigitalNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getMPEGNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+        return getMPEGNoiseReductionCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getDigitalNoiseReductionCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetDigitalNoiseReductionCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getAISuperResolutionCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getDigitalNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+        return getDigitalNoiseReductionCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getAISuperResolutionCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetAISuperResolutionCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getMultiPointWBCaps(const JsonObject& parameters, JsonObject& response)
+    uint32_t AVOutputTV::getAISuperResolutionCaps(const JsonObject& parameters, JsonObject& response) {
+        return getAISuperResolutionCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMultiPointWBCapsV2(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
 
@@ -1012,11 +1041,20 @@ namespace Plugin {
         returnResponse(true);
     }
 
-    uint32_t AVOutputTV::getMEMCCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getMultiPointWBCaps(const JsonObject& parameters, JsonObject& response)
+    {
+        return getMultiPointWBCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMEMCCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
             return GetMEMCCaps(max_val, context_caps);
         },
         parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMEMCCaps(const JsonObject& parameters, JsonObject& response) {
+        return getMEMCCapsV2(parameters, response);
     }
 
     uint32_t AVOutputTV::getLowLatencyStateCapsV2(const JsonObject& parameters, JsonObject& response) {
@@ -1026,11 +1064,15 @@ namespace Plugin {
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getBacklightDimmingLevelCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
             return GetBacklightDimmingLevelCaps(max_val, context_caps);
         },
         parameters, response);
+    }
+
+    uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
+        return getBacklightDimmingLevelCapsV2(parameters, response);
     }
 
     // Forward lookup: string → enum
@@ -1113,7 +1155,7 @@ namespace Plugin {
         returnResponse(true);
     }
 
-    uint32_t AVOutputTV::getSDRGammaCaps(const JsonObject& parameters, JsonObject& response)
+    uint32_t AVOutputTV::getSDRGammaCapsV2(const JsonObject& parameters, JsonObject& response)
     {
         tvSdrGamma_t* sdr_gamma = nullptr;
         size_t num_sdr_gamma = 0;
@@ -1146,6 +1188,11 @@ namespace Plugin {
         response["context"] = parseContextCaps(context_caps);
 
         returnResponse(true);
+    }
+
+    uint32_t AVOutputTV::getSDRGammaCaps(const JsonObject& parameters, JsonObject& response)
+    {
+        return getSDRGammaCapsV2(parameters, response);
     }
 
     uint32_t AVOutputTV::getBacklightDimmingModeCapsV2(const JsonObject& parameters, JsonObject& response)

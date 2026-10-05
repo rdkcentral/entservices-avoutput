@@ -156,41 +156,64 @@ AVOutput interface methods:
 | [get2PointWBCapsV2](#get2PointWBCapsV2) | Gets 2-point white balance ranges, controls, colors and context map |
 | [getDolbyVisionCalibrationCaps](#getDolbyVisionCalibrationCaps) | Gets Dolby Vision calibration capability status |
 | [getSDRGammaCaps](#getSDRGammaCaps) | Gets SDR gamma options and context map |
+| [getSDRGammaCapsV2](#getSDRGammaCapsV2) | Gets SDR gamma options and context map (versioned context API) |
 | [getSDRGamma](#getSDRGamma) | Gets SDR gamma value for the requested/current context |
 | [setSDRGamma](#setSDRGamma) | Sets SDR gamma value for the requested/current context |
 | [resetSDRGamma](#resetSDRGamma) | Resets SDR gamma to default for the requested/current context |
 | [getPrecisionDetailCaps](#getPrecisionDetailCaps) | Gets precision detail capability range and context map |
+| [getPrecisionDetailCapsV2](#getPrecisionDetailCapsV2) | Gets precision detail capability range and context map (versioned context API) |
 | [getPrecisionDetail](#getPrecisionDetail) | Gets precision detail value for the requested/current context |
 | [setPrecisionDetail](#setPrecisionDetail) | Sets precision detail value for the requested/current context |
 | [resetPrecisionDetail](#resetPrecisionDetail) | Resets precision detail to default for the requested/current context |
 | [getLocalContrastEnhancementCaps](#getLocalContrastEnhancementCaps) | Gets local contrast enhancement capability range and context map |
+| [getLocalContrastEnhancementCapsV2](#getLocalContrastEnhancementCapsV2) | Gets local contrast enhancement capability range and context map (versioned context API) |
 | [getLocalContrastEnhancement](#getLocalContrastEnhancement) | Gets local contrast enhancement value for the requested/current context |
 | [setLocalContrastEnhancement](#setLocalContrastEnhancement) | Sets local contrast enhancement value for the requested/current context |
 | [resetLocalContrastEnhancement](#resetLocalContrastEnhancement) | Resets local contrast enhancement to default for the requested/current context |
 | [getMPEGNoiseReductionCaps](#getMPEGNoiseReductionCaps) | Gets MPEG noise reduction capability range and context map |
+| [getMPEGNoiseReductionCapsV2](#getMPEGNoiseReductionCapsV2) | Gets MPEG noise reduction capability range and context map (versioned context API) |
 | [getMPEGNoiseReduction](#getMPEGNoiseReduction) | Gets MPEG noise reduction value for the requested/current context |
 | [setMPEGNoiseReduction](#setMPEGNoiseReduction) | Sets MPEG noise reduction value for the requested/current context |
 | [resetMPEGNoiseReduction](#resetMPEGNoiseReduction) | Resets MPEG noise reduction to default for the requested/current context |
 | [getDigitalNoiseReductionCaps](#getDigitalNoiseReductionCaps) | Gets digital noise reduction capability range and context map |
+| [getDigitalNoiseReductionCapsV2](#getDigitalNoiseReductionCapsV2) | Gets digital noise reduction capability range and context map (versioned context API) |
 | [getDigitalNoiseReduction](#getDigitalNoiseReduction) | Gets digital noise reduction value for the requested/current context |
 | [setDigitalNoiseReduction](#setDigitalNoiseReduction) | Sets digital noise reduction value for the requested/current context |
 | [resetDigitalNoiseReduction](#resetDigitalNoiseReduction) | Resets digital noise reduction to default for the requested/current context |
 | [getMEMCCaps](#getMEMCCaps) | Gets MEMC capability range and context map |
+| [getMEMCCapsV2](#getMEMCCapsV2) | Gets MEMC capability range and context map (versioned context API) |
 | [getMEMC](#getMEMC) | Gets MEMC value for the requested/current context |
 | [setMEMC](#setMEMC) | Sets MEMC value for the requested/current context |
 | [resetMEMC](#resetMEMC) | Resets MEMC to default for the requested/current context |
 | [getAISuperResolutionCaps](#getAISuperResolutionCaps) | Gets AI super resolution capability range and context map |
+| [getAISuperResolutionCapsV2](#getAISuperResolutionCapsV2) | Gets AI super resolution capability range and context map (versioned context API) |
 | [getAISuperResolution](#getAISuperResolution) | Gets AI super resolution value for the requested/current context |
 | [setAISuperResolution](#setAISuperResolution) | Sets AI super resolution value for the requested/current context |
 | [resetAISuperResolution](#resetAISuperResolution) | Resets AI super resolution to default for the requested/current context |
 | [getBacklightDimmingLevelCaps](#getBacklightDimmingLevelCaps) | Gets backlight dimming level capability range and context map |
+| [getBacklightDimmingLevelCapsV2](#getBacklightDimmingLevelCapsV2) | Gets backlight dimming level capability range and context map (versioned context API) |
 | [getBacklightDimmingLevel](#getBacklightDimmingLevel) | Gets backlight dimming level for the requested/current context |
 | [setBacklightDimmingLevel](#setBacklightDimmingLevel) | Sets backlight dimming level for the requested/current context |
 | [resetBacklightDimmingLevel](#resetBacklightDimmingLevel) | Resets backlight dimming level to default for the requested/current context |
 | [getSupportedDolbyVisionModes](#getSupportedDolbyVisionModes) | Gets all supported Dolby Vision modes for the platform |
 | [getSupportedPictureModes](#getSupportedPictureModes) | Gets all supported picture modes for the platform |
 | [getMultiPointWBCaps](#getMultiPointWBCaps) | Gets multipoint white-balance capability details |
+| [getMultiPointWBCapsV2](#getMultiPointWBCapsV2) | Gets multipoint white-balance capability details (versioned context API) |
 | [signalFilmMakerMode](#signalFilmMakerMode) | Triggers FilmMaker mode notification update |
+
+The V2 context-capability methods below retain the same parameters and result schema as their existing names. For V2 requests, use the V2 method name shown below in the JSON-RPC `method` field; the existing names remain available as compatibility wrappers that delegate to V2:
+
+| V2 method | Compatibility method |
+| :-------- | :-------- |
+| <a name="getSDRGammaCapsV2"></a>[getSDRGammaCapsV2](#getSDRGammaCaps) | [getSDRGammaCaps](#getSDRGammaCaps) |
+| <a name="getPrecisionDetailCapsV2"></a>[getPrecisionDetailCapsV2](#getPrecisionDetailCaps) | [getPrecisionDetailCaps](#getPrecisionDetailCaps) |
+| <a name="getLocalContrastEnhancementCapsV2"></a>[getLocalContrastEnhancementCapsV2](#getLocalContrastEnhancementCaps) | [getLocalContrastEnhancementCaps](#getLocalContrastEnhancementCaps) |
+| <a name="getMPEGNoiseReductionCapsV2"></a>[getMPEGNoiseReductionCapsV2](#getMPEGNoiseReductionCaps) | [getMPEGNoiseReductionCaps](#getMPEGNoiseReductionCaps) |
+| <a name="getDigitalNoiseReductionCapsV2"></a>[getDigitalNoiseReductionCapsV2](#getDigitalNoiseReductionCaps) | [getDigitalNoiseReductionCaps](#getDigitalNoiseReductionCaps) |
+| <a name="getMEMCCapsV2"></a>[getMEMCCapsV2](#getMEMCCaps) | [getMEMCCaps](#getMEMCCaps) |
+| <a name="getAISuperResolutionCapsV2"></a>[getAISuperResolutionCapsV2](#getAISuperResolutionCaps) | [getAISuperResolutionCaps](#getAISuperResolutionCaps) |
+| <a name="getBacklightDimmingLevelCapsV2"></a>[getBacklightDimmingLevelCapsV2](#getBacklightDimmingLevelCaps) | [getBacklightDimmingLevelCaps](#getBacklightDimmingLevelCaps) |
+| <a name="getMultiPointWBCapsV2"></a>[getMultiPointWBCapsV2](#getMultiPointWBCaps) | [getMultiPointWBCaps](#getMultiPointWBCaps) |
 
 
 <a name="getBacklight"></a>
