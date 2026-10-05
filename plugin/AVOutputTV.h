@@ -549,6 +549,7 @@ class AVOutputTV : public AVOutputBase {
 		// Thread pool for non-blocking parameter updates
 		std::queue<std::function<void()>> paramUpdateQueue;
 		std::mutex queueMutex;
+		std::mutex paramUpdateOperationMutex;
 		std::condition_variable queueCondition;
 		std::thread workerThread;
 		std::atomic<bool> shouldStopWorker{false};
@@ -560,7 +561,8 @@ class AVOutputTV : public AVOutputBase {
 		// Implementation function that does the actual work
 		int updateAVoutputTVParamV2Implementation(std::string action, std::string tr181ParamName,
 			const JsonObject& parameters,
-			tvPQParameterIndex_t pqParamIndex, int level);
+			tvPQParameterIndex_t pqParamIndex, int level,
+			const std::vector<tvConfigContext_t>& validContexts);
 
 
 	public:
