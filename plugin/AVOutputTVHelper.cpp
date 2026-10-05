@@ -3225,7 +3225,10 @@ namespace Plugin {
         {PQ_MODE_VIVID, "Vivid"},
         {PQ_MODE_ENERGY_SAVING, "EnergySaving"},
         {PQ_MODE_DISABLE, "PQ Disable"},
-        {PQ_MODE_CUSTOM, "Custom"}
+        {PQ_MODE_CUSTOM, "Custom"},
+        {PQ_MODE_GRAPHICS, "Graphics"},
+        {PQ_MODE_VIVID2, "Vivid2"},
+        {PQ_MODE_FMM, "FilmMaker"}
     };
 
     const std::unordered_map<int, std::string> AVOutputTV::videoFormatMap = {
@@ -3837,26 +3840,67 @@ namespace Plugin {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
             return (int)tvERROR_GENERAL;
         }
-        if (validContexts.size() == 1){
 
-            return updateAVoutputTVParamV2Implementation(action, tr181ParamName, parameters, pqParamIndex, level);
-        } else {
+        if (validContexts.size() == 1) {
+            return updateAVoutputTVParamV2Implementation(
+                action, tr181ParamName, parameters, pqParamIndex, level, validContexts);
+        }
 
-            // Capture parameters by value for thread safety
+        // Resolve the current context the same way isSetRequiredForParam() does, so the
+        // immediately persisted tuple is always the one the HAL was just applied to.
+        const std::string curPicMode = getCurrentPictureModeAsString();
+        const std::string curSource  = getCurrentVideoSourceAsString();
+        const std::string curFormat  = getCurrentVideoFormatAsString();
+
+        std::vector<tvConfigContext_t> immediateContexts;
+        std::vector<tvConfigContext_t> queuedContexts;
+        queuedContexts.reserve(validContexts.size());
+        for (const auto& context : validContexts) {
+            if (immediateContexts.empty() &&
+                convertPictureIndexToStringV2(context.pq_mode) == curPicMode &&
+                convertSourceIndexToStringV2(context.videoSrcType) == curSource &&
+                convertVideoFormatToStringV2(context.videoFormatType) == curFormat) {
+                immediateContexts.push_back(context);
+            } else {
+                queuedContexts.push_back(context);
+            }
+        }
+
+        if (!immediateContexts.empty()) {
+            LOGINFO("%s: Executing current context immediately %s pictureMode: %s, videoFormat: %s, videoSource: %s (queued: %zu)",
+                __FUNCTION__, tr181ParamName.c_str(), curPicMode.c_str(), curFormat.c_str(), curSource.c_str(), queuedContexts.size());
+            const int ret = updateAVoutputTVParamV2Implementation(
+                action, tr181ParamName, parameters, pqParamIndex, level, immediateContexts);
+
+            if (queuedContexts.empty()) {
+                return ret;
+            }
+
             std::lock_guard<std::mutex> lock(queueMutex);
-            paramUpdateQueue.push([this, action, tr181ParamName, parameters, pqParamIndex, level]() {
-                updateAVoutputTVParamV2Implementation(action, tr181ParamName, parameters, pqParamIndex, level);
+            paramUpdateQueue.push([this, action, tr181ParamName, parameters, pqParamIndex, level, queuedContexts]() {
+                updateAVoutputTVParamV2Implementation(
+                    action, tr181ParamName, parameters, pqParamIndex, level, queuedContexts);
             });
             queueCondition.notify_one();
 
-            // Return immediately - operation queued successfully
-            return 0;
+            return ret;
         }
+
+        LOGINFO("%s: Current context not in request for %s (pictureMode: %s, videoFormat: %s, videoSource: %s); queuing all %zu contexts",
+            __FUNCTION__, tr181ParamName.c_str(), curPicMode.c_str(), curFormat.c_str(), curSource.c_str(), validContexts.size());
+        std::lock_guard<std::mutex> lock(queueMutex);
+        paramUpdateQueue.push([this, action, tr181ParamName, parameters, pqParamIndex, level, validContexts]() {
+            updateAVoutputTVParamV2Implementation(
+                action, tr181ParamName, parameters, pqParamIndex, level, validContexts);
+        });
+        queueCondition.notify_one();
+        return 0;
     }
 
     int AVOutputTV::updateAVoutputTVParamV2Implementation(std::string action, std::string tr181ParamName,
         const JsonObject& parameters,
-        tvPQParameterIndex_t pqParamIndex,int level)
+        tvPQParameterIndex_t pqParamIndex,int level,
+        const std::vector<tvConfigContext_t>& validContexts)
     {
 
         LOGINFO("Entry %s: Action: %s, Param: %s, Level: %d", __FUNCTION__, action.c_str(), tr181ParamName.c_str(), level);
@@ -3866,7 +3910,6 @@ namespace Plugin {
         const bool isReset = (action == "reset");
         const bool isSync = (action == "sync");
 
-        std::vector<tvConfigContext_t> validContexts = getValidContextsFromParameters(parameters, tr181ParamName);
         std::vector<std::string> colors, components;
 
         LOGINFO("%s: Number of validContexts = %zu", __FUNCTION__, validContexts.size());
@@ -3964,8 +4007,6 @@ namespace Plugin {
                             if (getLocalparam(tr181ParamName, paramIndex, value, pqIndex, isSync) == 0) {
                                 level = value;
                             } else {
-                                LOGWARN("%s: Skipping sync for color: %s, component: %s",
-                                        __FUNCTION__, colorStr.c_str(), componentStr.c_str());
                                 continue;
                             }
                         }
