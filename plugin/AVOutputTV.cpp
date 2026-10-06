@@ -285,7 +285,7 @@ namespace Plugin {
                             , m_isDisabledHdmiIn4KZoom (false)
 	                    , rfc_caller_id()
     {
-        std::strncpy(rfc_caller_id, AVOUTPUT_TR181_LOCALSTORE_ID,
+        strncpy(rfc_caller_id, AVOUTPUT_TR181_LOCALSTORE_ID,
                      sizeof(rfc_caller_id) - 1);
         rfc_caller_id[sizeof(rfc_caller_id) - 1] = '\0';
         LOGINFO("CTOR\n");
