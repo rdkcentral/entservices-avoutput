@@ -18,6 +18,8 @@
 */
 
 #include <string>
+#include <future>
+#include <memory>
 #include "AVOutputTV.h"
 #include "UtilsIarm.h"
 #include "rfcapi.h"
@@ -1140,19 +1142,16 @@ namespace Plugin {
         if (setNotDelete) {
             std::string toStore = std::to_string(value);
 
-            // Map parameters to their string transformation logic (if applicable)
-            std::map<std::string, std::function<void(int, std::string&)>> fnMap = {
-                {"ColorTemp", [this](int v, std::string& s) { getColorTempStringFromEnum(v, s); }},
-                {"DimmingMode", [this](int v, std::string& s) { getDimmingModeStringFromEnum(v, s); }},
-                {"ZoomMode", [this](int v, std::string& s) { getDisplayModeStringFromEnum(v, s); }},
-                {"BacklightMode", [this](int v, std::string& s) { getBacklightModeStringFromEnum(v, s); }},
-                {"SDRGamma", [this](int v, std::string& s) { getSdrGammaStringFromEnum(static_cast<tvSdrGamma_t>(v), s); }}
-            };
-
-            // If there's a custom string conversion for this parameter, apply it
-            auto it = fnMap.find(forParam);
-            if (it != fnMap.end()) {
-                it->second(value, toStore);
+            if (forParam == "ColorTemp") {
+                getColorTempStringFromEnum(value, toStore);
+            } else if (forParam == "DimmingMode") {
+                getDimmingModeStringFromEnum(value, toStore);
+            } else if (forParam == "ZoomMode") {
+                getDisplayModeStringFromEnum(value, toStore);
+            } else if (forParam == "BacklightMode") {
+                getBacklightModeStringFromEnum(value, toStore);
+            } else if (forParam == "SDRGamma") {
+                getSdrGammaStringFromEnum(static_cast<tvSdrGamma_t>(value), toStore);
             }
             // Set the value using TR-181
             err = setLocalParam(rfc_caller_id, key.c_str(), toStore.c_str());
@@ -1216,6 +1215,43 @@ namespace Plugin {
         return ret;
     }
 
+    int AVOutputTV::enqueueParamUpdate(std::function<int()> immediateTask,
+            std::function<void()> queuedTask)
+    {
+        std::shared_ptr<std::promise<int>> completion;
+        std::future<int> result;
+        if (immediateTask) {
+            completion = std::make_shared<std::promise<int>>();
+            result = completion->get_future();
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            paramUpdateQueue.push([immediateTask = std::move(immediateTask),
+                    queuedTask = std::move(queuedTask), completion]() mutable {
+                bool completionSet = false;
+                try {
+                    const int immediateResult = immediateTask ? immediateTask() : 0;
+                    if (completion) {
+                        completion->set_value(immediateResult);
+                        completionSet = true;
+                    }
+                    if (queuedTask) {
+                        queuedTask();
+                    }
+                } catch (...) {
+                    if (completion && !completionSet) {
+                        completion->set_value((int)tvERROR_GENERAL);
+                    }
+                    throw;
+                }
+            });
+        }
+        queueCondition.notify_one();
+
+        return completion ? result.get() : 0;
+    }
+
     int AVOutputTV::updateAVoutputTVParam(
         const std::string& action,
         const std::string& tr181ParamName,
@@ -1240,17 +1276,11 @@ namespace Plugin {
 
         LOGINFO("%s: Entry param : %s Action : %s pqmode : %s source :%s format :%s color:%s component:%s control:%s\n",__FUNCTION__,tr181ParamName.c_str(),action.c_str(),localInfo.pqmode.c_str(),localInfo.source.c_str(),localInfo.format.c_str(),localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str() );
 
-        int ret = 0;
-        std::unique_lock<std::mutex> operationLock(paramUpdateOperationMutex);
-
         if( tr181ParamName == "HDRMode" || tr181ParamName == "DolbyVisionMode") {
-            // For HDR and Dolby Vision mode changes, we want to execute immediately to ensure the changes take effect without delay.
-            ret = updateAVoutputTVParamImplementation(
-                action, tr181ParamName,
-                pqParamIndex, level,
-                values);
-            LOGINFO("Exit : %s\n", __FUNCTION__);
-            return ret;
+            return enqueueParamUpdate([this, action, tr181ParamName, pqParamIndex, level, values]() {
+                return updateAVoutputTVParamImplementation(
+                    action, tr181ParamName, pqParamIndex, level, values);
+            });
         }
 
         // ---- Current context
@@ -1302,24 +1332,20 @@ namespace Plugin {
 
         std::vector<paramIndex_t> skipTuples;
 
-        // Execute current immediately, then skip only the exact current tuple in the queued pass.
+        // Schedule the current tuple first, then queue the remaining contexts.
+        std::function<int()> immediateTask;
         if (hasCurrent) {
-            LOGINFO("%s: Executing current context immediately %s currentPQMode: %d, currentFmt: %d, currentSrc: %d color:%s component:%s control:%s", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc, localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str());
+            LOGINFO("%s: Scheduling current context first %s currentPQMode: %d, currentFmt: %d, currentSrc: %d color:%s component:%s control:%s", __FUNCTION__, tr181ParamName.c_str(), currentPQMode, currentFmt, currentSrc, localInfo.color.c_str(),localInfo.component.c_str(),localInfo.control.c_str());
 
             valueVectors_t currentOnly = values;
             currentOnly.sourceValues = { static_cast<int>(currentSrc) };
             currentOnly.formatValues = { static_cast<int>(currentFmt) };
             currentOnly.pqmodeValues = { static_cast<int>(currentPQMode) };
 
-            ret = updateAVoutputTVParamImplementation(
-                action, tr181ParamName,
-                pqParamIndex, level,
-                currentOnly);
-
-            if ( values.sourceValues.size() == 1 && values.pqmodeValues.size() == 1 && values.formatValues.size() == 1 ) {
-                // If only one context, return after processing current.
-                return ret;
-            }
+            immediateTask = [this, action, tr181ParamName, pqParamIndex, level, currentOnly]() {
+                return updateAVoutputTVParamImplementation(
+                    action, tr181ParamName, pqParamIndex, level, currentOnly);
+            };
 
             paramIndex_t skipIndex = {};
             skipIndex.sourceIndex = static_cast<uint8_t>(currentSrc);
@@ -1328,24 +1354,22 @@ namespace Plugin {
             skipTuples.push_back(skipIndex);
         }
 
-        // Queue request for async processing using original values; skip only the current tuple.
-        {
-            std::lock_guard<std::mutex> lock(queueMutex);
-            paramUpdateQueue.push(
-                [this, action, tr181ParamName, pqParamIndex, level, values, skipTuples]() {
-                    updateAVoutputTVParamImplementation(
-                        action, tr181ParamName,
-                        pqParamIndex, level,
-                        values,
-                        skipTuples);
-                });
+        std::function<void()> queuedTask;
+        const bool onlyCurrentContext = hasCurrent &&
+            values.sourceValues.size() == 1 &&
+            values.pqmodeValues.size() == 1 &&
+            values.formatValues.size() == 1;
+        if (!onlyCurrentContext) {
+            queuedTask = [this, action, tr181ParamName, pqParamIndex, level, values, skipTuples]() {
+                updateAVoutputTVParamImplementation(
+                    action, tr181ParamName,
+                    pqParamIndex, level,
+                    values,
+                    skipTuples);
+            };
         }
 
-        queueCondition.notify_one();
-
-        LOGINFO("Exit : %s\n", __FUNCTION__);
-
-        return ret;
+        return enqueueParamUpdate(std::move(immediateTask), std::move(queuedTask));
     }
 
     int AVOutputTV::updateAVoutputTVParamImplementation(
@@ -2829,9 +2853,9 @@ namespace Plugin {
             return tvERROR_GENERAL;
         }
 
-        if (currentFormat == VIDEO_FORMAT_NONE) {
-            currentFormat = VIDEO_FORMAT_SDR;
-        }
+            if (currentFormat == VIDEO_FORMAT_NONE) {
+                currentFormat = VIDEO_FORMAT_SDR;
+            }
 
         //  Directly fetch default PQ mode
         if (GetDefaultPQMode(currentSource, currentFormat, &pqmodeIndex) != tvERROR_NONE ||
@@ -3783,19 +3807,29 @@ namespace Plugin {
             return validContexts;
         }
 
-        // Create a hash set of available contexts for O(1) lookup instead of O(n) linear search
-        std::unordered_set<std::string> availableContextsSet;
-        for (size_t i = 0; i < caps->num_contexts; ++i) {
-            const auto& ctx = caps->contexts[i];
-            std::string key = std::to_string(ctx.pq_mode) + "_" +
-                            std::to_string(ctx.videoFormatType) + "_" +
-                            std::to_string(ctx.videoSrcType);
-            availableContextsSet.insert(key);
-        }
-
         JsonArray pqmodeArray = getJsonArrayIfArray(parameters, "pictureMode");
         JsonArray sourceArray = getJsonArrayIfArray(parameters, "videoSource");
         JsonArray formatArray = getJsonArrayIfArray(parameters, "videoFormat");
+
+        if (isGlobalParam(pqmodeArray) && isGlobalParam(sourceArray) && isGlobalParam(formatArray)) {
+            validContexts.reserve(caps->num_contexts);
+            for (size_t i = 0; i < caps->num_contexts; ++i) {
+                validContexts.push_back(caps->contexts[i]);
+            }
+
+            std::sort(validContexts.begin(), validContexts.end(),
+                    [](const tvConfigContext_t& a, const tvConfigContext_t& b) {
+                return std::tie(a.pq_mode, a.videoFormatType, a.videoSrcType) <
+                    std::tie(b.pq_mode, b.videoFormatType, b.videoSrcType);
+            });
+            validContexts.erase(std::unique(validContexts.begin(), validContexts.end(),
+                    [](const tvConfigContext_t& a, const tvConfigContext_t& b) {
+                return a.pq_mode == b.pq_mode &&
+                    a.videoFormatType == b.videoFormatType &&
+                    a.videoSrcType == b.videoSrcType;
+            }), validContexts.end());
+            return validContexts;
+        }
 
         std::vector<tvPQModeIndex_t> pqModes = extractPQModes(parameters);
         std::vector<tvVideoSrcType_t> sources = extractVideoSources(parameters);
@@ -3828,27 +3862,13 @@ namespace Plugin {
             return validContexts;
         }
 
-        std::unordered_set<std::string> seenContexts;
-        validContexts.reserve(pqModeSet.size() * sourceSet.size() * formatSet.size()); // Pre-allocate memory
-
-        // Generate contexts and check validity in single pass
-        for (const auto& pq : pqModeSet) {
-            for (const auto& fmt : formatSet) {
-                for (const auto& src : sourceSet) {
-                    std::string contextKey = std::to_string(pq) + "_" +
-                                        std::to_string(fmt) + "_" +
-                                        std::to_string(src);
-
-                    if (seenContexts.find(contextKey) != seenContexts.end()) {
-                        continue;
-                    }
-
-                    if (availableContextsSet.find(contextKey) != availableContextsSet.end()) {
-                        tvConfigContext_t testCtx = { pq, fmt, src };
-                        validContexts.push_back(testCtx);
-                        seenContexts.insert(contextKey);
-                    }
-                }
+        validContexts.reserve(caps->num_contexts);
+        for (size_t i = 0; i < caps->num_contexts; ++i) {
+            const tvConfigContext_t& context = caps->contexts[i];
+            if (pqModeSet.find(context.pq_mode) != pqModeSet.end() &&
+                formatSet.find(context.videoFormatType) != formatSet.end() &&
+                sourceSet.find(context.videoSrcType) != sourceSet.end()) {
+                validContexts.push_back(context);
             }
         }
 
@@ -3859,6 +3879,12 @@ namespace Plugin {
                 return std::tie(a.pq_mode, a.videoFormatType, a.videoSrcType) <
                     std::tie(b.pq_mode, b.videoFormatType, b.videoSrcType);
             });
+            validContexts.erase(std::unique(validContexts.begin(), validContexts.end(),
+                    [](const tvConfigContext_t& a, const tvConfigContext_t& b) {
+                return a.pq_mode == b.pq_mode &&
+                    a.videoFormatType == b.videoFormatType &&
+                    a.videoSrcType == b.videoSrcType;
+            }), validContexts.end());
         }
 
         return validContexts;
@@ -3886,9 +3912,7 @@ namespace Plugin {
                 paramUpdateQueue.pop();
             }
 
-            // Execute task outside lock
             try {
-                std::lock_guard<std::mutex> operationLock(paramUpdateOperationMutex);
                 task();
             } catch (const std::exception& e) {
                 LOGERR("%s: Worker task exception: %s", __FUNCTION__, e.what());
@@ -3908,57 +3932,61 @@ namespace Plugin {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
             return (int)tvERROR_GENERAL;
         }
-        if (validContexts.size() == 1) {
-            std::lock_guard<std::mutex> operationLock(paramUpdateOperationMutex);
-            return updateAVoutputTVParamV2Implementation(
-                action, tr181ParamName, parameters, pqParamIndex, level, validContexts);
-        }
-
-        std::unique_lock<std::mutex> operationLock(paramUpdateOperationMutex);
-
-        tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
-        tvVideoFormatType_t currentFormat = VIDEO_FORMAT_NONE;
-        const std::string currentPictureMode = getCurrentPictureModeAsString();
-        const auto currentPictureModeIt = pqModeReverseMap.find(currentPictureMode);
-        const bool hasCurrentContext =
-            GetCurrentVideoSource(&currentSource) == tvERROR_NONE &&
-            GetCurrentVideoFormat(&currentFormat) == tvERROR_NONE &&
-            currentPictureModeIt != pqModeReverseMap.end();
+        std::vector<tvConfigContext_t> immediateContexts;
+        const bool waitForResult = validContexts.size() == 1;
+        if (waitForResult) {
+            immediateContexts = validContexts;
+            validContexts.clear();
+        } else {
+            tvVideoSrcType_t currentSource = VIDEO_SOURCE_IP;
+            tvVideoFormatType_t currentFormat = VIDEO_FORMAT_NONE;
+            const std::string currentPictureMode = getCurrentPictureModeAsString();
+            const auto currentPictureModeIt = pqModeReverseMap.find(currentPictureMode);
+            const bool hasCurrentContext =
+                GetCurrentVideoSource(&currentSource) == tvERROR_NONE &&
+                GetCurrentVideoFormat(&currentFormat) == tvERROR_NONE &&
+                currentPictureModeIt != pqModeReverseMap.end();
 
         if (currentFormat == VIDEO_FORMAT_NONE) {
             currentFormat = VIDEO_FORMAT_SDR;
         }
 
-        int ret = 0;
-        if (hasCurrentContext) {
-            auto currentIt = std::find_if(validContexts.begin(), validContexts.end(),
-                [&](const tvConfigContext_t& context) {
-                    return context.videoSrcType == currentSource &&
-                        context.videoFormatType == currentFormat &&
-                        context.pq_mode == currentPictureModeIt->second;
-                });
+            if (hasCurrentContext) {
+                auto currentIt = std::find_if(validContexts.begin(), validContexts.end(),
+                    [&](const tvConfigContext_t& context) {
+                        return context.videoSrcType == currentSource &&
+                            context.videoFormatType == currentFormat &&
+                            context.pq_mode == currentPictureModeIt->second;
+                    });
 
-            if (currentIt != validContexts.end()) {
-                const tvConfigContext_t currentContext = *currentIt;
-                ret = updateAVoutputTVParamV2Implementation(
-                    action, tr181ParamName, parameters, pqParamIndex, level, {currentContext});
-                validContexts.erase(currentIt);
+                if (currentIt != validContexts.end()) {
+                    immediateContexts.push_back(*currentIt);
+                    validContexts.erase(currentIt);
+                }
             }
         }
 
-        if (validContexts.empty()) {
-            return ret;
+        auto applyContexts = [this, action, tr181ParamName, parameters, pqParamIndex, level](
+                const std::vector<tvConfigContext_t>& contexts) {
+            return updateAVoutputTVParamV2Implementation(
+                action, tr181ParamName, parameters, pqParamIndex, level, contexts);
+        };
+
+        std::function<int()> immediateTask;
+        if (!immediateContexts.empty()) {
+            immediateTask = [applyContexts, immediateContexts]() {
+                return applyContexts(immediateContexts);
+            };
         }
 
-        // Process the current tuple above; queue only the remaining contexts.
-        std::lock_guard<std::mutex> lock(queueMutex);
-        paramUpdateQueue.push([this, action, tr181ParamName, parameters, pqParamIndex, level, validContexts]() {
-            updateAVoutputTVParamV2Implementation(
-                action, tr181ParamName, parameters, pqParamIndex, level, validContexts);
-        });
-        queueCondition.notify_one();
+        std::function<void()> queuedTask;
+        if (!validContexts.empty()) {
+            queuedTask = [applyContexts, validContexts]() {
+                applyContexts(validContexts);
+            };
+        }
 
-        return ret;
+        return enqueueParamUpdate(std::move(immediateTask), std::move(queuedTask));
     }
 
     int AVOutputTV::updateAVoutputTVParamV2Implementation(std::string action, std::string tr181ParamName,

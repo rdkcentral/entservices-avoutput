@@ -546,15 +546,16 @@ class AVOutputTV : public AVOutputBase {
         void syncCMSParamsV2();
 		void syncWBParamsV2();
 
-		// Thread pool for non-blocking parameter updates
+		// Single worker queue for serialized parameter updates
 		std::queue<std::function<void()>> paramUpdateQueue;
 		std::mutex queueMutex;
-		std::mutex paramUpdateOperationMutex;
 		std::condition_variable queueCondition;
 		std::thread workerThread;
 		std::atomic<bool> shouldStopWorker{false};
 		// Worker thread function
 		void paramUpdateWorker();
+		int enqueueParamUpdate(std::function<int()> immediateTask,
+			std::function<void()> queuedTask = {});
 		//dispatcher
 		int updateAVoutputTVParamV2(std::string action, std::string tr181ParamName,
 			const JsonObject& parameters, tvPQParameterIndex_t pqParamIndex, int level);
