@@ -21,7 +21,10 @@
 #define AVOutputTV_H
 
 #include "string.h"
+#include <cstdint>
+#include <deque>
 #include <set>
+#include <utility>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
@@ -546,9 +549,18 @@ class AVOutputTV : public AVOutputBase {
         void syncCMSParamsV2();
 		void syncWBParamsV2();
 
+		struct ParamUpdateTask {
+			std::uint64_t sequence = 0;
+			tvConfigContext_t context{};
+			bool hasContext = false;
+			bool allContexts = false;
+			std::function<void()> execute;
+		};
+
 		// Prioritize current-context work over background context updates.
-		std::queue<std::function<void()>> currentContextUpdateQueue;
-		std::queue<std::function<void()>> paramUpdateQueue;
+		std::queue<ParamUpdateTask> currentContextUpdateQueue;
+		std::deque<ParamUpdateTask> paramUpdateQueue;
+		std::uint64_t nextParamUpdateSequence = 0;
 		std::mutex queueMutex;
 		std::condition_variable queueCondition;
 		std::thread workerThread;
@@ -556,7 +568,8 @@ class AVOutputTV : public AVOutputBase {
 		// Worker thread function
 		void paramUpdateWorker();
 		int enqueueParamUpdate(std::function<int()> immediateTask,
-			std::vector<std::function<void()>> queuedTasks = {});
+			const tvConfigContext_t* immediateContext, bool immediateAffectsAllContexts,
+			std::vector<std::pair<tvConfigContext_t, std::function<void()>>> queuedTasks = {});
 		//dispatcher
 		int updateAVoutputTVParamV2(std::string action, std::string tr181ParamName,
 			const JsonObject& parameters, tvPQParameterIndex_t pqParamIndex, int level);
