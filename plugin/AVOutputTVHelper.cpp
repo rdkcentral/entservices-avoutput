@@ -3811,6 +3811,7 @@ namespace Plugin {
         JsonArray sourceArray = getJsonArrayIfArray(parameters, "videoSource");
         JsonArray formatArray = getJsonArrayIfArray(parameters, "videoFormat");
 
+        initializeReverseMaps();
         if (isGlobalParam(pqmodeArray) && isGlobalParam(sourceArray) && isGlobalParam(formatArray)) {
             validContexts.reserve(caps->num_contexts);
             for (size_t i = 0; i < caps->num_contexts; ++i) {
