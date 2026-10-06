@@ -546,7 +546,8 @@ class AVOutputTV : public AVOutputBase {
         void syncCMSParamsV2();
 		void syncWBParamsV2();
 
-		// Single worker queue for serialized parameter updates
+		// Prioritize current-context work over background context updates.
+		std::queue<std::function<void()>> currentContextUpdateQueue;
 		std::queue<std::function<void()>> paramUpdateQueue;
 		std::mutex queueMutex;
 		std::condition_variable queueCondition;
@@ -555,7 +556,7 @@ class AVOutputTV : public AVOutputBase {
 		// Worker thread function
 		void paramUpdateWorker();
 		int enqueueParamUpdate(std::function<int()> immediateTask,
-			std::function<void()> queuedTask = {});
+			std::vector<std::function<void()>> queuedTasks = {});
 		//dispatcher
 		int updateAVoutputTVParamV2(std::string action, std::string tr181ParamName,
 			const JsonObject& parameters, tvPQParameterIndex_t pqParamIndex, int level);

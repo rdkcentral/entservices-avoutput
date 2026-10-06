@@ -1216,7 +1216,7 @@ namespace Plugin {
     }
 
     int AVOutputTV::enqueueParamUpdate(std::function<int()> immediateTask,
-            std::function<void()> queuedTask)
+            std::vector<std::function<void()>> queuedTasks)
     {
         std::shared_ptr<std::promise<int>> completion;
         std::future<int> result;
@@ -1227,26 +1227,21 @@ namespace Plugin {
 
         {
             std::lock_guard<std::mutex> lock(queueMutex);
-            paramUpdateQueue.push([immediateTask, queuedTask, completion]() mutable {
-                bool completionSet = false;
-                try {
-                    const int immediateResult = immediateTask ? immediateTask() : 0;
-                    if (completion) {
-                        completion->set_value(immediateResult);
-                        completionSet = true;
-                    }
-                    if (queuedTask) {
-                        queuedTask();
-                    }
-                } catch (...) {
-                    if (completion && !completionSet) {
+            if (immediateTask) {
+                currentContextUpdateQueue.push([immediateTask = std::move(immediateTask), completion]() mutable {
+                    try {
+                        completion->set_value(immediateTask());
+                    } catch (...) {
                         completion->set_value((int)tvERROR_GENERAL);
+                        throw;
                     }
-                    throw;
-                }
-            });
+                });
+            }
+            for (auto& task : queuedTasks) {
+                paramUpdateQueue.push(std::move(task));
+            }
         }
-        queueCondition.notify_one();
+        queueCondition.notify_all();
 
         return completion ? result.get() : 0;
     }
@@ -1329,8 +1324,6 @@ namespace Plugin {
             if (hasCurrent) break;
         }
 
-        std::vector<paramIndex_t> skipTuples;
-
         // Schedule the current tuple first, then queue the remaining contexts.
         std::function<int()> immediateTask;
         if (hasCurrent) {
@@ -1346,29 +1339,30 @@ namespace Plugin {
                     action, tr181ParamName, pqParamIndex, level, currentOnly);
             };
 
-            paramIndex_t skipIndex = {};
-            skipIndex.sourceIndex = static_cast<uint8_t>(currentSrc);
-            skipIndex.pqmodeIndex = static_cast<uint8_t>(currentPQMode);
-            skipIndex.formatIndex = static_cast<uint8_t>(currentFmt);
-            skipTuples.push_back(skipIndex);
         }
 
-        std::function<void()> queuedTask;
-        const bool onlyCurrentContext = hasCurrent &&
-            values.sourceValues.size() == 1 &&
-            values.pqmodeValues.size() == 1 &&
-            values.formatValues.size() == 1;
-        if (!onlyCurrentContext) {
-            queuedTask = [this, action, tr181ParamName, pqParamIndex, level, values, skipTuples]() {
-                updateAVoutputTVParamImplementation(
-                    action, tr181ParamName,
-                    pqParamIndex, level,
-                    values,
-                    skipTuples);
-            };
+        std::vector<std::function<void()>> queuedTasks;
+        for (const int source : values.sourceValues) {
+            for (const int mode : values.pqmodeValues) {
+                for (const int format : values.formatValues) {
+                    if (hasCurrent && source == currentSrc &&
+                        mode == currentPQMode && format == currentFmt) {
+                        continue;
+                    }
+
+                    valueVectors_t singleContext = values;
+                    singleContext.sourceValues = { source };
+                    singleContext.pqmodeValues = { mode };
+                    singleContext.formatValues = { format };
+                    queuedTasks.emplace_back([this, action, tr181ParamName, pqParamIndex, level, singleContext]() {
+                        updateAVoutputTVParamImplementation(
+                            action, tr181ParamName, pqParamIndex, level, singleContext);
+                    });
+                }
+            }
         }
 
-        return enqueueParamUpdate(std::move(immediateTask), std::move(queuedTask));
+        return enqueueParamUpdate(std::move(immediateTask), std::move(queuedTasks));
     }
 
     int AVOutputTV::updateAVoutputTVParamImplementation(
@@ -3899,17 +3893,24 @@ namespace Plugin {
                 std::unique_lock<std::mutex> lock(queueMutex);
                 // Wait until work is available OR stop is requested
                 queueCondition.wait(lock, [this] {
-                    return !paramUpdateQueue.empty() || shouldStopWorker;
+                    return !currentContextUpdateQueue.empty() ||
+                        !paramUpdateQueue.empty() || shouldStopWorker;
                 });
 
                 // Exit only when stop requested AND no pending work
-                if (shouldStopWorker && paramUpdateQueue.empty()) {
+                if (shouldStopWorker && currentContextUpdateQueue.empty() &&
+                    paramUpdateQueue.empty()) {
                     break;
                 }
 
-                // Fetch next task
-                task = std::move(paramUpdateQueue.front());
-                paramUpdateQueue.pop();
+                // Current-context requests may jump ahead of queued background work.
+                if (!currentContextUpdateQueue.empty()) {
+                    task = std::move(currentContextUpdateQueue.front());
+                    currentContextUpdateQueue.pop();
+                } else {
+                    task = std::move(paramUpdateQueue.front());
+                    paramUpdateQueue.pop();
+                }
             }
 
             try {
@@ -3979,14 +3980,15 @@ namespace Plugin {
             };
         }
 
-        std::function<void()> queuedTask;
-        if (!validContexts.empty()) {
-            queuedTask = [applyContexts, validContexts]() {
-                applyContexts(validContexts);
-            };
+        std::vector<std::function<void()>> queuedTasks;
+        queuedTasks.reserve(validContexts.size());
+        for (const auto& context : validContexts) {
+            queuedTasks.emplace_back([applyContexts, context]() {
+                applyContexts({context});
+            });
         }
 
-        return enqueueParamUpdate(std::move(immediateTask), std::move(queuedTask));
+        return enqueueParamUpdate(std::move(immediateTask), std::move(queuedTasks));
     }
 
     int AVOutputTV::updateAVoutputTVParamV2Implementation(std::string action, std::string tr181ParamName,
