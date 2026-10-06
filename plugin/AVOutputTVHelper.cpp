@@ -763,42 +763,6 @@ namespace Plugin {
         return 0;
     }
 
-    void AVOutputTV::locatePQSettingsFile()
-    {
-        LOGINFO("Entry\n");
-        char panelId[20] = {0};
-        std::string PQFileName = AVOUTPUT_RFC_CALLERID;
-        std::string FilePath = "/etc/rfcdefaults/";
-
-        /* The if condition is to override the tvsettings ini file so it helps the PQ tuning process for new panels */
-        if(access(AVOUTPUT_OVERRIDE_PATH, F_OK) == 0) {
-            PQFileName = std::string(AVOUTPUT_RFC_CALLERID_OVERRIDE);
-        }
-        else {
-            int val=GetPanelID(panelId);
-            if(val==0) {
-                LOGINFO("%s : panel id read is : %s\n",__FUNCTION__,panelId);
-                if(strncmp(panelId,AVOUTPUT_CONVERTERBOARD_PANELID,strlen(AVOUTPUT_CONVERTERBOARD_PANELID))!=0) {
-                    PQFileName+=std::string("_")+panelId;
-                    struct stat tmp_st;
-
-                    LOGINFO("%s: Looking for %s.ini \n",__FUNCTION__,PQFileName.c_str());
-                    if(stat((FilePath+PQFileName+std::string(".ini")).c_str(), &tmp_st)!=0) {
-                        //fall back
-                        LOGINFO("%s not available in %s Fall back to default\n",PQFileName.c_str(),FilePath.c_str());
-                        PQFileName =std::string(AVOUTPUT_RFC_CALLERID);
-                    }
-                }
-            }
-            else {
-                LOGINFO("%s : GetPanelID failed : %d\n",__FUNCTION__,val);
-            }
-        }
-        strncpy(rfc_caller_id,PQFileName.c_str(),PQFileName.size());
-        rfc_caller_id[sizeof(rfc_caller_id) - 1] = '\0';
-        LOGINFO("%s : Default tvsettings file : %s\n",__FUNCTION__,rfc_caller_id);
-    }
-
     tvError_t AVOutputTV::initializeBacklightMode()
     {
         TR181_ParamData_t param;
@@ -2436,39 +2400,6 @@ namespace Plugin {
             spliltCapablities( vecInfo, stringInfo);
         }
         return ret;
-    }
-
-    int AVOutputTV::GetPanelID(char *panelId)
-    {
-        if (panelId == NULL) {
-            printf("Invalid buffer provided for panel ID\n");
-            return -1;
-        }
-
-        const char *command = "/usr/bin/panelIDConfig -i";
-        FILE *fp;
-
-        // Execute the binary
-        fp = popen(command, "r");
-        if (fp == NULL) {
-            printf("Failed to execute command: %s\n", command);
-            return -1;
-        }
-
-        // Read the panel ID from the binary's output
-        if (fgets(panelId, 20, fp) != NULL) {
-            size_t len = strlen(panelId);
-            if (len > 0 && panelId[len - 1] == '\n') {
-                panelId[len - 1] = '\0';
-            }
-        } else {
-            printf("Failed to read panel ID from panelIDConfig binary\n");
-            pclose(fp);
-            return -1;
-        }
-
-        pclose(fp);
-        return 0;
     }
 
     void AVOutputTV::getDimmingModeStringFromEnum(int value, std::string &toStore)
