@@ -1227,8 +1227,7 @@ namespace Plugin {
 
         {
             std::lock_guard<std::mutex> lock(queueMutex);
-            paramUpdateQueue.push([immediateTask = std::move(immediateTask),
-                    queuedTask = std::move(queuedTask), completion]() mutable {
+            paramUpdateQueue.push([immediateTask, queuedTask, completion]() mutable {
                 bool completionSet = false;
                 try {
                     const int immediateResult = immediateTask ? immediateTask() : 0;
