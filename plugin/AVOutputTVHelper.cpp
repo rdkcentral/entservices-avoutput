@@ -1236,7 +1236,7 @@ namespace Plugin {
                 if (task.hasContext) {
                     task.context = *immediateContext;
                 }
-                task.execute = [immediateTask = std::move(immediateTask), completion]() mutable {
+                task.execute = [immediateTask, completion]() mutable {
                     try {
                         completion->set_value(immediateTask());
                     } catch (...) {
