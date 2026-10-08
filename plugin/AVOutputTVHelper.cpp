@@ -3294,7 +3294,10 @@ namespace Plugin {
         {PQ_MODE_VIVID, "Vivid"},
         {PQ_MODE_ENERGY_SAVING, "EnergySaving"},
         {PQ_MODE_DISABLE, "PQ Disable"},
-        {PQ_MODE_CUSTOM, "Custom"}
+        {PQ_MODE_CUSTOM, "Custom"},
+        {PQ_MODE_GRAPHICS, "Graphics"},
+        {PQ_MODE_VIVID2, "Vivid2"},
+        {PQ_MODE_FMM, "FMM"}
     };
 
     const std::unordered_map<int, std::string> AVOutputTV::videoFormatMap = {
