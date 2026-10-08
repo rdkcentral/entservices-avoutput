@@ -36,15 +36,14 @@ namespace Plugin {
     {
     }
 
-    void AVOutputBase::Initialize()
+    void AVOutputBase::InitPlugin(PluginHost::IShell* service)
     {
 	LOGINFO("AVOutputBase Initialize\n");
-        
     }
 
-    void AVOutputBase::Deinitialize()
+    void AVOutputBase::DeinitPlugin()
     {
-	LOGINFO("AVOutputBase Deinitialize\n");
+	LOGINFO("AVOutputBase DeinitPlugin\n");
     }
     void AVOutputBase::InitializeIARM()
     {

@@ -58,6 +58,12 @@ if (L2_TEST_OOP_RPC)
     endif()
 endif()
 
+find_library(DSHAL_LIBRARIES NAMES ds-hal)
+if (NOT DSHAL_LIBRARIES)
+    message(FATAL_ERROR "ds-hal not found - required for DeviceSettings L2 tests")
+endif()
+target_link_libraries(${MODULE_NAME} PRIVATE ${DSHAL_LIBRARIES})
+
 target_include_directories(
     ${MODULE_NAME} PRIVATE
     ./
