@@ -32,6 +32,9 @@ set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput 
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 
+# Library installation section
+string(TOLOWER ${NAMESPACE} STORAGE_DIRECTORY)
+
 set (CMAKE_CXX_STANDARD 11)
 
 find_path (STAGING_INCDIR glib-2.0)
@@ -92,6 +95,6 @@ target_link_libraries(${MODULE_NAME}
 
 
 install(TARGETS ${MODULE_NAME} 
-    DESTINATION lib/${NAMESPACE}/plugins)
+    DESTINATION lib/${STORAGE_DIRECTORY}/plugins)
 
 write_config(${PLUGIN_NAME})
