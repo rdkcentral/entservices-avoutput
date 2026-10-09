@@ -285,6 +285,8 @@ namespace Plugin {
                             , m_isDisabledHdmiIn4KZoom (false)
 	                    , rfc_caller_id()
     {
+        strncpy(rfc_caller_id, AVOUTPUT_TR181_LOCALSTORE_ID, sizeof(rfc_caller_id) - 1);
+        rfc_caller_id[sizeof(rfc_caller_id) - 1] = '\0';
         LOGINFO("CTOR\n");
         AVOutputTV::instance = this;
 
@@ -516,8 +518,6 @@ namespace Plugin {
         if (ret != tvERROR_NONE) {
             LOGWARN("RegisterVideoSourceChangeCB failed");
         }
-
-        locatePQSettingsFile();
 
         // Get Index from PQ capabailites
         if (getPqParamIndex() != 0) {
