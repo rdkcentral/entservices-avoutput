@@ -31,6 +31,9 @@ endif()
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 
+# Library installation section
+string(TOLOWER ${NAMESPACE} STORAGE_DIRECTORY)
+
 if(RDK_SERVICE_L2_TEST)
    add_subdirectory(Tests/L2Tests)
 endif()
