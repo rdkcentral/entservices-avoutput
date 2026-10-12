@@ -283,7 +283,7 @@ namespace Plugin {
     AVOutputTV::AVOutputTV(): m_currentHdmiInResoluton (dsVIDEO_PIXELRES_1920x1080)
                             , m_videoZoomMode (tvDisplayMode_NORMAL)
                             , m_isDisabledHdmiIn4KZoom (false)
-	                    , rfc_caller_id()
+	                    , rfc_caller_id(nullptr)
     {
         LOGINFO("CTOR\n");
         AVOutputTV::instance = this;
@@ -516,8 +516,6 @@ namespace Plugin {
         if (ret != tvERROR_NONE) {
             LOGWARN("RegisterVideoSourceChangeCB failed");
         }
-
-        locatePQSettingsFile();
 
         // Get Index from PQ capabailites
         if (getPqParamIndex() != 0) {
