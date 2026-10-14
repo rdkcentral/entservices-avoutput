@@ -17,6 +17,8 @@
 * limitations under the License.
 */
 
+#include <cstdlib>
+#include <memory>
 #include <string>
 #include "AVOutputTV.h"
 #include "UtilsIarm.h"
@@ -372,6 +374,7 @@ namespace Plugin {
         registerMethod("setHDRMode", &AVOutputTV::setHDRMode, this);
         registerMethod("resetHDRMode", &AVOutputTV::resetHDRMode, this);
         registerMethod("getHDRModeCaps", &AVOutputTV::getHDRModeCaps, this);
+        registerMethod("getHDRModeCapsV2", &AVOutputTV::getHDRModeCapsV2, this);
 
         registerMethod("getAutoBacklightMode", &AVOutputTV::getAutoBacklightMode, this);
         registerMethod("setAutoBacklightMode", &AVOutputTV::setAutoBacklightMode, this);
@@ -5845,6 +5848,46 @@ namespace Plugin {
             LOGINFO("Exit\n");
             returnResponse(true);
         }
+    }
+
+    uint32_t AVOutputTV::getHDRModeCapsV2(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry");
+        tvDolbyMode_t* dolbyModes = nullptr;
+        size_t numDolbyModes = 0;
+        tvContextCaps_t* contextCaps = nullptr;
+
+        tvError_t ret = GetTVDolbyVisionModeCaps(&dolbyModes, &numDolbyModes, &contextCaps);
+        std::unique_ptr<tvDolbyMode_t, decltype(&std::free)> modes(dolbyModes, &std::free);
+        if (ret != tvERROR_NONE) {
+            LOGERR("GetTVDolbyVisionModeCaps failed with error: %d", ret);
+            response["platformSupport"] = false;
+            returnResponse(false);
+        }
+
+        if (numDolbyModes > 0 && !modes) {
+            LOGERR("GetTVDolbyVisionModeCaps returned a null options array");
+            response["platformSupport"] = false;
+            returnResponse(false);
+        }
+
+        JsonArray optionsArray;
+        for (size_t i = 0; i < numDolbyModes; ++i) {
+            std::string mode = getDolbyModeStringFromEnum(dolbyModes[i]);
+            if (mode.empty()) {
+                LOGERR("GetTVDolbyVisionModeCaps returned an unknown mode: %d", dolbyModes[i]);
+                response["platformSupport"] = false;
+                returnResponse(false);
+            }
+            optionsArray.Add(mode);
+        }
+
+        response["platformSupport"] = true;
+        response["options"] = optionsArray;
+        response["context"] = parseContextCaps(contextCaps);
+
+        LOGINFO("Exit");
+        returnResponse(true);
     }
 
     uint32_t AVOutputTV::get2PointWB(const JsonObject& parameters, JsonObject& response)
