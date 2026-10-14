@@ -17,6 +17,8 @@
 * limitations under the License.
 */
 
+#include <cstdlib>
+#include <memory>
 #include <string>
 #include "AVOutputTV.h"
 #include "UtilsIarm.h"
@@ -372,6 +374,7 @@ namespace Plugin {
         registerMethod("setHDRMode", &AVOutputTV::setHDRMode, this);
         registerMethod("resetHDRMode", &AVOutputTV::resetHDRMode, this);
         registerMethod("getHDRModeCaps", &AVOutputTV::getHDRModeCaps, this);
+        registerMethod("getHDRModeCapsV2", &AVOutputTV::getHDRModeCapsV2, this);
 
         registerMethod("getAutoBacklightMode", &AVOutputTV::getAutoBacklightMode, this);
         registerMethod("setAutoBacklightMode", &AVOutputTV::setAutoBacklightMode, this);
@@ -2193,6 +2196,9 @@ namespace Plugin {
                         indexInfo.sourceIndex, indexInfo.pqmodeIndex, pqIndex, level);
                 ret = halSetter(level);
                 LOGINFO("%s halSetter return value: %d\n", paramName.c_str(), ret);
+                if(ret != tvERROR_NONE) {
+                    return false;
+                }
             }
             else
             {
@@ -5612,38 +5618,51 @@ namespace Plugin {
     uint32_t AVOutputTV::getHDRMode(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
-        capDetails_t inputInfo;
-        int dolbyMode = 0;
-        int err = 0;
-        paramIndex_t indexInfo;
+        if(m_hdrModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            capDetails_t inputInfo;
+            int dolbyMode = 0;
+            int err = 0;
+            paramIndex_t indexInfo;
 
-        if (parsingGetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
-            LOGINFO("%s: Failed to parse argument\n", __FUNCTION__);
-            returnResponse(false);
-        }
+            if (parsingGetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
+                LOGINFO("%s: Failed to parse argument\n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if (isPlatformSupport("HDRMode") != 0) {
-            returnResponse(false);
-        }
+            if (isPlatformSupport("HDRMode") != 0) {
+                returnResponse(false);
+            }
 
-        if (!isCapabilityCheckPassed("HDRMode", inputInfo)){
-            LOGERR("%s: CapabilityCheck failed for hdrMode\n", __FUNCTION__);
-            returnResponse(false);
-        }
+            if (!isCapabilityCheckPassed("HDRMode", inputInfo)){
+                LOGERR("%s: CapabilityCheck failed for hdrMode\n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if (getParamIndex("HDRMode",inputInfo,indexInfo) == -1) {
-            LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
-            returnResponse(false);
-        }
+            if (getParamIndex("HDRMode",inputInfo,indexInfo) == -1) {
+                LOGERR("%s: getParamIndex failed to get \n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        err = getLocalparam("HDRMode", indexInfo,dolbyMode, PQ_PARAM_DOLBY_MODE);
-        if( err == 0 ) {
-            response["hdrMode"] = getDolbyModeStringFromEnum((tvDolbyMode_t)dolbyMode);
-            LOGINFO("Exit : hdrMode Value: %d \n", dolbyMode);
-            returnResponse(true);
+            err = getLocalparam("HDRMode", indexInfo,dolbyMode, PQ_PARAM_DOLBY_MODE);
+            if( err == 0 ) {
+                response["hdrMode"] = getDolbyModeStringFromEnum((tvDolbyMode_t)dolbyMode);
+                LOGINFO("Exit : hdrMode Value: %d \n", dolbyMode);
+                returnResponse(true);
+            }
+            else {
+                returnResponse(false);
+            }
         }
-        else {
-            returnResponse(false);
+        else{
+            int mode = 0;
+            if (getPQParamFromContext(parameters, "HDRMode",
+                 PQ_PARAM_DOLBY_MODE, mode)) {
+                response["hdrMode"] = getDolbyModeStringFromEnum(static_cast<tvDolbyMode_t>(mode));
+                returnResponse(true);
+            } else {
+                returnResponse(false);
+            }
         }
 
     }
@@ -5651,94 +5670,144 @@ namespace Plugin {
     uint32_t AVOutputTV::setHDRMode(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
-        tvDolbyMode_t index;
-        capDetails_t inputInfo;
-        tvError_t ret  = tvERROR_NONE;
-        std::string value;
-	    int retval = 0;
+        if(m_hdrModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            tvDolbyMode_t index;
+            capDetails_t inputInfo;
+            tvError_t ret  = tvERROR_NONE;
+            std::string value;
+            int retval = 0;
 
-        value = parameters.HasLabel("hdrMode") ? parameters["hdrMode"].String() : "";
-        returnIfParamNotFound(parameters,"hdrMode");
+            value = parameters.HasLabel("hdrMode") ? parameters["hdrMode"].String() : "";
+            returnIfParamNotFound(parameters,"hdrMode");
 
-        if (parsingSetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
-            LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
-            returnResponse(false);
-        }
-
-        if (isPlatformSupport("HDRMode") != 0) {
-            returnResponse(false);
-        }
-
-        if (validateInputParameter("HDRMode",value) != 0) {
-            LOGERR("%s: Range validation failed for hdrMode\n", __FUNCTION__);
-            returnResponse(false);
-        }
-
-        if( !isCapabilityCheckPassed( "HDRMode", inputInfo )) {
-            LOGERR("%s: CapabilityCheck failed for hdrMode\n", __FUNCTION__);
-            returnResponse(false);
-        }
-
-        if( isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format) ) {
-
-            tvVideoFormatType_t formatIndex = VIDEO_FORMAT_NONE;
-            GetCurrentVideoFormat(&formatIndex);
-            if (formatIndex == VIDEO_FORMAT_NONE)
-            {
-                formatIndex = VIDEO_FORMAT_SDR;
-            }
-            string currentFormat = convertVideoFormatToString(formatIndex);
-            retval = getHDRModeIndex(value, currentFormat, index);
-            if (retval != 0)
-            {
-                LOGERR("Failed to getHDRMode index for format %s\n", currentFormat.c_str());
+            if (parsingSetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
+                LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
                 returnResponse(false);
             }
-            LOGINFO("Proceed with SetTVDolbyVisionMode(HDRMode) : %d\n", index);
-            ret = SetTVDolbyVisionMode(index);
-        }
 
-        if(ret != tvERROR_NONE) {
-            LOGERR("Failed to set HDRMode\n");
-            returnResponse(false);
-        }
-        else {
-            // If inputformat is HDR10 set only HDR10 mode
-            // If inputformat is HLG set only HLG mode
-            // If inputformat is Global/Empty/Both set both HDR10 and HLG mode
-            std::vector<std::string> formatsToUpdate;
-            if (inputInfo.format == "HDR10")
-            {
-                formatsToUpdate.push_back("HDR10");
-            }
-            else if (inputInfo.format == "HLG")
-            {
-                formatsToUpdate.push_back("HLG");
-            }
-            else
-            {
-                formatsToUpdate.push_back("HDR10");
-                formatsToUpdate.push_back("HLG");
+            if (isPlatformSupport("HDRMode") != 0) {
+                returnResponse(false);
             }
 
-            for (const auto &format : formatsToUpdate)
-            {
-                retval = getHDRModeIndex(value, format, index);
+            if (validateInputParameter("HDRMode",value) != 0) {
+                LOGERR("%s: Range validation failed for hdrMode\n", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if( !isCapabilityCheckPassed( "HDRMode", inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for hdrMode\n", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            if( isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format) ) {
+
+                tvVideoFormatType_t formatIndex = VIDEO_FORMAT_NONE;
+                GetCurrentVideoFormat(&formatIndex);
+                if (formatIndex == VIDEO_FORMAT_NONE)
+                {
+                    formatIndex = VIDEO_FORMAT_SDR;
+                }
+                string currentFormat = convertVideoFormatToString(formatIndex);
+                retval = getHDRModeIndex(value, currentFormat, index);
                 if (retval != 0)
                 {
-                    LOGERR("Failed to getHDRMode index for format %s\n", format.c_str());
+                    LOGERR("Failed to getHDRMode index for format %s\n", currentFormat.c_str());
                     returnResponse(false);
                 }
-                inputInfo.format = format;
-                retval |= updateAVoutputTVParam("set", "HDRMode", inputInfo, PQ_PARAM_DOLBY_MODE, (int)index);
+                LOGINFO("Proceed with SetTVDolbyVisionMode(HDRMode) : %d\n", index);
+                ret = SetTVDolbyVisionMode(index);
             }
 
-            if(retval != 0 ) {
-                LOGERR("Failed to Save HDRMode\n");
+            if(ret != tvERROR_NONE) {
+                LOGERR("Failed to set HDRMode\n");
                 returnResponse(false);
             }
-            LOGINFO("Exit : hdrMode successful to value: %s\n", value.c_str());
+            else {
+                // If inputformat is HDR10 set only HDR10 mode
+                // If inputformat is HLG set only HLG mode
+                // If inputformat is Global/Empty/Both set both HDR10 and HLG mode
+                std::vector<std::string> formatsToUpdate;
+                if (inputInfo.format == "HDR10")
+                {
+                    formatsToUpdate.push_back("HDR10");
+                }
+                else if (inputInfo.format == "HLG")
+                {
+                    formatsToUpdate.push_back("HLG");
+                }
+                else
+                {
+                    formatsToUpdate.push_back("HDR10");
+                    formatsToUpdate.push_back("HLG");
+                }
+
+                for (const auto &format : formatsToUpdate)
+                {
+                    retval = getHDRModeIndex(value, format, index);
+                    if (retval != 0)
+                    {
+                        LOGERR("Failed to getHDRMode index for format %s\n", format.c_str());
+                        returnResponse(false);
+                    }
+                    inputInfo.format = format;
+                    retval |= updateAVoutputTVParam("set", "HDRMode", inputInfo, PQ_PARAM_DOLBY_MODE, (int)index);
+                }
+
+                if(retval != 0 ) {
+                    LOGERR("Failed to Save HDRMode\n");
+                    returnResponse(false);
+                }
+                LOGINFO("Exit : hdrMode successful to value: %s\n", value.c_str());
+                returnResponse(true);
+            }
+        }
+        else
+        {
+            if (!parameters.HasLabel("hdrMode")) {
+                LOGERR("Missing input field: %s", "hdrMode");
+                returnResponse(false);
+            }
+
+            std::string value = parameters["hdrMode"].String();
+            bool supported = false;
+            for (size_t i = 0; m_hdrModes && i < m_numhdrModes; ++i) {
+                if (getDolbyModeStringFromEnum(m_hdrModes[i]) == value) {
+                    supported = true;
+                    break;
+                }
+            }
+            if (!supported) {
+                LOGERR("Unsupported hdrMode: %s", value.c_str());
+                returnResponse(false);
+            }
+            int intVal = 0;
+
+            // Only call HAL for current system context
+            if (isSetRequiredForParam(parameters, "HDRMode")) {
+                const std::string currentVideoFormat = getCurrentVideoFormatAsString();
+                tvDolbyMode_t hdrModeIndex = tvDolbyMode_Invalid;
+                if (getHDRModeIndex(value, currentVideoFormat, hdrModeIndex) != 0) {
+                    LOGERR("Invalid HDR mode '%s' for format '%s'", value.c_str(), currentVideoFormat.c_str());
+                    return false;
+                }
+                intVal = static_cast<int>(hdrModeIndex);
+                LOGINFO("Calling HAL for %s = %s intVal %d", "HDRMode", value.c_str(), intVal);
+                tvError_t ret = SetTVDolbyVisionMode(static_cast<tvDolbyMode_t>(intVal));
+                if (ret != tvERROR_NONE) {
+                LOGERR("HAL setter failed for %s", "HDRMode");
+                returnResponse(false);
+                }
+            }
+
+            // Persist the parameter contextually
+            int result = updateAVoutputTVParamV2("set", "HDRMode", parameters, PQ_PARAM_DOLBY_MODE, intVal);
+            if (result != 0) {
+            LOGERR("Persistence failed for %s", "HDRMode");
+            returnResponse(false);
+            }
             returnResponse(true);
+
         }
 
     }
@@ -5746,55 +5815,68 @@ namespace Plugin {
     uint32_t AVOutputTV::resetHDRMode(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
+        if(m_hdrModeStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+        {
+            capDetails_t inputInfo;
+            paramIndex_t indexInfo;
+            int dolbyMode=0;
+            tvError_t ret = tvERROR_NONE;
 
-        capDetails_t inputInfo;
-        paramIndex_t indexInfo;
-        int dolbyMode=0;
-        tvError_t ret = tvERROR_NONE;
+            if (parsingSetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
+                LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if (parsingSetInputArgument(parameters, "HDRMode", inputInfo) != 0) {
-            LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
-            returnResponse(false);
-        }
+            if (isPlatformSupport("HDRMode") != 0) {
+                returnResponse(false);
+            }
 
-        if (isPlatformSupport("HDRMode") != 0) {
-            returnResponse(false);
-        }
+            if( !isCapabilityCheckPassed( "HDRMode" , inputInfo )) {
+                LOGERR("%s: CapabilityCheck failed for HDRMode\n", __FUNCTION__);
+                returnResponse(false);
+            }
 
-        if( !isCapabilityCheckPassed( "HDRMode" , inputInfo )) {
-            LOGERR("%s: CapabilityCheck failed for HDRMode\n", __FUNCTION__);
-            returnResponse(false);
-        }
-
-        int retval= updateAVoutputTVParam("reset","HDRMode",inputInfo,PQ_PARAM_DOLBY_MODE,dolbyMode);
-        if(retval != 0 ) {
-            LOGERR("Failed to reset HDRMode\n");
-            returnResponse(false);
-        }
-        else {
-            if (isSetRequired( inputInfo.pqmode,inputInfo.source,inputInfo.format)) {
-                inputInfo.source = "Current";
-                inputInfo.pqmode = "Current";
-                inputInfo.format = "Current";
-                getParamIndex( "HDRMode", inputInfo,indexInfo);
-                int err = getLocalparam("HDRMode", indexInfo, dolbyMode, PQ_PARAM_DOLBY_MODE);
-                if( err == 0 ) {
-                    LOGINFO("%s : getLocalparam success format :%d source : %d format : %d dolbyvalue : %d\n",__FUNCTION__,indexInfo.formatIndex, indexInfo.sourceIndex, indexInfo.pqmodeIndex, dolbyMode);
-                    ret = SetTVDolbyVisionMode((tvDolbyMode_t)dolbyMode);
-                }
-                else {
-                    LOGERR("%s : GetLocalParam Failed \n",__FUNCTION__);
-                    ret = tvERROR_GENERAL;
+            int retval= updateAVoutputTVParam("reset","HDRMode",inputInfo,PQ_PARAM_DOLBY_MODE,dolbyMode);
+            if(retval != 0 ) {
+                LOGERR("Failed to reset HDRMode\n");
+                returnResponse(false);
+            }
+            else {
+                if (isSetRequired( inputInfo.pqmode,inputInfo.source,inputInfo.format)) {
+                    inputInfo.source = "Current";
+                    inputInfo.pqmode = "Current";
+                    inputInfo.format = "Current";
+                    getParamIndex( "HDRMode", inputInfo,indexInfo);
+                    int err = getLocalparam("HDRMode", indexInfo, dolbyMode, PQ_PARAM_DOLBY_MODE);
+                    if( err == 0 ) {
+                        LOGINFO("%s : getLocalparam success format :%d source : %d format : %d dolbyvalue : %d\n",__FUNCTION__,indexInfo.formatIndex, indexInfo.sourceIndex, indexInfo.pqmodeIndex, dolbyMode);
+                        ret = SetTVDolbyVisionMode((tvDolbyMode_t)dolbyMode);
+                    }
+                    else {
+                        LOGERR("%s : GetLocalParam Failed \n",__FUNCTION__);
+                        ret = tvERROR_GENERAL;
+                    }
                 }
             }
-        }
 
-        if(ret != tvERROR_NONE) {
-            returnResponse(false);
+            if(ret != tvERROR_NONE) {
+                returnResponse(false);
+            }
+            else {
+                LOGINFO("Exit : resetHDRMode Successful to value : %d \n",dolbyMode);
+                returnResponse(true);
+            }
         }
-        else {
-            LOGINFO("Exit : resetHDRMode Successful to value : %d \n",dolbyMode);
-            returnResponse(true);
+        else
+        {
+            bool success = resetPQParamToDefault(
+                    parameters,
+                    "HDRMode",
+                    PQ_PARAM_DOLBY_MODE,
+                    [](int value) {
+                        return SetTVDolbyVisionMode(static_cast<tvDolbyMode_t>(value));
+                    });
+            returnResponse(success);
         }
     }
 
@@ -5845,6 +5927,46 @@ namespace Plugin {
             LOGINFO("Exit\n");
             returnResponse(true);
         }
+    }
+
+    uint32_t AVOutputTV::getHDRModeCapsV2(const JsonObject& parameters, JsonObject& response)
+    {
+        LOGINFO("Entry");
+        tvDolbyMode_t* dolbyModes = nullptr;
+        size_t numDolbyModes = 0;
+        tvContextCaps_t* contextCaps = nullptr;
+
+        tvError_t ret = GetTVDolbyVisionModeCaps(&dolbyModes, &numDolbyModes, &contextCaps);
+        std::unique_ptr<tvDolbyMode_t, decltype(&std::free)> modes(dolbyModes, &std::free);
+        if (ret != tvERROR_NONE) {
+            LOGERR("GetTVDolbyVisionModeCaps failed with error: %d", ret);
+            response["platformSupport"] = false;
+            returnResponse(false);
+        }
+
+        if (numDolbyModes > 0 && !modes) {
+            LOGERR("GetTVDolbyVisionModeCaps returned a null options array");
+            response["platformSupport"] = false;
+            returnResponse(false);
+        }
+
+        JsonArray optionsArray;
+        for (size_t i = 0; i < numDolbyModes; ++i) {
+            std::string mode = getDolbyModeStringFromEnum(dolbyModes[i]);
+            if (mode.empty()) {
+                LOGERR("GetTVDolbyVisionModeCaps returned an unknown mode: %d", dolbyModes[i]);
+                response["platformSupport"] = false;
+                returnResponse(false);
+            }
+            optionsArray.Add(mode);
+        }
+
+        response["platformSupport"] = true;
+        response["options"] = optionsArray;
+        response["context"] = parseContextCaps(contextCaps);
+
+        LOGINFO("Exit");
+        returnResponse(true);
     }
 
     uint32_t AVOutputTV::get2PointWB(const JsonObject& parameters, JsonObject& response)
