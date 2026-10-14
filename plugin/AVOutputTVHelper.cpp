@@ -1112,7 +1112,8 @@ namespace Plugin {
                 {"DimmingMode", [this](int v, std::string& s) { getDimmingModeStringFromEnum(v, s); }},
                 {"ZoomMode", [this](int v, std::string& s) { getDisplayModeStringFromEnum(v, s); }},
                 {"BacklightMode", [this](int v, std::string& s) { getBacklightModeStringFromEnum(v, s); }},
-                {"SDRGamma", [this](int v, std::string& s) { getSdrGammaStringFromEnum(static_cast<tvSdrGamma_t>(v), s); }}
+                {"SDRGamma", [this](int v, std::string& s) { getSdrGammaStringFromEnum(static_cast<tvSdrGamma_t>(v), s); }},
+                {"HDRMode", [this](int v, std::string& s) { s = getDolbyModeStringFromEnum(static_cast<tvDolbyMode_t>(v)); }}
             };
 
             // If there's a custom string conversion for this parameter, apply it
@@ -1784,6 +1785,11 @@ namespace Plugin {
         m_dimmingLevelStatus = GetBacklightDimmingLevelCaps(&m_maxDimmingLevel, &m_dimmingLevelCaps);
         if (m_dimmingLevelStatus == tvERROR_NONE) {
             updateAVoutputTVParamV2("sync", "DimmingLevel", paramJson, PQ_PARAM_BACKLIGHT_DIMMINGLEVEL, level);
+        }
+
+        m_hdrModeStatus = GetTVDolbyVisionModeCaps(&m_hdrModes, &m_numhdrModes, &m_hdrModeCaps);
+        if (m_hdrModeStatus == tvERROR_NONE) {
+            updateAVoutputTVParamV2("sync", "HDRMode", paramJson, PQ_PARAM_DOLBY_MODE, level);
         }
 
         m_cmsStatus = GetCMSCaps(&m_maxCmsHue, &m_maxCmsSaturation, &m_maxCmsLuma,
@@ -3578,6 +3584,7 @@ namespace Plugin {
         else if (paramName == "WhiteBalance") caps = m_wbContextCaps;
         else if (paramName == "SDRGamma") caps = m_sdrGammaModeCaps;
         else if (paramName == "DimmingLevel") caps = m_dimmingLevelCaps;
+        else if (paramName == "HDRMode") caps = m_hdrModeCaps;
         else {
             LOGERR("Unknown ParamName: %s", paramName.c_str());
             return nullptr;
@@ -4155,6 +4162,17 @@ namespace Plugin {
             std::string fmtStr = videoFormatMap.count(ctx.videoFormatType) ? videoFormatMap.at(ctx.videoFormatType) : std::to_string(ctx.videoFormatType);
             std::string srcStr = videoSrcMap.count(ctx.videoSrcType) ? videoSrcMap.at(ctx.videoSrcType) : std::to_string(ctx.videoSrcType);
 
+            if(tr181ParamName == "HDRMode" && isSet)
+            {
+                const std::string value = parameters.HasLabel("hdrMode") ? parameters["hdrMode"].String() : "";
+                tvDolbyMode_t dolbyMode = tvDolbyMode_Invalid;
+                 if (getHDRModeIndex(value, fmtStr, dolbyMode) != 0) {
+                     LOGERR("Invalid HDR mode %s for format %s", value.c_str(), fmtStr.c_str());
+                     return static_cast<int>(tvERROR_GENERAL);
+                 }
+                 level = static_cast<int>(dolbyMode);
+            }
+
             if (isSet)
             {
                 ret |= updateAVoutputTVParamToHALV2(tr181ParamName, paramIndex, level, true);
@@ -4263,6 +4281,7 @@ namespace Plugin {
                                 (tvVideoFormatType_t)paramIndex.formatIndex,
                                 level);
                     break;
+
                 case PQ_PARAM_HDR10_MODE:
                 case PQ_PARAM_HLG_MODE:
                 case PQ_PARAM_LDIM:

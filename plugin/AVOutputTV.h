@@ -258,6 +258,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(getCMSCaps)
 		DECLARE_JSON_RPC_METHOD(get2PointWBCaps)
 		DECLARE_JSON_RPC_METHOD(getHDRModeCaps)
+		DECLARE_JSON_RPC_METHOD(getHDRModeCapsV2)
 		DECLARE_JSON_RPC_METHOD(getAutoBacklightModeCaps)
 		DECLARE_JSON_RPC_METHOD(getBacklightCapsV2)
 		DECLARE_JSON_RPC_METHOD(getBrightnessCapsV2)
@@ -660,6 +661,11 @@ class AVOutputTV : public AVOutputBase {
 		tvContextCaps_t* m_sdrGammaModeCaps = nullptr;
 		tvError_t m_sdrGammaModeStatus = tvERROR_NONE;
 		void getSdrGammaStringFromEnum(tvSdrGamma_t value, std::string& str);
+
+		tvDolbyMode_t* m_hdrModes = nullptr;
+		size_t m_numhdrModes = 0;
+		tvContextCaps_t* m_hdrModeCaps = nullptr;
+		tvError_t m_hdrModeStatus = tvERROR_NONE;
 
 		int m_maxDimmingLevel = 0;
 		tvContextCaps_t* m_dimmingLevelCaps = nullptr;
