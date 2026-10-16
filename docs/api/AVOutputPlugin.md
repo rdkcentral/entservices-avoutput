@@ -2,7 +2,7 @@
 <a name="AVOutput_Plugin"></a>
 # AVOutput Plugin
 
-**Version: [1.2.0](../../CHANGELOG.md)**
+**Version: [1.1.0](../../CHANGELOG.md)**
 
 An org.rdk.AVOutput plugin for Thunder framework.
 
