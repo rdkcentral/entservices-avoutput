@@ -139,7 +139,7 @@ AVOutput interface methods:
 | [get2PointWB](#get2PointWB) | Gets the TV 2 point white balance control value for a given picture mode, video format, video source and color temperature |
 | [get2PointWBCaps](#get2PointWBCaps) | Gets the capabilities and boundary range for TV 2 point white balance |
 | [set2PointWB](#set2PointWB) | Sets the TV 2 point white balance for a specified videoSource, colorTemperature, color and control value |
-| [reset2PointWB](#reset2PointWB) | Resets the TV 2 point white balance to factory default for a given picture mode, video format and video source |
+| [reset2PointWB](#reset2PointWB) | Resets the TV 2 point white balance to factory default for a given picture mode, video format, video source and color temperature |
 | [getBacklightCapsV2](#getBacklightCapsV2) | Gets the capability and context map for TV user backlight |
 | [getBrightnessCapsV2](#getBrightnessCapsV2) | Gets the capability and context map for TV brightness |
 | [getContrastCapsV2](#getContrastCapsV2) | Gets the capability and context map for TV contrast |
@@ -9261,7 +9261,7 @@ No Events
 <a name="reset2PointWB"></a>
 ## *reset2PointWB*
 
-Resets the TV 2 point white balance to factory default for a given picture mode, video format and video source.<br><br>The reset value will be persisted across reboots.<br><br>This method is only available in the RDK TV device profile.
+Resets the TV 2 point white balance to factory default for a given picture mode, video format, video source and color temperature.<br><br>The reset value will be persisted across reboots. When `colorTemperature` is omitted, `"Global"` is assumed and all supported color temperature presets are reset. `"Current"` resets the currently selected color temperature preset, while `"Global"` resets all supported presets. Supported preset names are returned by [get2PointWBCapsV2](#get2PointWBCapsV2). Individual preset and `"Current"` selection require platform support for the V2 white-balance capabilities.<br><br>This method is only available in the RDK TV device profile.
 
 ### Events
 
@@ -9271,13 +9271,15 @@ No Events
 
 | Name | Type | Description |
 | :-------- | :-------- | :-------- |
-| params | object | An empty parameter object |
+| params | object | Reset scope |
 | params?.pictureMode | array | <sup>*(optional)*</sup> The picture mode that the white balance is reset for.<br><br>e.g. [ "Global" ] OR ["Current", "Standard", "Sports", "EnergySaving" ]<br><br>The caller can either pass "Current" or "Global" as single value in the array or can pass any number of customisable picture modes that the white balance need to reset to default. When omitted "Global" is the default assumed.<br><br>Other valid values for a platform can be obtained from the [get2PointWBCaps](#get2PointWBCaps) "pictureModeInfo" property<br><br>"Current" specifies the current selected picture mode which can be obtained from [getPictureMode](#getPictureMode). If current selected picture mode is not part of pictureModeInfo field returned by [get2PointWBCaps](#get2PointWBCaps), then it is not customizable and cannot be used.<br><br>"Global" specifies that white balance is reset for all customisable pictures modes that are returned in pictureModeInfo field by [get2PointWBCaps](#get2PointWBCaps). When there is no pictureModeInfo field returned by [get2PointWBCaps](#get2PointWBCaps) then "Global" refers to all picture modes returned by "pictureModes" field of [getPictureModeCaps](#getPictureModeCaps) |
 | params?.pictureMode[#] | string | <sup>*(optional)*</sup>  |
 | params?.videoSource | array | <sup>*(optional)*</sup> The video source that the white balance is reset for.<br><br>e.g. [ "Global" ] OR [ "Current", "HDMI1", "Composite1", "IP"]<br><br>The caller can either pass "Current" or "Global" as single value in the array or can pass any number of customisable video sources that the white balance need to reset to default. When omitted "Global" is the default assumed.<br><br>Other valid values for a platform can be obtained from the [get2PointWBCaps](#get2PointWBCaps) "videoSourceInfo" property<br><br>"Current" specifies the current selected video source which can be obtained from [getVideoSource](#getVideoSource). When there is no active video playback or input port selected, usage of "Current" will refer to "IP" video source as default. If "Current" video source is not part of "videoSourceInfo" field returned by [get2PointWBCaps](#get2PointWBCaps), then it is not customizable and cannot be used.<br><br>"Global" specifies that white balance is reset for all customisable video sources that are returned in "videoSourceInfo" field by [get2PointWBCaps](#get2PointWBCaps). When there is no "videoSourceInfo" field returned by [get2PointWBCaps](#get2PointWBCaps) then "Global" refers to all video sources returned by "videoSources" field of [getVideoSourceCaps](#getVideoSourceCaps) |
 | params?.videoSource[#] | string | <sup>*(optional)*</sup>  |
 | params?.videoFormat | array | <sup>*(optional)*</sup> The video format that the white balance is reset for.<br><br>e.g. [ "Global" ] OR ["Current", "HDR10", "SDR", "DV"]<br><br>The caller can either pass "Current" or "Global" as single value in the array or can pass any number of customisable video formats that the white balance need to reset to default. When omitted "Global" is the default assumed.<br><br>Other valid values for a platform can be obtained from the [get2PointWBCaps](#get2PointWBCaps) "videoFormatInfo" property<br><br>"Current" specifies the current selected video format which can be obtained from [getVideoFormat](#getVideoFormat). When there is no active video playback or input port selected, usage of "Current" will refer to "SDR" video format as default. If "Current" video format is not part of "videoFormatInfo" field returned by [get2PointWBCaps](#get2PointWBCaps), then it is not customizable and cannot be used.<br><br>"Global" specifies that white balance is reset for all customisable video formats that are returned in "videoFormatInfo" field by [get2PointWBCaps](#get2PointWBCaps). When there is no "videoFormatInfo" field returned by [get2PointWBCaps](#get2PointWBCaps) then "Global" refers to all video sources returned by "videoFormats" field of [getVideoFormatCaps](#getVideoFormatCaps) |
 | params?.videoFormat[#] | string | <sup>*(optional)*</sup>  |
+| params?.colorTemperature | array | <sup>*(optional)*</sup> Color temperature presets to reset. Supported values are returned by the `colorTemperature` property of [get2PointWBCapsV2](#get2PointWBCapsV2). `"Current"` selects the currently active color temperature preset. `"Global"` selects all supported presets. When omitted, `"Global"` is assumed. |
+| params?.colorTemperature[#] | string | <sup>*(optional)*</sup> A supported color temperature preset, `"Current"`, or `"Global"` |
 
 ### Result
 
@@ -9288,7 +9290,7 @@ No Events
 
 ### Example
 
-#### Request
+#### Request: reset a specific preset
 
 ```json
 {
@@ -9297,14 +9299,68 @@ No Events
     "method": "org.rdk.AVOutput.reset2PointWB",
     "params": {
         "pictureMode": [
-            "`Custom`, `Game`"
+            "Global"
         ],
         "videoSource": [
             "Global"
         ],
         "videoFormat": [
             "SDR"
+        ],
+        "colorTemperature": [
+            "Warm"
         ]
+    }
+}
+```
+
+This resets `"Warm"` for all supported picture modes and video sources in the `"SDR"` format.
+
+#### Request: reset the currently selected preset
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 42,
+    "method": "org.rdk.AVOutput.reset2PointWB",
+    "params": {
+        "pictureMode": ["Global"],
+        "videoSource": ["Global"],
+        "videoFormat": ["Current"],
+        "colorTemperature": ["Current"]
+    }
+}
+```
+
+#### Request: reset all presets and contexts
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 42,
+    "method": "org.rdk.AVOutput.reset2PointWB",
+    "params": {
+        "pictureMode": ["Global"],
+        "videoSource": ["Global"],
+        "videoFormat": ["Global"],
+        "colorTemperature": ["Global"]
+    }
+}
+```
+
+#### Legacy request: color temperature omitted
+
+If `colorTemperature` is omitted, all supported color temperature presets are reset within the requested picture modes, video sources and video formats.
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 42,
+    "method": "org.rdk.AVOutput.reset2PointWB",
+    "params": {
+        "pictureMode": ["Custom", "Game"],
+        "videoSource": ["Global"],
+        "videoFormat": ["SDR"]
     }
 }
 ```
@@ -9488,4 +9544,3 @@ Event notification for low-latency mode changes.
     }
 }
 ```
-

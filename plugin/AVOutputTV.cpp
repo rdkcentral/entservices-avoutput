@@ -6141,8 +6141,13 @@ namespace Plugin {
     uint32_t AVOutputTV::reset2PointWB(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
+
         if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
+            if (isPlatformSupport("WhiteBalance") != 0) {
+                returnResponse(false);
+            }
+
             capDetails_t inputInfo;
             tvPQParameterIndex_t tvPQEnum;
             int retVal = 0;
@@ -6150,10 +6155,6 @@ namespace Plugin {
             std::string color,control;
             inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
             inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
-
-            if (isPlatformSupport("WhiteBalance") != 0) {
-                returnResponse(false);
-            }
 
             if (parsingSetInputArgument(parameters,"WhiteBalance",inputInfo) != 0) {
                 LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
@@ -6189,9 +6190,115 @@ namespace Plugin {
         }
         else
         {
-            int persistStatus = updateAVoutputTVParamV2("reset", "WhiteBalance", parameters, PQ_PARAM_WB_GAIN_RED, 0);
+            std::vector<std::string> supportedColorTemps = m_wbColorTempList;
+ 
+            if (supportedColorTemps.empty()) {
+                LOGERR("%s: No supported color temperatures available", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            std::vector<std::string> colorTemps;
+            if (!parameters.HasLabel("colorTemperature")) {
+                colorTemps = supportedColorTemps;
+            } else {
+                if (parameters["colorTemperature"].Content() != JsonValue::type::ARRAY) {
+                    LOGERR("%s: colorTemperature must be an array", __FUNCTION__);
+                    returnResponse(false);
+                }
+
+                const JsonArray requestedColorTemps = parameters["colorTemperature"].Array();
+                if (requestedColorTemps.Length() == 0) {
+                    LOGERR("%s: colorTemperature must not be empty", __FUNCTION__);
+                    returnResponse(false);
+                }
+
+                for (uint32_t i = 0; i < requestedColorTemps.Length(); ++i) {
+                    if (requestedColorTemps[i].Content() != JsonValue::type::STRING) {
+                        LOGERR("%s: colorTemperature values must be strings", __FUNCTION__);
+                        returnResponse(false);
+                    }
+
+                    const std::string colorTemp = requestedColorTemps[i].String();
+                    if (colorTemp == "Global") {
+                        colorTemps.insert(colorTemps.end(), supportedColorTemps.begin(), supportedColorTemps.end());
+                    } else if (colorTemp == "Current") {
+                        const std::string currentPictureMode = getCurrentPictureModeAsString();
+                        const std::string currentVideoSource = getCurrentVideoSourceAsString();
+                        const std::string currentVideoFormat = getCurrentVideoFormatAsString();
+                        if (currentPictureMode.empty() || currentVideoSource.empty() || currentVideoFormat.empty()) {
+                            LOGERR("%s: Failed to resolve current context for colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        paramIndex_t currentContext{};
+                        currentContext.pqmodeIndex = static_cast<uint8_t>(convertPictureStringToIndexV2(currentPictureMode));
+                        currentContext.sourceIndex = static_cast<uint8_t>(convertSourceStringToIndexV2(currentVideoSource));
+                        currentContext.formatIndex = static_cast<uint8_t>(convertVideoFormatStringToIndexV2(currentVideoFormat));
+                        if (currentContext.pqmodeIndex == PQ_MODE_MAX ||
+                            currentContext.sourceIndex == VIDEO_SOURCE_MAX ||
+                            currentContext.formatIndex == VIDEO_FORMAT_NONE) {
+                            LOGERR("%s: Invalid current context for colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        int currentColorTemp = tvColorTemp_STANDARD;
+                        if (getLocalparam("ColorTemp", currentContext, currentColorTemp, PQ_PARAM_COLOR_TEMPERATURE) != 0) {
+                            LOGERR("%s: Failed to get the current colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        const auto currentColorTempIt = colorTempReverseMap.find(currentColorTemp);
+                        if (currentColorTempIt == colorTempReverseMap.end()) {
+                            LOGERR("%s: Unknown current colorTemperature value: %d", __FUNCTION__, currentColorTemp);
+                            returnResponse(false);
+                        }
+                        colorTemps.push_back(currentColorTempIt->second);
+                    } else {
+                        colorTemps.push_back(colorTemp);
+                    }
+                }
+            }
+
+            std::vector<std::string> uniqueColorTemps;
+            for (const auto& colorTemp : colorTemps) {
+                if (std::find(supportedColorTemps.begin(), supportedColorTemps.end(), colorTemp) == supportedColorTemps.end()) {
+                    LOGERR("%s: Unsupported colorTemperature: %s", __FUNCTION__, colorTemp.c_str());
+                    returnResponse(false);
+                }
+                if (std::find(uniqueColorTemps.begin(), uniqueColorTemps.end(), colorTemp) == uniqueColorTemps.end()) {
+                    uniqueColorTemps.push_back(colorTemp);
+                }
+            }
+            colorTemps = std::move(uniqueColorTemps);
+            if (colorTemps.empty()) {
+                LOGERR("%s: No color temperatures available to reset", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            int persistStatus = 0;
+            for (const auto& colorTemp : colorTemps) {
+                JsonObject resetParameters;
+                if (parameters.HasLabel("pictureMode")) {
+                    resetParameters["pictureMode"] = parameters["pictureMode"];
+                }
+                if (parameters.HasLabel("videoSource")) {
+                    resetParameters["videoSource"] = parameters["videoSource"];
+                }
+                if (parameters.HasLabel("videoFormat")) {
+                    resetParameters["videoFormat"] = parameters["videoFormat"];
+                }
+                if (parameters.HasLabel("color")) {
+                    resetParameters["color"] = parameters["color"];
+                }
+                if (parameters.HasLabel("control")) {
+                    resetParameters["control"] = parameters["control"];
+                }
+                resetParameters["colorTemperature"] = colorTemp;
+                persistStatus |= updateAVoutputTVParamV2("reset", "WhiteBalance", resetParameters, PQ_PARAM_WB_GAIN_RED, 0);
+            }
+
             if (persistStatus != 0) {
-                LOGERR("Failed to reset WhiteBalance\n");
+                LOGERR("Failed to reset WhiteBalance");
                 returnResponse(false);
             }
             else {
