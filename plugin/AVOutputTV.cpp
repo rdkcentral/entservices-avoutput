@@ -524,6 +524,16 @@ namespace Plugin {
        else {
            LOGINFO("Platform De-Init successful... \n");
        }
+#if !defined(HDMIIN_4K_ZOOM)
+       // Unregister before Close() releases the cached sub-interface, otherwise DeviceSettings
+       // is left holding a dangling HDMI-In notification sink forever (resource leak).
+       auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+       if (hdmiIn != nullptr) {
+           hdmiIn->Unregister(&_DSHdmiInNotification);
+           hdmiIn->Release();
+       }
+#endif
+       DSHelper::Close();
 
        LOGINFO("Exit\n");
     }
