@@ -891,7 +891,9 @@ namespace Plugin {
         // get current source
         GetCurrentVideoSource(&current_source);
 
-        tr181_param_name += std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
+        tr181_param_name += (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) ?
+                            std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) :
+                            std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
         tr181_param_name += "."+convertSourceIndexToStringV2(current_source)+"."+"Format."+convertVideoFormatToStringV2(current_format)+"."+"PictureModeString";
         tr181ErrorCode_t err = getLocalParam(rfc_caller_id, tr181_param_name.c_str(), &param);
         if ( tr181Success == err ) {
@@ -1883,7 +1885,7 @@ namespace Plugin {
                 if (format != "Global" && format != formatStr)
                     continue;
 
-                std::string tr181Param = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
+                std::string tr181Param = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
                                         "." + sourceStr + ".Format." + formatStr + ".PictureModeString";
 
                 err = getLocalParam(rfc_caller_id, tr181Param.c_str(), &param);
@@ -2518,7 +2520,9 @@ namespace Plugin {
 	    current_format  = VIDEO_FORMAT_SDR;
 	}
 
-        tr181_param_name += std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
+        tr181_param_name += (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) ?
+                            std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) :
+                            std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
         tr181_param_name += "." + convertSourceIndexToStringV2(currentSource) + "." + "Format."+convertVideoFormatToStringV2(current_format)+"."+"PictureModeString";
 
         memset(&param, 0, sizeof(param));
