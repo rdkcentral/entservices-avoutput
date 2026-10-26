@@ -4338,7 +4338,7 @@ namespace Plugin {
         }
 
         // Directly use TR-181 to fetch active picture mode
-        std::string tr181_param_name = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
+        std::string tr181_param_name = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
             "." + convertSourceIndexToStringV2(source) +
             ".Format." + convertVideoFormatToStringV2(format) +
             ".PictureModeString";
@@ -4547,7 +4547,7 @@ namespace Plugin {
                 }
             }
 //TODO:: Revisit this logic. Have to revert if HAL call fails.
-            std::string tr181Param = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
+            std::string tr181Param = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
                 srcStr + ".Format." + fmtStr + ".PictureModeString";
 
             tr181ErrorCode_t err = setLocalParam(rfc_caller_id, tr181Param.c_str(), mode.c_str());
@@ -4556,7 +4556,7 @@ namespace Plugin {
                 continue;
             }
             else {
-                LOGINFO("setLocalParam for %s Successful, Value: %s\n", AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM, mode.c_str());
+                LOGINFO("setLocalParam for %s Successful, Value: %s\n", tr181Param.c_str(), mode.c_str());
                 int pqmodeindex = (int)convertPictureStringToIndexV2(std::string(mode));
                 SaveSourcePictureMode(ctx.videoSrcType, ctx.videoFormatType, pqmodeindex);
             }
@@ -4728,7 +4728,7 @@ namespace Plugin {
             if (!isValidSource(sources, ctx.videoSrcType) || !isValidFormat(formats, ctx.videoFormatType))
                 continue;
 
-            std::string tr181Param = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
+            std::string tr181Param = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
                 convertSourceIndexToStringV2(ctx.videoSrcType) + ".Format." +
                 convertVideoFormatToStringV2(ctx.videoFormatType) + ".PictureModeString";
 
