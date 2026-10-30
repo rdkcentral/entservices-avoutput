@@ -91,6 +91,7 @@ AVOutput interface methods:
 | [getDolbyVisionModeCaps](#getDolbyVisionModeCaps) | Gets the capability for DolbyVision mode |
 | [getHDRMode](#getHDRMode) | Gets the HDR10 mode for a given picture mode, video format and video source |
 | [getHDRModeCaps](#getHDRModeCaps) | Gets the capability for HDR mode |
+| [getHDRModeCapsV2](#getHDRModeCapsV2) | Gets HDR mode options and context map from the TV HAL |
 | [getVideoFormatCaps](#getVideoFormatCaps) | Get all supported video formats for the platform |
 | [getVideoSourceCaps](#getVideoSourceCaps) | Get all supported video sources for the platform |
 | [getVideoFrameRateCaps](#getVideoFrameRateCaps) | Get all supported video frame rates for the platform |
@@ -6260,6 +6261,54 @@ No Events
 }
 ```
 
+<a name="getHDRModeCapsV2"></a>
+## *getHDRModeCapsV2*
+
+Gets HDR mode capabilities from `GetTVDolbyVisionModeCaps`. Unlike [getHDRModeCaps](#getHDRModeCaps), this endpoint returns a context map instead of separate picture mode, video format and video source lists. The legacy endpoint is unchanged.
+
+### Parameters
+
+| Name | Type | Description |
+| :-------- | :-------- | :-------- |
+| params | object | An empty parameter object |
+
+### Result
+
+| Name | Type | Description |
+| :-------- | :-------- | :-------- |
+| result.platformSupport | boolean | Whether the HAL capability query succeeded |
+| result.options | array | HDR mode names returned by the HAL: "Dark", "Bright" or "Game" |
+| result.context | object | Supported contexts grouped by picture mode, then video format, with arrays of video sources |
+| result.success | boolean | Whether the request succeeded. HAL errors, including unsupported platforms, return false with platformSupport false |
+
+### Example
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 42,
+    "method": "org.rdk.AVOutput.getHDRModeCapsV2",
+    "params": {}
+}
+```
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 42,
+    "result": {
+        "platformSupport": true,
+        "options": ["Dark", "Bright", "Game"],
+        "context": {
+            "Standard": {
+                "DV": ["HDMI1", "IP"]
+            }
+        },
+        "success": true
+    }
+}
+```
+
 <a name="getVideoFormatCaps"></a>
 ## *getVideoFormatCaps*
 
@@ -9488,4 +9537,3 @@ Event notification for low-latency mode changes.
     }
 }
 ```
-
