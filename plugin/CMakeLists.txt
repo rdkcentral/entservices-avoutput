@@ -28,7 +28,10 @@ set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
 set(PLUGIN_AVOUTPUT_AUTOSTART "true" CACHE STRING "Automatically start AVOutput plugin")
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(${NAMESPACE}Helpers REQUIRED)
 
 set (CMAKE_CXX_STANDARD 11)
 
@@ -39,9 +42,6 @@ include_directories(${STAGING_INCDIR}/../lib/glib-2.0/include)
 include_directories(${STAGING_INCDIR}/rdk/iarmbus)
 include_directories(${STAGING_INCDIR}/rdk/iarmmgrs-hal)
 include_directories(${STAGING_INCDIR}/rdk/tv-hal)
-include_directories(${STAGING_INCDIR}/rdk/ds-hal)
-include_directories(${STAGING_INCDIR}/rdk/ds-rpc)
-include_directories(${STAGING_INCDIR}/rdk/ds)
 
 if (AVOUTPUT_TV)
 add_library(${MODULE_NAME} SHARED
@@ -61,7 +61,6 @@ target_link_libraries(${MODULE_NAME}
         IARMBus
         tvsettings-hal
         tr181api
-        ds
 )
 else()
 add_library(${MODULE_NAME} SHARED
@@ -80,13 +79,11 @@ set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
-find_package(DS)
-
-target_include_directories(${MODULE_NAME} PRIVATE ${DS_INCLUDE_DIRS})
 target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 target_link_libraries(${MODULE_NAME} 
     PRIVATE
-        ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+		${NAMESPACE}::${NAMESPACE}Helpers)
 
 
 install(TARGETS ${MODULE_NAME} 
