@@ -763,42 +763,6 @@ namespace Plugin {
         return 0;
     }
 
-    void AVOutputTV::locatePQSettingsFile()
-    {
-        LOGINFO("Entry\n");
-        char panelId[20] = {0};
-        std::string PQFileName = AVOUTPUT_RFC_CALLERID;
-        std::string FilePath = "/etc/rfcdefaults/";
-
-        /* The if condition is to override the tvsettings ini file so it helps the PQ tuning process for new panels */
-        if(access(AVOUTPUT_OVERRIDE_PATH, F_OK) == 0) {
-            PQFileName = std::string(AVOUTPUT_RFC_CALLERID_OVERRIDE);
-        }
-        else {
-            int val=GetPanelID(panelId);
-            if(val==0) {
-                LOGINFO("%s : panel id read is : %s\n",__FUNCTION__,panelId);
-                if(strncmp(panelId,AVOUTPUT_CONVERTERBOARD_PANELID,strlen(AVOUTPUT_CONVERTERBOARD_PANELID))!=0) {
-                    PQFileName+=std::string("_")+panelId;
-                    struct stat tmp_st;
-
-                    LOGINFO("%s: Looking for %s.ini \n",__FUNCTION__,PQFileName.c_str());
-                    if(stat((FilePath+PQFileName+std::string(".ini")).c_str(), &tmp_st)!=0) {
-                        //fall back
-                        LOGINFO("%s not available in %s Fall back to default\n",PQFileName.c_str(),FilePath.c_str());
-                        PQFileName =std::string(AVOUTPUT_RFC_CALLERID);
-                    }
-                }
-            }
-            else {
-                LOGINFO("%s : GetPanelID failed : %d\n",__FUNCTION__,val);
-            }
-        }
-        strncpy(rfc_caller_id,PQFileName.c_str(),PQFileName.size());
-        rfc_caller_id[sizeof(rfc_caller_id) - 1] = '\0';
-        LOGINFO("%s : Default tvsettings file : %s\n",__FUNCTION__,rfc_caller_id);
-    }
-
     tvError_t AVOutputTV::initializeBacklightMode()
     {
         TR181_ParamData_t param;
@@ -927,7 +891,9 @@ namespace Plugin {
         // get current source
         GetCurrentVideoSource(&current_source);
 
-        tr181_param_name += std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
+        tr181_param_name += (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) ?
+                            std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) :
+                            std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
         tr181_param_name += "."+convertSourceIndexToStringV2(current_source)+"."+"Format."+convertVideoFormatToStringV2(current_format)+"."+"PictureModeString";
         tr181ErrorCode_t err = getLocalParam(rfc_caller_id, tr181_param_name.c_str(), &param);
         if ( tr181Success == err ) {
@@ -1919,7 +1885,7 @@ namespace Plugin {
                 if (format != "Global" && format != formatStr)
                     continue;
 
-                std::string tr181Param = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
+                std::string tr181Param = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
                                         "." + sourceStr + ".Format." + formatStr + ".PictureModeString";
 
                 err = getLocalParam(rfc_caller_id, tr181Param.c_str(), &param);
@@ -2438,39 +2404,6 @@ namespace Plugin {
         return ret;
     }
 
-    int AVOutputTV::GetPanelID(char *panelId)
-    {
-        if (panelId == NULL) {
-            printf("Invalid buffer provided for panel ID\n");
-            return -1;
-        }
-
-        const char *command = "/usr/bin/panelIDConfig -i";
-        FILE *fp;
-
-        // Execute the binary
-        fp = popen(command, "r");
-        if (fp == NULL) {
-            printf("Failed to execute command: %s\n", command);
-            return -1;
-        }
-
-        // Read the panel ID from the binary's output
-        if (fgets(panelId, 20, fp) != NULL) {
-            size_t len = strlen(panelId);
-            if (len > 0 && panelId[len - 1] == '\n') {
-                panelId[len - 1] = '\0';
-            }
-        } else {
-            printf("Failed to read panel ID from panelIDConfig binary\n");
-            pclose(fp);
-            return -1;
-        }
-
-        pclose(fp);
-        return 0;
-    }
-
     void AVOutputTV::getDimmingModeStringFromEnum(int value, std::string &toStore)
     {
         const char *dimmingmode_string[] = {
@@ -2587,7 +2520,9 @@ namespace Plugin {
 	    current_format  = VIDEO_FORMAT_SDR;
 	}
 
-        tr181_param_name += std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
+        tr181_param_name += (m_pictureModeStatus == tvERROR_OPERATION_NOT_SUPPORTED) ?
+                            std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) :
+                            std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM);
         tr181_param_name += "." + convertSourceIndexToStringV2(currentSource) + "." + "Format."+convertVideoFormatToStringV2(current_format)+"."+"PictureModeString";
 
         memset(&param, 0, sizeof(param));
@@ -3294,7 +3229,10 @@ namespace Plugin {
         {PQ_MODE_VIVID, "Vivid"},
         {PQ_MODE_ENERGY_SAVING, "EnergySaving"},
         {PQ_MODE_DISABLE, "PQ Disable"},
-        {PQ_MODE_CUSTOM, "Custom"}
+        {PQ_MODE_CUSTOM, "Custom"},
+        {PQ_MODE_GRAPHICS, "Graphics"},
+        {PQ_MODE_VIVID2, "Vivid2"},
+        {PQ_MODE_FMM, "FilmMaker"}
     };
 
     const std::unordered_map<int, std::string> AVOutputTV::videoFormatMap = {
@@ -3906,26 +3844,67 @@ namespace Plugin {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
             return (int)tvERROR_GENERAL;
         }
-        if (validContexts.size() == 1){
 
-            return updateAVoutputTVParamV2Implementation(action, tr181ParamName, parameters, pqParamIndex, level);
-        } else {
+        if (validContexts.size() == 1) {
+            return updateAVoutputTVParamV2Implementation(
+                action, tr181ParamName, parameters, pqParamIndex, level, validContexts);
+        }
 
-            // Capture parameters by value for thread safety
+        // Resolve the current context the same way isSetRequiredForParam() does, so the
+        // immediately persisted tuple is always the one the HAL was just applied to.
+        const std::string curPicMode = getCurrentPictureModeAsString();
+        const std::string curSource  = getCurrentVideoSourceAsString();
+        const std::string curFormat  = getCurrentVideoFormatAsString();
+
+        std::vector<tvConfigContext_t> immediateContexts;
+        std::vector<tvConfigContext_t> queuedContexts;
+        queuedContexts.reserve(validContexts.size());
+        for (const auto& context : validContexts) {
+            if (immediateContexts.empty() &&
+                convertPictureIndexToStringV2(context.pq_mode) == curPicMode &&
+                convertSourceIndexToStringV2(context.videoSrcType) == curSource &&
+                convertVideoFormatToStringV2(context.videoFormatType) == curFormat) {
+                immediateContexts.push_back(context);
+            } else {
+                queuedContexts.push_back(context);
+            }
+        }
+
+        if (!immediateContexts.empty()) {
+            LOGINFO("%s: Executing current context immediately %s pictureMode: %s, videoFormat: %s, videoSource: %s (queued: %zu)",
+                __FUNCTION__, tr181ParamName.c_str(), curPicMode.c_str(), curFormat.c_str(), curSource.c_str(), queuedContexts.size());
+            const int ret = updateAVoutputTVParamV2Implementation(
+                action, tr181ParamName, parameters, pqParamIndex, level, immediateContexts);
+
+            if (queuedContexts.empty()) {
+                return ret;
+            }
+
             std::lock_guard<std::mutex> lock(queueMutex);
-            paramUpdateQueue.push([this, action, tr181ParamName, parameters, pqParamIndex, level]() {
-                updateAVoutputTVParamV2Implementation(action, tr181ParamName, parameters, pqParamIndex, level);
+            paramUpdateQueue.push([this, action, tr181ParamName, parameters, pqParamIndex, level, queuedContexts]() {
+                updateAVoutputTVParamV2Implementation(
+                    action, tr181ParamName, parameters, pqParamIndex, level, queuedContexts);
             });
             queueCondition.notify_one();
 
-            // Return immediately - operation queued successfully
-            return 0;
+            return ret;
         }
+
+        LOGINFO("%s: Current context not in request for %s (pictureMode: %s, videoFormat: %s, videoSource: %s); queuing all %zu contexts",
+            __FUNCTION__, tr181ParamName.c_str(), curPicMode.c_str(), curFormat.c_str(), curSource.c_str(), validContexts.size());
+        std::lock_guard<std::mutex> lock(queueMutex);
+        paramUpdateQueue.push([this, action, tr181ParamName, parameters, pqParamIndex, level, validContexts]() {
+            updateAVoutputTVParamV2Implementation(
+                action, tr181ParamName, parameters, pqParamIndex, level, validContexts);
+        });
+        queueCondition.notify_one();
+        return 0;
     }
 
     int AVOutputTV::updateAVoutputTVParamV2Implementation(std::string action, std::string tr181ParamName,
         const JsonObject& parameters,
-        tvPQParameterIndex_t pqParamIndex,int level)
+        tvPQParameterIndex_t pqParamIndex,int level,
+        const std::vector<tvConfigContext_t>& validContexts)
     {
 
         LOGINFO("Entry %s: Action: %s, Param: %s, Level: %d", __FUNCTION__, action.c_str(), tr181ParamName.c_str(), level);
@@ -3935,7 +3914,6 @@ namespace Plugin {
         const bool isReset = (action == "reset");
         const bool isSync = (action == "sync");
 
-        std::vector<tvConfigContext_t> validContexts = getValidContextsFromParameters(parameters, tr181ParamName);
         std::vector<std::string> colors, components;
 
         LOGINFO("%s: Number of validContexts = %zu", __FUNCTION__, validContexts.size());
@@ -4033,8 +4011,6 @@ namespace Plugin {
                             if (getLocalparam(tr181ParamName, paramIndex, value, pqIndex, isSync) == 0) {
                                 level = value;
                             } else {
-                                LOGWARN("%s: Skipping sync for color: %s, component: %s",
-                                        __FUNCTION__, colorStr.c_str(), componentStr.c_str());
                                 continue;
                             }
                         }

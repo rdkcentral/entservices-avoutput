@@ -55,9 +55,6 @@
 #define RFC_BUFF_MAX 100
 #define BACKLIGHT_RAW_VALUE_MAX    (255)
 #define AVOUTPUT_RFC_CALLERID        "AVOutput"
-#define AVOUTPUT_RFC_CALLERID_OVERRIDE        "../../opt/panel/AVOutput"
-#define AVOUTPUT_OVERRIDE_PATH       "/opt/panel/AVOutput.ini"
-#define AVOUTPUT_CONVERTERBOARD_PANELID     "0_0_00"
 #define AVOUTPUT_GENERIC_STRING_RFC_PARAM    "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput."
 #define AVOUTPUT_AUTO_BACKLIGHT_MODE_RFC_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput.AutoBacklightMode"
 #define AVOUTPUT_DOLBYVISIONMODE_RFC_PARAM      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput.DolbyVisionMode"
@@ -68,6 +65,8 @@
 #define AVOUTPUT_PICTUREMODE_STRING_RFC_PARAM      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput.PictureModeString"
 #define AVOUTPUT_ASPECTRATIO_RFC_PARAM      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput.ZoomMode"
 #define AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutput.Source"
+// AVOutput V2 keeps picture mode in a separate namespace so the legacy (V1) entries stay intact for rollback
+#define AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.AVOutputV2.Source"
 #define AVOUTPUT_DALS_RFC_PARAM "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.AVOutput.DynamicAutoLatency"
 
 #define STRING_DIRTY  ".Dirty."
@@ -267,9 +266,11 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(getSaturationCapsV2)
 		DECLARE_JSON_RPC_METHOD(getHueCapsV2)
 		DECLARE_JSON_RPC_METHOD(getPrecisionDetailCaps)
+		DECLARE_JSON_RPC_METHOD(getPrecisionDetailCapsV2)
 		DECLARE_JSON_RPC_METHOD(getLowLatencyStateCapsV2)
 		DECLARE_JSON_RPC_METHOD(getColorTemperatureCapsV2)
 		DECLARE_JSON_RPC_METHOD(getSDRGammaCaps)
+		DECLARE_JSON_RPC_METHOD(getSDRGammaCapsV2)
 		DECLARE_JSON_RPC_METHOD(getBacklightDimmingModeCapsV2)
 		DECLARE_JSON_RPC_METHOD(getZoomModeCapsV2)
 		DECLARE_JSON_RPC_METHOD(getCMSCapsV2)
@@ -278,12 +279,19 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(getPictureModeCapsV2)
 		DECLARE_JSON_RPC_METHOD(getAutoBacklightModeCapsV2)
 		DECLARE_JSON_RPC_METHOD(getLocalContrastEnhancementCaps)
+		DECLARE_JSON_RPC_METHOD(getLocalContrastEnhancementCapsV2)
 		DECLARE_JSON_RPC_METHOD(getMPEGNoiseReductionCaps)
+		DECLARE_JSON_RPC_METHOD(getMPEGNoiseReductionCapsV2)
 		DECLARE_JSON_RPC_METHOD(getDigitalNoiseReductionCaps)
+		DECLARE_JSON_RPC_METHOD(getDigitalNoiseReductionCapsV2)
 		DECLARE_JSON_RPC_METHOD(getAISuperResolutionCaps)
+		DECLARE_JSON_RPC_METHOD(getAISuperResolutionCapsV2)
 		DECLARE_JSON_RPC_METHOD(getMEMCCaps)
+		DECLARE_JSON_RPC_METHOD(getMEMCCapsV2)
 		DECLARE_JSON_RPC_METHOD(getMultiPointWBCaps)
+		DECLARE_JSON_RPC_METHOD(getMultiPointWBCapsV2)
 		DECLARE_JSON_RPC_METHOD(getBacklightDimmingLevelCaps)
+		DECLARE_JSON_RPC_METHOD(getBacklightDimmingLevelCapsV2)
 
 		/*Set API's*/
 		DECLARE_JSON_RPC_METHOD(setBacklight)
@@ -370,8 +378,6 @@ class AVOutputTV : public AVOutputBase {
 		int validateWBParameter(std::string param,std::string control,int inputValue);
 		int validateCMSParameter(std::string component,int inputValue);
 
-                /* AVoutput ini file default entries */
-		void locatePQSettingsFile(void);
 		/* Intialise the last set picture mode at bootup */
 		tvError_t initializePictureMode();		
 		
@@ -421,7 +427,6 @@ class AVOutputTV : public AVOutputBase {
 		
 		tvDataComponentColor_t getComponentColorEnum(std::string colorName);
 		tvError_t getParamsCaps(const std::string& param, capVectors_t &vecInfo);
-		int GetPanelID(char *panelid);
 		int ReadCapablitiesFromConf(std::string param, capDetails_t& info);
 
 		void getDimmingModeStringFromEnum(int value, std::string &toStore);
@@ -560,14 +565,15 @@ class AVOutputTV : public AVOutputBase {
 		// Implementation function that does the actual work
 		int updateAVoutputTVParamV2Implementation(std::string action, std::string tr181ParamName,
 			const JsonObject& parameters,
-			tvPQParameterIndex_t pqParamIndex, int level);
+			tvPQParameterIndex_t pqParamIndex, int level,
+			const std::vector<tvConfigContext_t>& validContexts);
 
 
 	public:
 		int m_currentHdmiInResoluton;
 		int m_videoZoomMode;
 		bool m_isDisabledHdmiIn4KZoom;
-		char rfc_caller_id[RFC_BUFF_MAX];
+		char* rfc_caller_id;
 		bool appUsesGlobalBackLightFactor;
 		int pic_mode_index[PIC_MODES_SUPPORTED_MAX];
 
