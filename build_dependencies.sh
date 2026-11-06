@@ -20,6 +20,8 @@
 set -x
 set -e
 ##############################
+THUNDER_TOOLS_COMMIT_SHA="d5dd83c7c19c49c7f25c558c126500bd2d64f7a4"
+THUNDER_COMMIT_SHA="2c0fcc5529e7da734be558ca6efa05d934dcce31"
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
 cd ${GITHUB_WORKSPACE}
@@ -35,9 +37,11 @@ pip install jsonref
 # Clone the required repositories
 
 
-git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
+git clone --branch R4_4-RDK https://github.com/rdkcentral/ThunderTools.git
+git -C ThunderTools checkout "$THUNDER_TOOLS_COMMIT_SHA"
 
-git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
+git clone --branch R4_4-RDK https://github.com/rdkcentral/Thunder.git
+git -C Thunder checkout "$THUNDER_COMMIT_SHA"
 
 git clone --branch develop https://github.com/rdkcentral/entservices-apis.git
 
@@ -45,17 +49,12 @@ cd ..
 git clone --branch develop https://github.com/rdkcentral/entservices-helpers.git
 cd "$GITHUB_WORKSPACE"
 
-git clone --branch 1.0.14 https://github.com/rdkcentral/entservices-testframework.git
+git clone --branch feature/RDKEMW-25013 https://github.com/rdkcentral/entservices-testframework.git
 
 ############################
 # Build Thunder-Tools
 echo "======================================================================================"
 echo "building thunderTools"
-cd ThunderTools
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
-cd -
-
-
 cmake -G Ninja -S ThunderTools -B build/ThunderTools \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
@@ -69,13 +68,6 @@ cmake --build build/ThunderTools --target install
 # Build Thunder
 echo "======================================================================================"
 echo "building thunder"
-
-cd Thunder
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/error_code_R4_4.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/1004-Add-support-for-project-dir.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
-cd -
 
 cmake -G Ninja -S Thunder -B build/Thunder \
     -DMESSAGING=ON \
@@ -114,25 +106,11 @@ cd entservices-testframework/Tests
 echo "Creating mock headers for AVOutput plugin dependencies"
 echo "======================================================================================"
 mkdir -p headers
-mkdir -p headers/rdk/ds
 mkdir -p headers/rdk/iarmbus
 echo "dir created successfully"
 echo "======================================================================================"
 
-echo "======================================================================================"
-echo "Creating required DS headers for AVOutput"
 cd headers
-
-for header in \
-    rdk/ds/compositeIn.hpp \
-    rdk/ds/hdmiIn.hpp \
-    rdk/ds/host.hpp \
-    rdk/ds/manager.hpp \
-    rdk/ds/exception.hpp \
-    rdk/ds/dsMgr.h \
-    rdk/ds/dsError.h; do
-    touch "$header"
-done
 
 echo "Creating required IARM Bus headers"
 
