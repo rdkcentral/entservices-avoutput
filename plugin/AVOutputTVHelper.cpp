@@ -2759,8 +2759,8 @@ namespace Plugin {
 #if !defined (HDMIIN_4K_ZOOM)
         LOGINFO("%s:mode selected is: %d", __FUNCTION__, m_videoZoomMode);
         if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
-            if (!(AVOutputTV::instance->m_currentHdmiInResoluton<dsVIDEO_PIXELRES_3840x2160 ||
-               (dsVIDEO_PIXELRES_MAX == AVOutputTV::instance->m_currentHdmiInResoluton))) {
+            if (!(AVOutputTV::instance->m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsVideoPort::DS_VIDEO_PIXELRES_3840X2160) ||
+               (static_cast<int>(Exchange::IDeviceSettingsVideoPort::DS_VIDEO_PIXELRES_MAX) == AVOutputTV::instance->m_currentHdmiInResoluton))) {
                 *mode = (tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode;
                 LOGWARN("%s: Getting zoom mode %d for display, for 4K and above", __FUNCTION__, *mode);
                 return tvERROR_NONE;
@@ -2788,8 +2788,8 @@ namespace Plugin {
         m_videoZoomMode = mode;
 #if !defined (HDMIIN_4K_ZOOM)
         if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
-            if (AVOutputTV::instance->m_currentHdmiInResoluton<dsVIDEO_PIXELRES_3840x2160 ||
-                (dsVIDEO_PIXELRES_MAX == m_currentHdmiInResoluton)) {
+            if (AVOutputTV::instance->m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsVideoPort::DS_VIDEO_PIXELRES_3840X2160) ||
+                (static_cast<int>(Exchange::IDeviceSettingsVideoPort::DS_VIDEO_PIXELRES_MAX) == AVOutputTV::instance->m_currentHdmiInResoluton)) {
                 LOGWARN("%s: Setting %d zoom mode for below 4K", __FUNCTION__, m_videoZoomMode);
 #endif
                 ret = SetAspectRatio(mode);
