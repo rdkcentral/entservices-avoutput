@@ -265,7 +265,7 @@ namespace Plugin {
                             , m_currentHdmiInResoluton (static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_1920X1080))
                             , m_videoZoomMode (tvDisplayMode_NORMAL)
                             , m_isDisabledHdmiIn4KZoom (false)
-	                    , rfc_caller_id()
+	                    , rfc_caller_id(nullptr)
     {
         LOGINFO("CTOR\n");
         AVOutputTV::instance = this;
@@ -374,46 +374,55 @@ namespace Plugin {
         registerMethod("getCMSCapsV2", &AVOutputTV::getCMSCapsV2, this);
         registerMethod("get2PointWBCapsV2", &AVOutputTV::get2PointWBCapsV2, this);
         registerMethod("getSDRGammaCaps", &AVOutputTV::getSDRGammaCaps, this);
+        registerMethod("getSDRGammaCapsV2", &AVOutputTV::getSDRGammaCapsV2, this);
         registerMethod("getSDRGamma", &AVOutputTV::getSDRGamma, this);
         registerMethod("setSDRGamma", &AVOutputTV::setSDRGamma, this);
         registerMethod("resetSDRGamma", &AVOutputTV::resetSDRGamma, this);
 
         registerMethod("getPrecisionDetailCaps", &AVOutputTV::getPrecisionDetailCaps, this);
+        registerMethod("getPrecisionDetailCapsV2", &AVOutputTV::getPrecisionDetailCapsV2, this);
         registerMethod("getPrecisionDetail", &AVOutputTV::getPrecisionDetail, this);
         registerMethod("setPrecisionDetail", &AVOutputTV::setPrecisionDetail, this);
         registerMethod("resetPrecisionDetail", &AVOutputTV::resetPrecisionDetail, this);
 
         registerMethod("getLocalContrastEnhancementCaps", &AVOutputTV::getLocalContrastEnhancementCaps, this);
+        registerMethod("getLocalContrastEnhancementCapsV2", &AVOutputTV::getLocalContrastEnhancementCapsV2, this);
         registerMethod("getLocalContrastEnhancement", &AVOutputTV::getLocalContrastEnhancement, this);
         registerMethod("setLocalContrastEnhancement", &AVOutputTV::setLocalContrastEnhancement, this);
         registerMethod("resetLocalContrastEnhancement", &AVOutputTV::resetLocalContrastEnhancement, this);
 
         registerMethod("getMPEGNoiseReductionCaps", &AVOutputTV::getMPEGNoiseReductionCaps, this);
+        registerMethod("getMPEGNoiseReductionCapsV2", &AVOutputTV::getMPEGNoiseReductionCapsV2, this);
         registerMethod("getMPEGNoiseReduction", &AVOutputTV::getMPEGNoiseReduction, this);
         registerMethod("setMPEGNoiseReduction", &AVOutputTV::setMPEGNoiseReduction, this);
         registerMethod("resetMPEGNoiseReduction", &AVOutputTV::resetMPEGNoiseReduction, this);
 
         registerMethod("getDigitalNoiseReductionCaps", &AVOutputTV::getDigitalNoiseReductionCaps, this);
+        registerMethod("getDigitalNoiseReductionCapsV2", &AVOutputTV::getDigitalNoiseReductionCapsV2, this);
         registerMethod("getDigitalNoiseReduction", &AVOutputTV::getDigitalNoiseReduction, this);
         registerMethod("setDigitalNoiseReduction", &AVOutputTV::setDigitalNoiseReduction, this);
         registerMethod("resetDigitalNoiseReduction", &AVOutputTV::resetDigitalNoiseReduction, this);
 
         registerMethod("getMEMCCaps", &AVOutputTV::getMEMCCaps, this);
+        registerMethod("getMEMCCapsV2", &AVOutputTV::getMEMCCapsV2, this);
         registerMethod("getMEMC", &AVOutputTV::getMEMC, this);
         registerMethod("setMEMC", &AVOutputTV::setMEMC, this);
         registerMethod("resetMEMC", &AVOutputTV::resetMEMC, this);
 
         registerMethod("getAISuperResolutionCaps", &AVOutputTV::getAISuperResolutionCaps, this);
+        registerMethod("getAISuperResolutionCapsV2", &AVOutputTV::getAISuperResolutionCapsV2, this);
         registerMethod("getAISuperResolution", &AVOutputTV::getAISuperResolution, this);
         registerMethod("setAISuperResolution", &AVOutputTV::setAISuperResolution, this);
         registerMethod("resetAISuperResolution", &AVOutputTV::resetAISuperResolution, this);
 
         registerMethod("getMultiPointWBCaps", &AVOutputTV::getMultiPointWBCaps, this);
+        registerMethod("getMultiPointWBCapsV2", &AVOutputTV::getMultiPointWBCapsV2, this);
 
         registerMethod("getBacklightDimmingLevel", &AVOutputTV::getBacklightDimmingLevel, this);
         registerMethod("setBacklightDimmingLevel", &AVOutputTV::setBacklightDimmingLevel, this);
         registerMethod("resetBacklightDimmingLevel", &AVOutputTV::resetBacklightDimmingLevel, this);
         registerMethod("getBacklightDimmingLevelCaps", &AVOutputTV::getBacklightDimmingLevelCaps, this); 
+        registerMethod("getBacklightDimmingLevelCapsV2", &AVOutputTV::getBacklightDimmingLevelCapsV2, this);
 
         // Start worker thread for non-blocking updates
         workerThread = std::thread(&AVOutputTV::paramUpdateWorker, this);
@@ -490,8 +499,6 @@ namespace Plugin {
         if (ret != tvERROR_NONE) {
             LOGWARN("RegisterVideoSourceChangeCB failed");
         }
-
-        locatePQSettingsFile();
 
         // Get Index from PQ capabailites
         if (getPqParamIndex() != 0) {
@@ -919,42 +926,62 @@ namespace Plugin {
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getPrecisionDetailCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getPrecisionDetailCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_precision) {
         return GetPrecisionDetailCaps(max_precision, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getLocalContrastEnhancementCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getPrecisionDetailCaps(const JsonObject& parameters, JsonObject& response) {
+        return getPrecisionDetailCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getLocalContrastEnhancementCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetLocalContrastEnhancementCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getMPEGNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getLocalContrastEnhancementCaps(const JsonObject& parameters, JsonObject& response) {
+        return getLocalContrastEnhancementCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMPEGNoiseReductionCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetMPEGNoiseReductionCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getDigitalNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getMPEGNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+        return getMPEGNoiseReductionCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getDigitalNoiseReductionCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetDigitalNoiseReductionCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getAISuperResolutionCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getDigitalNoiseReductionCaps(const JsonObject& parameters, JsonObject& response) {
+        return getDigitalNoiseReductionCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getAISuperResolutionCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
         return GetAISuperResolutionCaps(max_val, context_caps);
         },
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getMultiPointWBCaps(const JsonObject& parameters, JsonObject& response)
+    uint32_t AVOutputTV::getAISuperResolutionCaps(const JsonObject& parameters, JsonObject& response) {
+        return getAISuperResolutionCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMultiPointWBCapsV2(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry");
 
@@ -996,11 +1023,20 @@ namespace Plugin {
         returnResponse(true);
     }
 
-    uint32_t AVOutputTV::getMEMCCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getMultiPointWBCaps(const JsonObject& parameters, JsonObject& response)
+    {
+        return getMultiPointWBCapsV2(parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMEMCCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
             return GetMEMCCaps(max_val, context_caps);
         },
         parameters, response);
+    }
+
+    uint32_t AVOutputTV::getMEMCCaps(const JsonObject& parameters, JsonObject& response) {
+        return getMEMCCapsV2(parameters, response);
     }
 
     uint32_t AVOutputTV::getLowLatencyStateCapsV2(const JsonObject& parameters, JsonObject& response) {
@@ -1010,11 +1046,15 @@ namespace Plugin {
         parameters, response);
     }
 
-    uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
+    uint32_t AVOutputTV::getBacklightDimmingLevelCapsV2(const JsonObject& parameters, JsonObject& response) {
         return getPQCapabilityWithContext([this](tvContextCaps_t** context_caps, int* max_val) {
             return GetBacklightDimmingLevelCaps(max_val, context_caps);
         },
         parameters, response);
+    }
+
+    uint32_t AVOutputTV::getBacklightDimmingLevelCaps(const JsonObject& parameters, JsonObject& response) {
+        return getBacklightDimmingLevelCapsV2(parameters, response);
     }
 
     // Forward lookup: string → enum
@@ -1097,7 +1137,7 @@ namespace Plugin {
         returnResponse(true);
     }
 
-    uint32_t AVOutputTV::getSDRGammaCaps(const JsonObject& parameters, JsonObject& response)
+    uint32_t AVOutputTV::getSDRGammaCapsV2(const JsonObject& parameters, JsonObject& response)
     {
         tvSdrGamma_t* sdr_gamma = nullptr;
         size_t num_sdr_gamma = 0;
@@ -1130,6 +1170,11 @@ namespace Plugin {
         response["context"] = parseContextCaps(context_caps);
 
         returnResponse(true);
+    }
+
+    uint32_t AVOutputTV::getSDRGammaCaps(const JsonObject& parameters, JsonObject& response)
+    {
+        return getSDRGammaCapsV2(parameters, response);
     }
 
     uint32_t AVOutputTV::getBacklightDimmingModeCapsV2(const JsonObject& parameters, JsonObject& response)
@@ -4277,7 +4322,7 @@ namespace Plugin {
         }
 
         // Directly use TR-181 to fetch active picture mode
-        std::string tr181_param_name = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
+        std::string tr181_param_name = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) +
             "." + convertSourceIndexToStringV2(source) +
             ".Format." + convertVideoFormatToStringV2(format) +
             ".PictureModeString";
@@ -4486,7 +4531,7 @@ namespace Plugin {
                 }
             }
 //TODO:: Revisit this logic. Have to revert if HAL call fails.
-            std::string tr181Param = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
+            std::string tr181Param = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
                 srcStr + ".Format." + fmtStr + ".PictureModeString";
 
             tr181ErrorCode_t err = setLocalParam(rfc_caller_id, tr181Param.c_str(), mode.c_str());
@@ -4495,7 +4540,7 @@ namespace Plugin {
                 continue;
             }
             else {
-                LOGINFO("setLocalParam for %s Successful, Value: %s\n", AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM, mode.c_str());
+                LOGINFO("setLocalParam for %s Successful, Value: %s\n", tr181Param.c_str(), mode.c_str());
                 int pqmodeindex = (int)convertPictureStringToIndexV2(std::string(mode));
                 SaveSourcePictureMode(ctx.videoSrcType, ctx.videoFormatType, pqmodeindex);
             }
@@ -4667,7 +4712,7 @@ namespace Plugin {
             if (!isValidSource(sources, ctx.videoSrcType) || !isValidFormat(formats, ctx.videoFormatType))
                 continue;
 
-            std::string tr181Param = std::string(AVOUTPUT_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
+            std::string tr181Param = std::string(AVOUTPUT_V2_SOURCE_PICTUREMODE_STRING_RFC_PARAM) + "." +
                 convertSourceIndexToStringV2(ctx.videoSrcType) + ".Format." +
                 convertVideoFormatToStringV2(ctx.videoFormatType) + ".PictureModeString";
 
@@ -6080,8 +6125,13 @@ namespace Plugin {
     uint32_t AVOutputTV::reset2PointWB(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
+
         if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
+            if (isPlatformSupport("WhiteBalance") != 0) {
+                returnResponse(false);
+            }
+
             capDetails_t inputInfo;
             tvPQParameterIndex_t tvPQEnum;
             int retVal = 0;
@@ -6089,10 +6139,6 @@ namespace Plugin {
             std::string color,control;
             inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
             inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
-
-            if (isPlatformSupport("WhiteBalance") != 0) {
-                returnResponse(false);
-            }
 
             if (parsingSetInputArgument(parameters,"WhiteBalance",inputInfo) != 0) {
                 LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
@@ -6128,9 +6174,115 @@ namespace Plugin {
         }
         else
         {
-            int persistStatus = updateAVoutputTVParamV2("reset", "WhiteBalance", parameters, PQ_PARAM_WB_GAIN_RED, 0);
+            std::vector<std::string> supportedColorTemps = m_wbColorTempList;
+ 
+            if (supportedColorTemps.empty()) {
+                LOGERR("%s: No supported color temperatures available", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            std::vector<std::string> colorTemps;
+            if (!parameters.HasLabel("colorTemperature")) {
+                colorTemps = supportedColorTemps;
+            } else {
+                if (parameters["colorTemperature"].Content() != JsonValue::type::ARRAY) {
+                    LOGERR("%s: colorTemperature must be an array", __FUNCTION__);
+                    returnResponse(false);
+                }
+
+                const JsonArray requestedColorTemps = parameters["colorTemperature"].Array();
+                if (requestedColorTemps.Length() == 0) {
+                    LOGERR("%s: colorTemperature must not be empty", __FUNCTION__);
+                    returnResponse(false);
+                }
+
+                for (uint32_t i = 0; i < requestedColorTemps.Length(); ++i) {
+                    if (requestedColorTemps[i].Content() != JsonValue::type::STRING) {
+                        LOGERR("%s: colorTemperature values must be strings", __FUNCTION__);
+                        returnResponse(false);
+                    }
+
+                    const std::string colorTemp = requestedColorTemps[i].String();
+                    if (colorTemp == "Global") {
+                        colorTemps.insert(colorTemps.end(), supportedColorTemps.begin(), supportedColorTemps.end());
+                    } else if (colorTemp == "Current") {
+                        const std::string currentPictureMode = getCurrentPictureModeAsString();
+                        const std::string currentVideoSource = getCurrentVideoSourceAsString();
+                        const std::string currentVideoFormat = getCurrentVideoFormatAsString();
+                        if (currentPictureMode.empty() || currentVideoSource.empty() || currentVideoFormat.empty()) {
+                            LOGERR("%s: Failed to resolve current context for colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        paramIndex_t currentContext{};
+                        currentContext.pqmodeIndex = static_cast<uint8_t>(convertPictureStringToIndexV2(currentPictureMode));
+                        currentContext.sourceIndex = static_cast<uint8_t>(convertSourceStringToIndexV2(currentVideoSource));
+                        currentContext.formatIndex = static_cast<uint8_t>(convertVideoFormatStringToIndexV2(currentVideoFormat));
+                        if (currentContext.pqmodeIndex == PQ_MODE_MAX ||
+                            currentContext.sourceIndex == VIDEO_SOURCE_MAX ||
+                            currentContext.formatIndex == VIDEO_FORMAT_NONE) {
+                            LOGERR("%s: Invalid current context for colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        int currentColorTemp = tvColorTemp_STANDARD;
+                        if (getLocalparam("ColorTemp", currentContext, currentColorTemp, PQ_PARAM_COLOR_TEMPERATURE) != 0) {
+                            LOGERR("%s: Failed to get the current colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        const auto currentColorTempIt = colorTempReverseMap.find(currentColorTemp);
+                        if (currentColorTempIt == colorTempReverseMap.end()) {
+                            LOGERR("%s: Unknown current colorTemperature value: %d", __FUNCTION__, currentColorTemp);
+                            returnResponse(false);
+                        }
+                        colorTemps.push_back(currentColorTempIt->second);
+                    } else {
+                        colorTemps.push_back(colorTemp);
+                    }
+                }
+            }
+
+            std::vector<std::string> uniqueColorTemps;
+            for (const auto& colorTemp : colorTemps) {
+                if (std::find(supportedColorTemps.begin(), supportedColorTemps.end(), colorTemp) == supportedColorTemps.end()) {
+                    LOGERR("%s: Unsupported colorTemperature: %s", __FUNCTION__, colorTemp.c_str());
+                    returnResponse(false);
+                }
+                if (std::find(uniqueColorTemps.begin(), uniqueColorTemps.end(), colorTemp) == uniqueColorTemps.end()) {
+                    uniqueColorTemps.push_back(colorTemp);
+                }
+            }
+            colorTemps = std::move(uniqueColorTemps);
+            if (colorTemps.empty()) {
+                LOGERR("%s: No color temperatures available to reset", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            int persistStatus = 0;
+            for (const auto& colorTemp : colorTemps) {
+                JsonObject resetParameters;
+                if (parameters.HasLabel("pictureMode")) {
+                    resetParameters["pictureMode"] = parameters["pictureMode"];
+                }
+                if (parameters.HasLabel("videoSource")) {
+                    resetParameters["videoSource"] = parameters["videoSource"];
+                }
+                if (parameters.HasLabel("videoFormat")) {
+                    resetParameters["videoFormat"] = parameters["videoFormat"];
+                }
+                if (parameters.HasLabel("color")) {
+                    resetParameters["color"] = parameters["color"];
+                }
+                if (parameters.HasLabel("control")) {
+                    resetParameters["control"] = parameters["control"];
+                }
+                resetParameters["colorTemperature"] = colorTemp;
+                persistStatus |= updateAVoutputTVParamV2("reset", "WhiteBalance", resetParameters, PQ_PARAM_WB_GAIN_RED, 0);
+            }
+
             if (persistStatus != 0) {
-                LOGERR("Failed to reset WhiteBalance\n");
+                LOGERR("Failed to reset WhiteBalance");
                 returnResponse(false);
             }
             else {
