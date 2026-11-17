@@ -25,7 +25,6 @@
 #include "libIBusDaemon.h"
 #include "libIBus.h"
 #include "iarmUtil.h"
-#include "dsMgr.h"
 #include <iostream>
 
 #include <pthread.h>
@@ -53,8 +52,8 @@ namespace Plugin {
         uint8_t _skipURL;
         //   IPlugin methods
         // -------------------------------------------------------------------------------------------------------
-        virtual void Initialize();
-        virtual void Deinitialize();
+        virtual void InitPlugin(PluginHost::IShell* service);
+        virtual void DeinitPlugin();
 	virtual void InitializeIARM();
         virtual void DeinitializeIARM();
    };
