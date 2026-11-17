@@ -6748,6 +6748,8 @@ namespace Plugin {
         auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
         if (hdmiIn != nullptr) {
             Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution res{};
+
+			hdmiIn->Register("AVOutput", &_DSHdmiInNotification);
             Core::hresult comResult = hdmiIn->GetHDMIVideoMode(res);
             if (comResult == Core::ERROR_NONE) {
                 m_currentHdmiInResoluton = static_cast<int>(res.pixelResolution);
@@ -6756,7 +6758,6 @@ namespace Plugin {
             else {
                 LOGERR("Failed to get HDMI video mode, error: %d", static_cast<int>(comResult));
             }
-            hdmiIn->Register("AVOutput", &_DSHdmiInNotification);
             hdmiIn->Release();
         }
         else {
