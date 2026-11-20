@@ -2252,11 +2252,17 @@ namespace Plugin {
                else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("DV") != std::string::npos ) {
                    value = tvDolbyMode_Bright;
                }
+               else if(strncmp(param.value, "Game", strlen(param.value)) == 0 && key.find("DV") != std::string::npos ) {
+                   value = tvDolbyMode_Game;
+               }
 	           else if(strncmp(param.value, "Dark", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
                    value = tvHDR10Mode_Dark;
                }
 	           else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
                    value = tvHDR10Mode_Bright;
+               }
+               else if(strncmp(param.value, "Game", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
+                   value = tvHDR10Mode_Game;
                }
 	           else if(strncmp(param.value, "Dark", strlen(param.value)) == 0 && key.find("HLG") != std::string::npos ) {
                    value = tvHLGMode_Dark;
@@ -2264,8 +2270,8 @@ namespace Plugin {
                else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("HLG") != std::string::npos ) {
                    value = tvHLGMode_Bright;
                }
-               else {
-                   value = tvDolbyMode_Game;
+               else if(strncmp(param.value, "Game", strlen(param.value)) == 0 && key.find("HLG") != std::string::npos ) {
+                   value = tvHLGMode_Game;
                }
                return 0;
            }
@@ -2591,7 +2597,7 @@ namespace Plugin {
                 case tvHLGMode_Bright:
                      value = "Bright";
                      break;
-	        case tvDolbyMode_Game:
+                case tvDolbyMode_Game:
                 case tvHDR10Mode_Game:
                 case tvHLGMode_Game:
                     value = "Game";
@@ -3584,7 +3590,12 @@ namespace Plugin {
         else if (paramName == "WhiteBalance") caps = m_wbContextCaps;
         else if (paramName == "SDRGamma") caps = m_sdrGammaModeCaps;
         else if (paramName == "DimmingLevel") caps = m_dimmingLevelCaps;
-        else if (paramName == "HDRMode") caps = m_hdrModeCaps;
+        else if (paramName == "HDRMode") {
+            if (m_hdrModeStatus != tvERROR_NONE) {
+                return nullptr;
+            }
+            caps = m_hdrModeCaps;
+        }
         else {
             LOGERR("Unknown ParamName: %s", paramName.c_str());
             return nullptr;
@@ -3595,6 +3606,123 @@ namespace Plugin {
 
         return caps;
     }
+
+    bool AVOutputTV::validateHDRContextParameters(const JsonObject& parameters)
+    {
+        if (m_hdrModeStatus != tvERROR_NONE ||
+            m_hdrModeCaps == nullptr ||
+            m_hdrModeCaps->contexts == nullptr ||
+            m_hdrModeCaps->num_contexts == 0) {
+            LOGERR("%s: HDR context capabilities are unavailable", __FUNCTION__);
+            return false;
+        }
+
+        initializeReverseMaps();
+
+        std::unordered_map<std::string, int> pictureModeValues;
+        std::unordered_map<std::string, int> videoSourceValues;
+        std::unordered_map<std::string, int> videoFormatValues;
+        std::set<int> supportedPictureModes;
+        std::set<int> supportedVideoSources;
+        std::set<int> supportedVideoFormats;
+        for (const auto& value : pqModeReverseMap) {
+            pictureModeValues.emplace(value.first, static_cast<int>(value.second));
+        }
+        for (const auto& value : videoSrcReverseMap) {
+            videoSourceValues.emplace(value.first, static_cast<int>(value.second));
+        }
+        for (const auto& value : videoFormatReverseMap) {
+            videoFormatValues.emplace(value.first, static_cast<int>(value.second));
+        }
+        for (size_t i = 0; i < m_hdrModeCaps->num_contexts; ++i) {
+            const tvConfigContext_t& context = m_hdrModeCaps->contexts[i];
+            supportedPictureModes.insert(static_cast<int>(context.pq_mode));
+            supportedVideoSources.insert(static_cast<int>(context.videoSrcType));
+            supportedVideoFormats.insert(static_cast<int>(context.videoFormatType));
+        }
+
+        auto validateDimension = [&](const char* label,
+                                     const std::unordered_map<std::string, int>& valuesByName,
+                                     const std::set<int>& supportedValues,
+                                     bool& needsCurrent) {
+            if (!parameters.HasLabel(label)) {
+                return true;
+            }
+            if (parameters[label].Content() != JsonValue::type::ARRAY) {
+                LOGERR("%s: %s must be an array", __FUNCTION__, label);
+                return false;
+            }
+
+            const JsonArray values = parameters[label].Array();
+            if (values.Length() == 0 ||
+                (values.Length() == 1 &&
+                 (values[0].String() == "Global" || values[0].String() == "none"))) {
+                return true;
+            }
+
+            for (uint32_t i = 0; i < values.Length(); ++i) {
+                const std::string value = values[i].String();
+                if (value == "Global" || value == "none") {
+                    LOGERR("%s: %s global selector must be the only entry", __FUNCTION__, label);
+                    return false;
+                }
+                if (value == "Current") {
+                    needsCurrent = true;
+                    continue;
+                }
+
+                const auto it = valuesByName.find(value);
+                if (it == valuesByName.end() || supportedValues.count(it->second) == 0) {
+                    LOGERR("%s: Unsupported HDR %s value: %s", __FUNCTION__, label, value.c_str());
+                    return false;
+                }
+            }
+            return true;
+        };
+        auto validateCurrentValue = [&](const char* label,
+                                        const std::string& value,
+                                        const std::unordered_map<std::string, int>& valuesByName,
+                                        const std::set<int>& supportedValues) {
+            const auto it = valuesByName.find(value);
+            if (it == valuesByName.end() || supportedValues.count(it->second) == 0) {
+                LOGERR("%s: Current HDR %s value is unsupported: %s",
+                       __FUNCTION__, label, value.c_str());
+                return false;
+            }
+            return true;
+        };
+
+        bool needsCurrentPictureMode = false;
+        bool needsCurrentVideoSource = false;
+        bool needsCurrentVideoFormat = false;
+        if (!validateDimension("pictureMode", pictureModeValues, supportedPictureModes,
+                               needsCurrentPictureMode) ||
+            !validateDimension("videoSource", videoSourceValues, supportedVideoSources,
+                               needsCurrentVideoSource) ||
+            !validateDimension("videoFormat", videoFormatValues, supportedVideoFormats,
+                               needsCurrentVideoFormat)) {
+            return false;
+        }
+
+        if (needsCurrentPictureMode &&
+            !validateCurrentValue("pictureMode", getCurrentPictureModeAsString(),
+                                  pictureModeValues, supportedPictureModes)) {
+            return false;
+        }
+        if (needsCurrentVideoSource &&
+            !validateCurrentValue("videoSource", getCurrentVideoSourceAsString(),
+                                  videoSourceValues, supportedVideoSources)) {
+            return false;
+        }
+        if (needsCurrentVideoFormat &&
+            !validateCurrentValue("videoFormat", getCurrentVideoFormatAsString(),
+                                  videoFormatValues, supportedVideoFormats)) {
+            return false;
+        }
+
+        return true;
+    }
+
     std::string AVOutputTV::getCurrentPictureModeAsString() {
         char picMode[PIC_MODE_NAME_MAX] = {0};
         if (!getCurrentPictureMode(picMode)) {

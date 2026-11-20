@@ -496,6 +496,7 @@ class AVOutputTV : public AVOutputBase {
 		static bool isGlobalParam(const JsonArray& arr);
 		JsonArray getJsonArrayIfArray(const JsonObject& obj, const std::string& key);
 		std::vector<tvConfigContext_t> getValidContextsFromParameters(const JsonObject& parameters,const std::string& tr181ParamName );
+		bool validateHDRContextParameters(const JsonObject& parameters);
 		typedef tvError_t (*tvSetFunction)(int);
 		bool resetPQParamToDefault(const JsonObject& parameters,
 			const std::string& paramName,

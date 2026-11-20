@@ -813,7 +813,7 @@ namespace Plugin {
             if (isGlobalParam(arr)) {
                 return true;
             }
-            for (uint16_t i = 0; i < arr.Length(); ++i) {
+            for (uint32_t i = 0; i < arr.Length(); ++i) {
                 std::string value = arr[i].String();
                 if (value == "Global" || value == "none") {
                     LOGERR("%s: '%s' cannot combine Global with other values\n", __FUNCTION__, label);
@@ -5620,7 +5620,7 @@ namespace Plugin {
                     if (isGlobalParam(arr))
                         return all;
                     std::vector<std::string> out;
-                    for (uint16_t i = 0; i < arr.Length(); ++i)
+                    for (uint32_t i = 0; i < arr.Length(); ++i)
                         out.push_back(arr[i].String());
                     return out;
                 };
@@ -5803,10 +5803,23 @@ namespace Plugin {
             }
         }
         else{
+            if (m_hdrModeStatus != tvERROR_NONE ||
+                m_hdrModeCaps == nullptr ||
+                m_hdrModeCaps->contexts == nullptr ||
+                m_hdrModeCaps->num_contexts == 0) {
+                LOGERR("%s: HDR context capabilities are unavailable", __FUNCTION__);
+                returnResponse(false);
+            }
+
             int mode = 0;
             if (getPQParamFromContext(parameters, "HDRMode",
                  PQ_PARAM_DOLBY_MODE, mode)) {
-                response["hdrMode"] = getDolbyModeStringFromEnum(static_cast<tvDolbyMode_t>(mode));
+                const std::string modeString = getDolbyModeStringFromEnum(static_cast<tvDolbyMode_t>(mode));
+                if (modeString.empty()) {
+                    LOGERR("%s: Invalid HDR mode returned: %d", __FUNCTION__, mode);
+                    returnResponse(false);
+                }
+                response["hdrMode"] = modeString;
                 returnResponse(true);
             } else {
                 returnResponse(false);
@@ -5912,22 +5925,40 @@ namespace Plugin {
         }
         else
         {
+            if (!validateHDRContextParameters(parameters)) {
+                returnResponse(false);
+            }
+
             if (!parameters.HasLabel("hdrMode")) {
                 LOGERR("Missing input field: %s", "hdrMode");
                 returnResponse(false);
             }
 
             std::string value = parameters["hdrMode"].String();
-            bool supported = false;
-            for (size_t i = 0; m_hdrModes && i < m_numhdrModes; ++i) {
-                if (getDolbyModeStringFromEnum(m_hdrModes[i]) == value) {
-                    supported = true;
-                    break;
-                }
-            }
-            if (!supported) {
-                LOGERR("Unsupported hdrMode: %s", value.c_str());
+            const auto contexts = getValidContextsFromParameters(parameters, "HDRMode");
+            if (contexts.empty() || m_hdrModes == nullptr) {
+                LOGERR("HDR mode capabilities or selected contexts are unavailable");
                 returnResponse(false);
+            }
+            for (const auto& context : contexts) {
+                const std::string format = convertVideoFormatToStringV2(context.videoFormatType);
+                tvDolbyMode_t mode = tvDolbyMode_Invalid;
+                if (getHDRModeIndex(value, format, mode) != 0) {
+                    LOGERR("Invalid hdrMode %s for format %s", value.c_str(), format.c_str());
+                    returnResponse(false);
+                }
+
+                bool supported = false;
+                for (size_t i = 0; i < m_numhdrModes; ++i) {
+                    if (m_hdrModes[i] == mode) {
+                        supported = true;
+                        break;
+                    }
+                }
+                if (!supported) {
+                    LOGERR("Unsupported hdrMode %s for format %s", value.c_str(), format.c_str());
+                    returnResponse(false);
+                }
             }
             int intVal = 0;
 
@@ -6017,6 +6048,10 @@ namespace Plugin {
         }
         else
         {
+            if (!validateHDRContextParameters(parameters)) {
+                returnResponse(false);
+            }
+
             bool success = resetPQParamToDefault(
                     parameters,
                     "HDRMode",
