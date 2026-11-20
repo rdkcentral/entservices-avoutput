@@ -732,6 +732,111 @@ namespace Plugin {
         return true;
     }
 
+    bool AVOutputTV::applyCMSToHALForCurrentContext(const std::vector<std::string>& colors,
+        const std::vector<std::string>& components)
+    {
+        for (const auto& color : colors) {
+            for (const auto& component : components) {
+                capDetails_t inputInfo;
+                paramIndex_t indexInfo = {};
+                tvPQParameterIndex_t pqIndex;
+                tvDataComponentColor_t colorEnum = tvDataColor_NONE;
+                int level = 0;
+
+                inputInfo.pqmode = "Current";
+                inputInfo.source = "Current";
+                inputInfo.format = "Current";
+                inputInfo.color = color;
+                inputInfo.component = component;
+
+                int err = (m_cmsStatus == tvERROR_OPERATION_NOT_SUPPORTED)
+                    ? getParamIndex("CMS", inputInfo, indexInfo)
+                    : getParamIndexV2("CMS", inputInfo, indexInfo);
+                if (err != 0 ||
+                    convertCMSParamToPQEnum(component, color, pqIndex) != 0 ||
+                    getCMSColorEnumFromString(color, colorEnum) == -1) {
+                    LOGERR("%s: Invalid CMS color/component %s/%s\n", __FUNCTION__, color.c_str(), component.c_str());
+                    return false;
+                }
+
+                if (getLocalparam("CMS", indexInfo, level, pqIndex) != 0) {
+                    LOGERR("%s: getLocalparam failed for %s/%s\n", __FUNCTION__, color.c_str(), component.c_str());
+                    return false;
+                }
+
+                tvError_t ret = tvERROR_NONE;
+                if (component == "Saturation")
+                    ret = SetCurrentComponentSaturation(colorEnum, level);
+                else if (component == "Hue")
+                    ret = SetCurrentComponentHue(colorEnum, level);
+                else if (component == "Luma")
+                    ret = SetCurrentComponentLuma(colorEnum, level);
+
+                if (ret != tvERROR_NONE) {
+                    LOGERR("%s: HAL set failed for %s/%s level %d\n", __FUNCTION__, color.c_str(), component.c_str(), level);
+                    return false;
+                }
+                LOGINFO("%s: Applied CMS %s/%s level %d\n", __FUNCTION__, color.c_str(), component.c_str(), level);
+            }
+        }
+        return true;
+    }
+
+    bool AVOutputTV::validateCMSResetParams(const JsonObject& parameters)
+    {
+        tvContextCaps_t* caps = getCapsForParam("CMS");
+        if (caps == nullptr || caps->contexts == nullptr) {
+            LOGERR("%s: CMS context caps not available\n", __FUNCTION__);
+            return false;
+        }
+
+        std::unordered_set<std::string> capPicModes, capSources, capFormats;
+        for (size_t i = 0; i < caps->num_contexts; ++i) {
+            capPicModes.insert(convertPictureIndexToStringV2(caps->contexts[i].pq_mode));
+            capSources.insert(convertSourceIndexToStringV2(caps->contexts[i].videoSrcType));
+            capFormats.insert(convertVideoFormatToStringV2(caps->contexts[i].videoFormatType));
+        }
+        const std::unordered_set<std::string> capColors(m_cmsColorList.begin(), m_cmsColorList.end());
+        const std::unordered_set<std::string> capComponents(m_cmsComponentList.begin(), m_cmsComponentList.end());
+
+        // Each param must be an array; values must be "Global" alone or entries supported by caps
+        auto validate = [&](const char* label, const std::unordered_set<std::string>& allowed,
+                            const std::string& currentValue) -> bool {
+            if (!parameters.HasLabel(label)) {
+                return true;
+            }
+            if (parameters[label].Content() != JsonValue::type::ARRAY) {
+                LOGERR("%s: '%s' must be an array\n", __FUNCTION__, label);
+                return false;
+            }
+            JsonArray arr = parameters[label].Array();
+            if (isGlobalParam(arr)) {
+                return true;
+            }
+            for (uint16_t i = 0; i < arr.Length(); ++i) {
+                std::string value = arr[i].String();
+                if (value == "Global" || value == "none") {
+                    LOGERR("%s: '%s' cannot combine Global with other values\n", __FUNCTION__, label);
+                    return false;
+                }
+                if (value == "Current" && !currentValue.empty()) {
+                    value = currentValue;
+                }
+                if (allowed.find(value) == allowed.end()) {
+                    LOGERR("%s: '%s' value '%s' not supported by CMS caps\n", __FUNCTION__, label, value.c_str());
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        return validate("pictureMode", capPicModes, getCurrentPictureModeAsString()) &&
+               validate("videoSource", capSources, getCurrentVideoSourceAsString()) &&
+               validate("videoFormat", capFormats, getCurrentVideoFormatAsString()) &&
+               validate("color", capColors, "") &&
+               validate("component", capComponents, "");
+    }
+
 
     bool AVOutputTV::setEnumPQParam(const JsonObject& parameters,
         const std::string& inputKey,
@@ -5443,7 +5548,9 @@ namespace Plugin {
                 returnResponse(false);
             }
 
-            if( isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format) ) {
+            if( isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format) &&
+                isGlobalParam(colorArray) && isGlobalParam(componentArray) ) {
+                // Disable CMS only on a full reset; a partial reset must keep the other colors/components active
                 LOGINFO("Proceed with %s\n",__FUNCTION__);
                 tvError_t ret = SetCMSState(false);
                 if(ret != tvERROR_NONE) {
@@ -5463,12 +5570,37 @@ namespace Plugin {
                     LOGERR("%s : Failed to Save CMS %s/%s to ssm_data\n",__FUNCTION__,inputInfo.component.c_str(),inputInfo.color.c_str() );
                     returnResponse(false);
                 }
+
+                if (isSetRequired(inputInfo.pqmode,inputInfo.source,inputInfo.format)) {
+                    auto split = [](const std::string& csv) {
+                        std::vector<std::string> out;
+                        std::stringstream ss(csv);
+                        std::string item;
+                        while (std::getline(ss, item, ',')) {
+                            if (!item.empty())
+                                out.push_back(item);
+                        }
+                        return out;
+                    };
+                    if (!applyCMSToHALForCurrentContext(split(inputInfo.color), split(inputInfo.component))) {
+                        returnResponse(false);
+                    }
+                }
                 returnResponse(true);
             }
         }
         else
         {
-            if (isSetRequiredForParam(parameters, "CMS")) {
+            if (!validateCMSResetParams(parameters)) {
+                returnResponse(false);
+            }
+
+            JsonArray colorArray = getJsonArrayIfArray(parameters, "color");
+            JsonArray componentArray = getJsonArrayIfArray(parameters, "component");
+            const bool setRequired = isSetRequiredForParam(parameters, "CMS");
+
+            // Disable CMS only on a full reset; a partial reset must keep the other colors/components active
+            if (setRequired && isGlobalParam(colorArray) && isGlobalParam(componentArray)) {
                 LOGINFO("Proceed with SetCMSState \n");
                 tvError_t ret = SetCMSState(false);
                 if(ret != tvERROR_NONE) {
@@ -5481,6 +5613,21 @@ namespace Plugin {
             if(retVal != 0 ) {
                 LOGERR("%s : Failed to Save CMS to ssm_data\n",__FUNCTION__);
                 returnResponse(false);
+            }
+
+            if (setRequired) {
+                auto toList = [](const JsonArray& arr, const std::vector<std::string>& all) {
+                    if (isGlobalParam(arr))
+                        return all;
+                    std::vector<std::string> out;
+                    for (uint16_t i = 0; i < arr.Length(); ++i)
+                        out.push_back(arr[i].String());
+                    return out;
+                };
+                if (!applyCMSToHALForCurrentContext(toList(colorArray, m_cmsColorList),
+                                                    toList(componentArray, m_cmsComponentList))) {
+                    returnResponse(false);
+                }
             }
             returnResponse(true);
         }

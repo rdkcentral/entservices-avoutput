@@ -719,6 +719,8 @@ class AVOutputTV : public AVOutputBase {
 
 
 		bool setCMSParam(const JsonObject& parameters);
+		bool applyCMSToHALForCurrentContext(const std::vector<std::string>& colors, const std::vector<std::string>& components);
+		bool validateCMSResetParams(const JsonObject& parameters);
 
 		std::string convertPictureIndexToStringV2(int pqmode);
 		std::string convertVideoFormatToStringV2(int format);
