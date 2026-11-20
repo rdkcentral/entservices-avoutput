@@ -258,6 +258,7 @@ class AVOutputTV : public AVOutputBase {
 		DECLARE_JSON_RPC_METHOD(getCMSCaps)
 		DECLARE_JSON_RPC_METHOD(get2PointWBCaps)
 		DECLARE_JSON_RPC_METHOD(getHDRModeCaps)
+		DECLARE_JSON_RPC_METHOD(getHDRModeCapsV2)
 		DECLARE_JSON_RPC_METHOD(getAutoBacklightModeCaps)
 		DECLARE_JSON_RPC_METHOD(getBacklightCapsV2)
 		DECLARE_JSON_RPC_METHOD(getBrightnessCapsV2)
@@ -495,6 +496,7 @@ class AVOutputTV : public AVOutputBase {
 		static bool isGlobalParam(const JsonArray& arr);
 		JsonArray getJsonArrayIfArray(const JsonObject& obj, const std::string& key);
 		std::vector<tvConfigContext_t> getValidContextsFromParameters(const JsonObject& parameters,const std::string& tr181ParamName );
+		bool validateHDRContextParameters(const JsonObject& parameters);
 		typedef tvError_t (*tvSetFunction)(int);
 		bool resetPQParamToDefault(const JsonObject& parameters,
 			const std::string& paramName,
@@ -661,6 +663,11 @@ class AVOutputTV : public AVOutputBase {
 		tvError_t m_sdrGammaModeStatus = tvERROR_NONE;
 		void getSdrGammaStringFromEnum(tvSdrGamma_t value, std::string& str);
 
+		tvDolbyMode_t* m_hdrModes = nullptr;
+		size_t m_numhdrModes = 0;
+		tvContextCaps_t* m_hdrModeCaps = nullptr;
+		tvError_t m_hdrModeStatus = tvERROR_NONE;
+
 		int m_maxDimmingLevel = 0;
 		tvContextCaps_t* m_dimmingLevelCaps = nullptr;
 		tvError_t m_dimmingLevelStatus = tvERROR_NONE;
@@ -713,6 +720,8 @@ class AVOutputTV : public AVOutputBase {
 
 
 		bool setCMSParam(const JsonObject& parameters);
+		bool applyCMSToHALForCurrentContext(const std::vector<std::string>& colors, const std::vector<std::string>& components);
+		bool validateCMSResetParams(const JsonObject& parameters);
 
 		std::string convertPictureIndexToStringV2(int pqmode);
 		std::string convertVideoFormatToStringV2(int format);
