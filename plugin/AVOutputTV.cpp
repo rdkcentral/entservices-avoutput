@@ -215,80 +215,60 @@ namespace Plugin {
         sendNotify("onVideoSourceChanged", response);
     }
 
-
-	//Event
-    void AVOutputTV::dsHdmiStatusEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
+	//Event (COM-RPC: replaces dsHdmiStatusEventHandler IARM callback)
+    void AVOutputTV::onHdmiInEventStatus(int activePort, bool isPresented)
     {
-        if(!AVOutputTV::instance) {
-	    return;
-	}
-
-	if (IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS == eventId) {
-            IARM_Bus_DSMgr_EventData_t *eventData = (IARM_Bus_DSMgr_EventData_t *)data;
-            int hdmi_in_port = eventData->data.hdmi_in_status.port;
-            bool hdmi_in_status = eventData->data.hdmi_in_status.isPresented;
-            LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS  event	port: %d, started: %d", hdmi_in_port,hdmi_in_status);
-	    if (!hdmi_in_status) {
+        LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS  event	port: %d, started: %d", activePort, isPresented);
+	    if (!isPresented) {
 	        tvError_t ret = tvERROR_NONE;
-		AVOutputTV::instance->m_isDisabledHdmiIn4KZoom = false;
-	        LOGWARN("AVOutputPlugins: Hdmi streaming stopped here reapply the global zoom settings:%d here. m_isDisabledHdmiIn4KZoom: %d", AVOutputTV::instance->m_videoZoomMode, AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
-		ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
+		m_isDisabledHdmiIn4KZoom = false;
+	        LOGWARN("AVOutputPlugins: Hdmi streaming stopped here reapply the global zoom settings:%d here. m_isDisabledHdmiIn4KZoom: %d", m_videoZoomMode, m_isDisabledHdmiIn4KZoom);
+		ret = SetAspectRatio((tvDisplayMode_t)m_videoZoomMode);
 		if (ret != tvERROR_NONE) {
 		    LOGWARN("SetAspectRatio set Failed");
 		}
 	    }
 	    else {
-	        AVOutputTV::instance->m_isDisabledHdmiIn4KZoom = true;
-                LOGWARN("AVOutputPlugins: m_isDisabledHdmiIn4KZoom: %d", AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
-            }
+	        m_isDisabledHdmiIn4KZoom = true;
+                LOGWARN("AVOutputPlugins: m_isDisabledHdmiIn4KZoom: %d", m_isDisabledHdmiIn4KZoom);
 	}
     }
 	
-    void AVOutputTV::dsHdmiVideoModeEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
+    // COM-RPC: replaces dsHdmiVideoModeEventHandler IARM callback
+    void AVOutputTV::onHdmiInVideoModeUpdate(int port, const Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution& videoPortResolution)
     {
-        if(!AVOutputTV::instance) {
-	    return;
-	}
-
-	if (IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE == eventId) {
-	    IARM_Bus_DSMgr_EventData_t *eventData = (IARM_Bus_DSMgr_EventData_t *)data;
-	    int hdmi_in_port = eventData->data.hdmi_in_video_mode.port;
-	    dsVideoPortResolution_t resolution;
-	    AVOutputTV::instance->m_currentHdmiInResoluton = eventData->data.hdmi_in_video_mode.resolution.pixelResolution;
-	    resolution.pixelResolution =  eventData->data.hdmi_in_video_mode.resolution.pixelResolution;
-	    resolution.interlaced =  eventData->data.hdmi_in_video_mode.resolution.interlaced;
-	    resolution.frameRate =  eventData->data.hdmi_in_video_mode.resolution.frameRate;
-	    LOGWARN("AVOutputPlugins: Received IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE	event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", hdmi_in_port,resolution.pixelResolution, resolution.interlaced, resolution.frameRate);
-	    if (AVOutputTV::instance->m_isDisabledHdmiIn4KZoom) {
-                tvError_t ret = tvERROR_NONE;
-		if (AVOutputTV::instance->m_currentHdmiInResoluton<dsVIDEO_PIXELRES_3840x2160 ||
-				 (dsVIDEO_PIXELRES_MAX == AVOutputTV::instance->m_currentHdmiInResoluton)) {
-		    LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", AVOutputTV::instance->m_videoZoomMode);
-		    ret = SetAspectRatio((tvDisplayMode_t)AVOutputTV::instance->m_videoZoomMode);
-		}
+	    m_currentHdmiInResoluton = static_cast<int>(videoPortResolution.pixelResolution);
+	    LOGWARN("AVOutputPlugins: Received HDMI_IN_VIDEO_MODE_UPDATE event  port: %d, pixelResolution: %d, interlaced : %d, frameRate: %d \n", port, static_cast<int>(videoPortResolution.pixelResolution), videoPortResolution.interlaced, static_cast<int>(videoPortResolution.frameRate));
+	    if (m_isDisabledHdmiIn4KZoom) {
+            tvError_t ret = tvERROR_NONE;
+            // Mirror DS_IARM: below 4K (< dsVIDEO_PIXELRES_3840x2160) or MAX → apply zoom mode
+            if (m_currentHdmiInResoluton < static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_3840X2160) ||
+                m_currentHdmiInResoluton == static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_MAX)) {
+		        LOGWARN("AVOutputPlugins: Setting %d zoom mode for below 4K", m_videoZoomMode);
+		        ret = SetAspectRatio((tvDisplayMode_t)m_videoZoomMode);
+		    }
 	        else {
-		    LOGWARN("AVOutputPlugins: Setting auto zoom mode for 4K and above");
-		    ret = SetAspectRatio(tvDisplayMode_AUTO);
+		        LOGWARN("AVOutputPlugins: Setting auto zoom mode for 4K and above");
+		        ret = SetAspectRatio(tvDisplayMode_AUTO);
 	        }
-		if (ret != tvERROR_NONE) {
-		    LOGWARN("SetAspectRatio set Failed");
-		}
-	    } 
-	    else {
-	        LOGWARN("AVOutputPlugins: %s: HdmiInput is not started yet. m_isDisabledHdmiIn4KZoom: %d", __FUNCTION__, AVOutputTV::instance->m_isDisabledHdmiIn4KZoom);
+
+            if (ret != tvERROR_NONE) {
+                LOGWARN("SetAspectRatio set Failed");
+            }
 	    }
+	    else {
+	        LOGWARN("AVOutputPlugins: %s: HdmiInput is not started yet. m_isDisabledHdmiIn4KZoom: %d", __FUNCTION__, m_isDisabledHdmiIn4KZoom);
         }
     }
 
-    AVOutputTV::AVOutputTV(): m_currentHdmiInResoluton (dsVIDEO_PIXELRES_1920x1080)
+    AVOutputTV::AVOutputTV(): _DSHdmiInNotification(*this)
+                            , m_currentHdmiInResoluton (static_cast<int>(Exchange::IDeviceSettingsHDMIIn::DS_HDMIIN_PIXELRES_1920X1080))
                             , m_videoZoomMode (tvDisplayMode_NORMAL)
                             , m_isDisabledHdmiIn4KZoom (false)
 	                    , rfc_caller_id(nullptr)
     {
         LOGINFO("CTOR\n");
         AVOutputTV::instance = this;
-
-        InitializeIARM();
 
         registerMethod("getBacklight", &AVOutputTV::getBacklight, this);
         registerMethod("setBacklight", &AVOutputTV::setBacklight, this);
@@ -462,10 +442,10 @@ namespace Plugin {
         if (workerThread.joinable()) {
             workerThread.join();
         }
-        DeinitializeIARM();	
+        DSHelper::Close();
     }
 
-    void AVOutputTV::Initialize()
+    void AVOutputTV::InitPlugin(PluginHost::IShell* service)
     {
         LOGINFO("Entry\n");
        
@@ -476,15 +456,9 @@ namespace Plugin {
         
         getDynamicAutoLatencyConfig();
 
-        try {
-            dsVideoPortResolution_t vidResolution;
-            device::HdmiInput::getInstance().getCurrentVideoModeObj(vidResolution);
-            m_currentHdmiInResoluton = vidResolution.pixelResolution;
-        } 
-	catch (...)
-	{
-            LOGWARN("AVOutputPlugins: getCurrentVideoModeObj failed");
-        }
+        // COM-RPC: open link to entservices-devicesettings; current HDMI-In mode
+        // is fetched in OnDeviceSettingsActivated() once the link is established
+        DSHelper::Open(service, "AVOutput");
         LOGWARN("AVOutputPlugins: AVOutput Initialize m_currentHdmiInResoluton:%d m_mod:%d", m_currentHdmiInResoluton, m_videoZoomMode);
 
         ret = TvInit();
@@ -544,7 +518,7 @@ namespace Plugin {
         LOGINFO("Exit\n" );
     }
 
-    void AVOutputTV::Deinitialize()
+    void AVOutputTV::DeinitPlugin()
     {
        LOGINFO("Entry\n");
 
@@ -557,6 +531,16 @@ namespace Plugin {
        else {
            LOGINFO("Platform De-Init successful... \n");
        }
+#if !defined(HDMIIN_4K_ZOOM)
+       // Unregister before Close() releases the cached sub-interface, otherwise DeviceSettings
+       // is left holding a dangling HDMI-In notification sink forever (resource leak).
+       auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+       if (hdmiIn != nullptr) {
+           hdmiIn->Unregister(&_DSHdmiInNotification);
+           hdmiIn->Release();
+       }
+#endif
+       DSHelper::Close();
 
        LOGINFO("Exit\n");
     }
@@ -6141,8 +6125,13 @@ namespace Plugin {
     uint32_t AVOutputTV::reset2PointWB(const JsonObject& parameters, JsonObject& response)
     {
         LOGINFO("Entry\n");
+
         if(m_wbStatus == tvERROR_OPERATION_NOT_SUPPORTED)
         {
+            if (isPlatformSupport("WhiteBalance") != 0) {
+                returnResponse(false);
+            }
+
             capDetails_t inputInfo;
             tvPQParameterIndex_t tvPQEnum;
             int retVal = 0;
@@ -6150,10 +6139,6 @@ namespace Plugin {
             std::string color,control;
             inputInfo.color = parameters.HasLabel("color") ? parameters["color"].String() : "";
             inputInfo.control = parameters.HasLabel("control") ? parameters["control"].String() : "";
-
-            if (isPlatformSupport("WhiteBalance") != 0) {
-                returnResponse(false);
-            }
 
             if (parsingSetInputArgument(parameters,"WhiteBalance",inputInfo) != 0) {
                 LOGERR("%s: Failed to parse the input arguments \n", __FUNCTION__);
@@ -6189,9 +6174,115 @@ namespace Plugin {
         }
         else
         {
-            int persistStatus = updateAVoutputTVParamV2("reset", "WhiteBalance", parameters, PQ_PARAM_WB_GAIN_RED, 0);
+            std::vector<std::string> supportedColorTemps = m_wbColorTempList;
+ 
+            if (supportedColorTemps.empty()) {
+                LOGERR("%s: No supported color temperatures available", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            std::vector<std::string> colorTemps;
+            if (!parameters.HasLabel("colorTemperature")) {
+                colorTemps = supportedColorTemps;
+            } else {
+                if (parameters["colorTemperature"].Content() != JsonValue::type::ARRAY) {
+                    LOGERR("%s: colorTemperature must be an array", __FUNCTION__);
+                    returnResponse(false);
+                }
+
+                const JsonArray requestedColorTemps = parameters["colorTemperature"].Array();
+                if (requestedColorTemps.Length() == 0) {
+                    LOGERR("%s: colorTemperature must not be empty", __FUNCTION__);
+                    returnResponse(false);
+                }
+
+                for (uint32_t i = 0; i < requestedColorTemps.Length(); ++i) {
+                    if (requestedColorTemps[i].Content() != JsonValue::type::STRING) {
+                        LOGERR("%s: colorTemperature values must be strings", __FUNCTION__);
+                        returnResponse(false);
+                    }
+
+                    const std::string colorTemp = requestedColorTemps[i].String();
+                    if (colorTemp == "Global") {
+                        colorTemps.insert(colorTemps.end(), supportedColorTemps.begin(), supportedColorTemps.end());
+                    } else if (colorTemp == "Current") {
+                        const std::string currentPictureMode = getCurrentPictureModeAsString();
+                        const std::string currentVideoSource = getCurrentVideoSourceAsString();
+                        const std::string currentVideoFormat = getCurrentVideoFormatAsString();
+                        if (currentPictureMode.empty() || currentVideoSource.empty() || currentVideoFormat.empty()) {
+                            LOGERR("%s: Failed to resolve current context for colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        paramIndex_t currentContext{};
+                        currentContext.pqmodeIndex = static_cast<uint8_t>(convertPictureStringToIndexV2(currentPictureMode));
+                        currentContext.sourceIndex = static_cast<uint8_t>(convertSourceStringToIndexV2(currentVideoSource));
+                        currentContext.formatIndex = static_cast<uint8_t>(convertVideoFormatStringToIndexV2(currentVideoFormat));
+                        if (currentContext.pqmodeIndex == PQ_MODE_MAX ||
+                            currentContext.sourceIndex == VIDEO_SOURCE_MAX ||
+                            currentContext.formatIndex == VIDEO_FORMAT_NONE) {
+                            LOGERR("%s: Invalid current context for colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        int currentColorTemp = tvColorTemp_STANDARD;
+                        if (getLocalparam("ColorTemp", currentContext, currentColorTemp, PQ_PARAM_COLOR_TEMPERATURE) != 0) {
+                            LOGERR("%s: Failed to get the current colorTemperature", __FUNCTION__);
+                            returnResponse(false);
+                        }
+
+                        const auto currentColorTempIt = colorTempReverseMap.find(currentColorTemp);
+                        if (currentColorTempIt == colorTempReverseMap.end()) {
+                            LOGERR("%s: Unknown current colorTemperature value: %d", __FUNCTION__, currentColorTemp);
+                            returnResponse(false);
+                        }
+                        colorTemps.push_back(currentColorTempIt->second);
+                    } else {
+                        colorTemps.push_back(colorTemp);
+                    }
+                }
+            }
+
+            std::vector<std::string> uniqueColorTemps;
+            for (const auto& colorTemp : colorTemps) {
+                if (std::find(supportedColorTemps.begin(), supportedColorTemps.end(), colorTemp) == supportedColorTemps.end()) {
+                    LOGERR("%s: Unsupported colorTemperature: %s", __FUNCTION__, colorTemp.c_str());
+                    returnResponse(false);
+                }
+                if (std::find(uniqueColorTemps.begin(), uniqueColorTemps.end(), colorTemp) == uniqueColorTemps.end()) {
+                    uniqueColorTemps.push_back(colorTemp);
+                }
+            }
+            colorTemps = std::move(uniqueColorTemps);
+            if (colorTemps.empty()) {
+                LOGERR("%s: No color temperatures available to reset", __FUNCTION__);
+                returnResponse(false);
+            }
+
+            int persistStatus = 0;
+            for (const auto& colorTemp : colorTemps) {
+                JsonObject resetParameters;
+                if (parameters.HasLabel("pictureMode")) {
+                    resetParameters["pictureMode"] = parameters["pictureMode"];
+                }
+                if (parameters.HasLabel("videoSource")) {
+                    resetParameters["videoSource"] = parameters["videoSource"];
+                }
+                if (parameters.HasLabel("videoFormat")) {
+                    resetParameters["videoFormat"] = parameters["videoFormat"];
+                }
+                if (parameters.HasLabel("color")) {
+                    resetParameters["color"] = parameters["color"];
+                }
+                if (parameters.HasLabel("control")) {
+                    resetParameters["control"] = parameters["control"];
+                }
+                resetParameters["colorTemperature"] = colorTemp;
+                persistStatus |= updateAVoutputTVParamV2("reset", "WhiteBalance", resetParameters, PQ_PARAM_WB_GAIN_RED, 0);
+            }
+
             if (persistStatus != 0) {
-                LOGERR("Failed to reset WhiteBalance\n");
+                LOGERR("Failed to reset WhiteBalance");
                 returnResponse(false);
             }
             else {
@@ -6651,27 +6742,40 @@ namespace Plugin {
         returnResponse(true);
     }
 
-    void AVOutputTV::InitializeIARM()
+    void AVOutputTV::OnDeviceSettingsActivated()
     {
-        AVOutputBase::InitializeIARM();
-#if !defined (HDMIIN_4K_ZOOM)
-        if (Utils::IARM::init()) {
-            IARM_Result_t res;
-            IARM_CHECK( IARM_Bus_RegisterEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS, dsHdmiStatusEventHandler) );
-            IARM_CHECK( IARM_Bus_RegisterEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE, dsHdmiVideoModeEventHandler) );
+#if !defined(HDMIIN_4K_ZOOM)
+        auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+        if (hdmiIn != nullptr) {
+            Exchange::IDeviceSettingsHDMIIn::HDMIVideoPortResolution res{};
+
+			hdmiIn->Register("AVOutput", &_DSHdmiInNotification);
+            Core::hresult comResult = hdmiIn->GetHDMIVideoMode(res);
+            if (comResult == Core::ERROR_NONE) {
+                m_currentHdmiInResoluton = static_cast<int>(res.pixelResolution);
+                LOGINFO("Current HDMI video mode: %d", m_currentHdmiInResoluton);
+            }
+            else {
+                LOGERR("Failed to get HDMI video mode, error: %d", static_cast<int>(comResult));
+            }
+            hdmiIn->Release();
+        }
+        else {
+            LOGERR("Failed to acquire IDeviceSettingsHDMIIn interface");
         }
 #endif
     }
 
-    void AVOutputTV::DeinitializeIARM()
+    void AVOutputTV::OnDeviceSettingsDeactivated()
     {
-        AVOutputBase::DeinitializeIARM();
-#if !defined (HDMIIN_4K_ZOOM)
-        if (Utils::IARM::isConnected())
-        {
-            IARM_Result_t res;
-            IARM_CHECK( IARM_Bus_RemoveEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_STATUS, dsHdmiStatusEventHandler) );
-            IARM_CHECK( IARM_Bus_RemoveEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_IN_VIDEO_MODE_UPDATE, dsHdmiVideoModeEventHandler) );
+#if !defined(HDMIIN_4K_ZOOM)
+        auto* hdmiIn = DSHelper::AcquireSubInterface<Exchange::IDeviceSettingsHDMIIn>();
+        if (hdmiIn != nullptr) {
+            hdmiIn->Unregister(&_DSHdmiInNotification);
+            hdmiIn->Release();
+        }
+        else {
+            LOGERR("Failed to acquire IDeviceSettingsHDMIIn interface");
         }
 #endif
     }
