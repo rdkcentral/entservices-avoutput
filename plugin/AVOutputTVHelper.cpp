@@ -1112,7 +1112,8 @@ namespace Plugin {
                 {"DimmingMode", [this](int v, std::string& s) { getDimmingModeStringFromEnum(v, s); }},
                 {"ZoomMode", [this](int v, std::string& s) { getDisplayModeStringFromEnum(v, s); }},
                 {"BacklightMode", [this](int v, std::string& s) { getBacklightModeStringFromEnum(v, s); }},
-                {"SDRGamma", [this](int v, std::string& s) { getSdrGammaStringFromEnum(static_cast<tvSdrGamma_t>(v), s); }}
+                {"SDRGamma", [this](int v, std::string& s) { getSdrGammaStringFromEnum(static_cast<tvSdrGamma_t>(v), s); }},
+                {"HDRMode", [this](int v, std::string& s) { s = getDolbyModeStringFromEnum(static_cast<tvDolbyMode_t>(v)); }}
             };
 
             // If there's a custom string conversion for this parameter, apply it
@@ -1786,6 +1787,11 @@ namespace Plugin {
             updateAVoutputTVParamV2("sync", "DimmingLevel", paramJson, PQ_PARAM_BACKLIGHT_DIMMINGLEVEL, level);
         }
 
+        m_hdrModeStatus = GetTVDolbyVisionModeCaps(&m_hdrModes, &m_numhdrModes, &m_hdrModeCaps);
+        if (m_hdrModeStatus == tvERROR_NONE) {
+            updateAVoutputTVParamV2("sync", "HDRMode", paramJson, PQ_PARAM_DOLBY_MODE, level);
+        }
+
         m_cmsStatus = GetCMSCaps(&m_maxCmsHue, &m_maxCmsSaturation, &m_maxCmsLuma,
                                 &m_cmsColorArr, &m_cmsComponentArr,
                                 &m_numColor, &m_numComponent, &m_cmsCaps);
@@ -2246,11 +2252,17 @@ namespace Plugin {
                else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("DV") != std::string::npos ) {
                    value = tvDolbyMode_Bright;
                }
+               else if(strncmp(param.value, "Game", strlen(param.value)) == 0 && key.find("DV") != std::string::npos ) {
+                   value = tvDolbyMode_Game;
+               }
 	           else if(strncmp(param.value, "Dark", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
                    value = tvHDR10Mode_Dark;
                }
 	           else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
                    value = tvHDR10Mode_Bright;
+               }
+               else if(strncmp(param.value, "Game", strlen(param.value)) == 0 && key.find("HDR10") != std::string::npos ) {
+                   value = tvHDR10Mode_Game;
                }
 	           else if(strncmp(param.value, "Dark", strlen(param.value)) == 0 && key.find("HLG") != std::string::npos ) {
                    value = tvHLGMode_Dark;
@@ -2258,8 +2270,8 @@ namespace Plugin {
                else if(strncmp(param.value, "Bright", strlen(param.value)) == 0 && key.find("HLG") != std::string::npos ) {
                    value = tvHLGMode_Bright;
                }
-               else {
-                   value = tvDolbyMode_Game;
+               else if(strncmp(param.value, "Game", strlen(param.value)) == 0 && key.find("HLG") != std::string::npos ) {
+                   value = tvHLGMode_Game;
                }
                return 0;
            }
@@ -2585,7 +2597,7 @@ namespace Plugin {
                 case tvHLGMode_Bright:
                      value = "Bright";
                      break;
-	        case tvDolbyMode_Game:
+                case tvDolbyMode_Game:
                 case tvHDR10Mode_Game:
                 case tvHLGMode_Game:
                     value = "Game";
@@ -3578,6 +3590,12 @@ namespace Plugin {
         else if (paramName == "WhiteBalance") caps = m_wbContextCaps;
         else if (paramName == "SDRGamma") caps = m_sdrGammaModeCaps;
         else if (paramName == "DimmingLevel") caps = m_dimmingLevelCaps;
+        else if (paramName == "HDRMode") {
+            if (m_hdrModeStatus != tvERROR_NONE) {
+                return nullptr;
+            }
+            caps = m_hdrModeCaps;
+        }
         else {
             LOGERR("Unknown ParamName: %s", paramName.c_str());
             return nullptr;
@@ -3588,6 +3606,123 @@ namespace Plugin {
 
         return caps;
     }
+
+    bool AVOutputTV::validateHDRContextParameters(const JsonObject& parameters)
+    {
+        if (m_hdrModeStatus != tvERROR_NONE ||
+            m_hdrModeCaps == nullptr ||
+            m_hdrModeCaps->contexts == nullptr ||
+            m_hdrModeCaps->num_contexts == 0) {
+            LOGERR("%s: HDR context capabilities are unavailable", __FUNCTION__);
+            return false;
+        }
+
+        initializeReverseMaps();
+
+        std::unordered_map<std::string, int> pictureModeValues;
+        std::unordered_map<std::string, int> videoSourceValues;
+        std::unordered_map<std::string, int> videoFormatValues;
+        std::set<int> supportedPictureModes;
+        std::set<int> supportedVideoSources;
+        std::set<int> supportedVideoFormats;
+        for (const auto& value : pqModeReverseMap) {
+            pictureModeValues.emplace(value.first, static_cast<int>(value.second));
+        }
+        for (const auto& value : videoSrcReverseMap) {
+            videoSourceValues.emplace(value.first, static_cast<int>(value.second));
+        }
+        for (const auto& value : videoFormatReverseMap) {
+            videoFormatValues.emplace(value.first, static_cast<int>(value.second));
+        }
+        for (size_t i = 0; i < m_hdrModeCaps->num_contexts; ++i) {
+            const tvConfigContext_t& context = m_hdrModeCaps->contexts[i];
+            supportedPictureModes.insert(static_cast<int>(context.pq_mode));
+            supportedVideoSources.insert(static_cast<int>(context.videoSrcType));
+            supportedVideoFormats.insert(static_cast<int>(context.videoFormatType));
+        }
+
+        auto validateDimension = [&](const char* label,
+                                     const std::unordered_map<std::string, int>& valuesByName,
+                                     const std::set<int>& supportedValues,
+                                     bool& needsCurrent) {
+            if (!parameters.HasLabel(label)) {
+                return true;
+            }
+            if (parameters[label].Content() != JsonValue::type::ARRAY) {
+                LOGERR("%s: %s must be an array", __FUNCTION__, label);
+                return false;
+            }
+
+            const JsonArray values = parameters[label].Array();
+            if (values.Length() == 0 ||
+                (values.Length() == 1 &&
+                 (values[0].String() == "Global" || values[0].String() == "none"))) {
+                return true;
+            }
+
+            for (uint32_t i = 0; i < values.Length(); ++i) {
+                const std::string value = values[i].String();
+                if (value == "Global" || value == "none") {
+                    LOGERR("%s: %s global selector must be the only entry", __FUNCTION__, label);
+                    return false;
+                }
+                if (value == "Current") {
+                    needsCurrent = true;
+                    continue;
+                }
+
+                const auto it = valuesByName.find(value);
+                if (it == valuesByName.end() || supportedValues.count(it->second) == 0) {
+                    LOGERR("%s: Unsupported HDR %s value: %s", __FUNCTION__, label, value.c_str());
+                    return false;
+                }
+            }
+            return true;
+        };
+        auto validateCurrentValue = [&](const char* label,
+                                        const std::string& value,
+                                        const std::unordered_map<std::string, int>& valuesByName,
+                                        const std::set<int>& supportedValues) {
+            const auto it = valuesByName.find(value);
+            if (it == valuesByName.end() || supportedValues.count(it->second) == 0) {
+                LOGERR("%s: Current HDR %s value is unsupported: %s",
+                       __FUNCTION__, label, value.c_str());
+                return false;
+            }
+            return true;
+        };
+
+        bool needsCurrentPictureMode = false;
+        bool needsCurrentVideoSource = false;
+        bool needsCurrentVideoFormat = false;
+        if (!validateDimension("pictureMode", pictureModeValues, supportedPictureModes,
+                               needsCurrentPictureMode) ||
+            !validateDimension("videoSource", videoSourceValues, supportedVideoSources,
+                               needsCurrentVideoSource) ||
+            !validateDimension("videoFormat", videoFormatValues, supportedVideoFormats,
+                               needsCurrentVideoFormat)) {
+            return false;
+        }
+
+        if (needsCurrentPictureMode &&
+            !validateCurrentValue("pictureMode", getCurrentPictureModeAsString(),
+                                  pictureModeValues, supportedPictureModes)) {
+            return false;
+        }
+        if (needsCurrentVideoSource &&
+            !validateCurrentValue("videoSource", getCurrentVideoSourceAsString(),
+                                  videoSourceValues, supportedVideoSources)) {
+            return false;
+        }
+        if (needsCurrentVideoFormat &&
+            !validateCurrentValue("videoFormat", getCurrentVideoFormatAsString(),
+                                  videoFormatValues, supportedVideoFormats)) {
+            return false;
+        }
+
+        return true;
+    }
+
     std::string AVOutputTV::getCurrentPictureModeAsString() {
         char picMode[PIC_MODE_NAME_MAX] = {0};
         if (!getCurrentPictureMode(picMode)) {
@@ -3842,7 +3977,7 @@ namespace Plugin {
         std::vector<tvConfigContext_t> validContexts = getValidContextsFromParameters(parameters, tr181ParamName);
         if (validContexts.empty()) {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
-            return (int)tvERROR_GENERAL;
+            return -1;
         }
 
         if (validContexts.size() == 1) {
@@ -3920,7 +4055,7 @@ namespace Plugin {
 
         if (validContexts.empty()) {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
-            return (int)tvERROR_GENERAL;
+            return -1;
         }
         if (tr181ParamName == "CMS") {
             if ( isReset )
@@ -4028,7 +4163,7 @@ namespace Plugin {
                 }
             }
             LOGINFO("Exit: %s, Return Value: %d", __FUNCTION__, ret);
-            return (ret < 0) ? -1 : 0;
+            return (ret != 0) ? -1 : 0;
         }
         else if (tr181ParamName == "WhiteBalance") {
             std::string colorStr =
@@ -4142,7 +4277,7 @@ namespace Plugin {
             }
 
             LOGINFO("Exit: %s WhiteBalance handling done, ret=%d", __FUNCTION__, ret);
-            return (ret < 0) ? -1 : 0;
+            return (ret != 0) ? -1 : 0;
         }
         for (const auto& ctx : validContexts)
         {
@@ -4154,6 +4289,17 @@ namespace Plugin {
             std::string pqStr = pqModeMap.count(ctx.pq_mode) ? pqModeMap.at(ctx.pq_mode) : std::to_string(ctx.pq_mode);
             std::string fmtStr = videoFormatMap.count(ctx.videoFormatType) ? videoFormatMap.at(ctx.videoFormatType) : std::to_string(ctx.videoFormatType);
             std::string srcStr = videoSrcMap.count(ctx.videoSrcType) ? videoSrcMap.at(ctx.videoSrcType) : std::to_string(ctx.videoSrcType);
+
+            if(tr181ParamName == "HDRMode" && isSet)
+            {
+                const std::string value = parameters.HasLabel("hdrMode") ? parameters["hdrMode"].String() : "";
+                tvDolbyMode_t dolbyMode = tvDolbyMode_Invalid;
+                 if (getHDRModeIndex(value, fmtStr, dolbyMode) != 0) {
+                     LOGERR("Invalid HDR mode %s for format %s", value.c_str(), fmtStr.c_str());
+                     return static_cast<int>(tvERROR_GENERAL);
+                 }
+                 level = static_cast<int>(dolbyMode);
+            }
 
             if (isSet)
             {
@@ -4263,6 +4409,7 @@ namespace Plugin {
                                 (tvVideoFormatType_t)paramIndex.formatIndex,
                                 level);
                     break;
+
                 case PQ_PARAM_HDR10_MODE:
                 case PQ_PARAM_HLG_MODE:
                 case PQ_PARAM_LDIM:
@@ -4278,7 +4425,7 @@ namespace Plugin {
             }
         }
         LOGINFO("Exit: %s, Return Value: %d", __FUNCTION__, ret);
-        return ret;
+        return (ret != 0) ? -1 : 0;
     }
 
 	int AVOutputTV::ReadCapablitiesFromConf(std::string param, capDetails_t& info)
