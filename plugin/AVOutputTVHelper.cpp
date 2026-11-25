@@ -3842,7 +3842,7 @@ namespace Plugin {
         std::vector<tvConfigContext_t> validContexts = getValidContextsFromParameters(parameters, tr181ParamName);
         if (validContexts.empty()) {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
-            return (int)tvERROR_GENERAL;
+            return -1;
         }
 
         if (validContexts.size() == 1) {
@@ -3920,7 +3920,7 @@ namespace Plugin {
 
         if (validContexts.empty()) {
             LOGWARN("%s: No valid contexts found for parameters", __FUNCTION__);
-            return (int)tvERROR_GENERAL;
+            return -1;
         }
         if (tr181ParamName == "CMS") {
             if ( isReset )
@@ -4028,7 +4028,7 @@ namespace Plugin {
                 }
             }
             LOGINFO("Exit: %s, Return Value: %d", __FUNCTION__, ret);
-            return (ret < 0) ? -1 : 0;
+            return (ret != 0) ? -1 : 0;
         }
         else if (tr181ParamName == "WhiteBalance") {
             std::string colorStr =
@@ -4142,7 +4142,7 @@ namespace Plugin {
             }
 
             LOGINFO("Exit: %s WhiteBalance handling done, ret=%d", __FUNCTION__, ret);
-            return (ret < 0) ? -1 : 0;
+            return (ret != 0) ? -1 : 0;
         }
         for (const auto& ctx : validContexts)
         {
@@ -4278,7 +4278,7 @@ namespace Plugin {
             }
         }
         LOGINFO("Exit: %s, Return Value: %d", __FUNCTION__, ret);
-        return ret;
+        return (ret != 0) ? -1 : 0;
     }
 
 	int AVOutputTV::ReadCapablitiesFromConf(std::string param, capDetails_t& info)

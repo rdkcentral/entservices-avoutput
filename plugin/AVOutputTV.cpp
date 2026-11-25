@@ -696,7 +696,7 @@ namespace Plugin {
 
         try {
             int retVal = updateAVoutputTVParamV2("set", "CMS", parameters, PQ_PARAM_CMS, level);
-            if (retVal < 0) {
+            if (retVal != 0) {
                 LOGERR("setCMSParam: Failed to save CMS param, return code: %d", retVal);
                 return false;
             }
