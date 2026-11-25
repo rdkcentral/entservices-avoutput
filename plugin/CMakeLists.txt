@@ -80,6 +80,9 @@ set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD_REQUIRED YES)
 
 target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+find_package(Boost COMPONENTS system filesystem REQUIRED)
+target_link_libraries(${MODULE_NAME} PRIVATE ${Boost_SYSTEM_LIBRARY})
+target_link_libraries(${MODULE_NAME} PRIVATE ${Boost_FILESYSTEM_LIBRARY})
 target_link_libraries(${MODULE_NAME} 
     PRIVATE
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
